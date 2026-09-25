@@ -16,6 +16,15 @@ namespace NivenRingworld
             set{int index=0;for(int i=0;i<TimeWarp.fetch.warpRates.Length;i++)if(TimeWarp.fetch.warpRates[i]<=value)index=i;TimeWarp.SetRate(index,true);}
         }
         internal string Status="Use stock time warp when resting on the ring.";
+        // Read the live table: BetterTimeWarp can replace it without changing
+        // the number of stock buttons. Limits are rates, never fixed indices.
+        internal static int AllowedIndex(float[] rates,int requested,double limit)
+        {
+            if(rates==null||rates.Length==0)return 0;
+            int index=Math.Max(0,Math.Min(rates.Length-1,requested));
+            while(index>0&&(!RingParameters.Finite(rates[index])||rates[index]<1||rates[index]>limit))index--;
+            return index;
+        }
         internal bool Anchored(Vessel v){return v!=null&&anchors.ContainsKey(v);}
         internal bool CanAdvance(RingworldFlight f,bool allowPaused=false)
         {
@@ -85,6 +94,9 @@ namespace NivenRingworld
             foreach(var v in stale)restPoses.Remove(v);
             if(TimeWarp.CurrentRateIndex>0||TimeWarp.CurrentRate>1.0001f)
             {
+                int allowed=AllowedIndex(TimeWarp.fetch.warpRates,TimeWarp.CurrentRateIndex,f.Settings.SurfaceWarpLimit);
+                if(TimeWarp.WarpMode!=TimeWarp.Modes.HIGH){TimeWarp.SetRate(0,true);Status="Physics warp is unavailable in the ring frame.";return;}
+                if(allowed!=TimeWarp.CurrentRateIndex){TimeWarp.SetRate(allowed,true);return;}
                 if(anchors.Count==0&&!Prepare(f)){TimeWarp.SetRate(0,true);return;}
                 foreach(var v in new List<Vessel>(anchors.Keys)){if(v==null){anchors.Remove(v);continue;}if(!v.packed)v.GoOnRails();Hold(v);}
                 Status="Stock rails warp: ring contact anchored; universal time advances normally.";
@@ -105,7 +117,7 @@ namespace NivenRingworld
             rateIdx=Math.Max(0,Math.Min(__instance.warpRates.Length-1,rateIdx));if(rateIdx==0)return true;
             if(TimeWarp.WarpMode!=TimeWarp.Modes.HIGH){f.surfaceWarp.Status="Use standard rails warp; physics warp is unavailable in the ring frame.";__result=false;return false;}
             if(!f.surfaceWarp.Prepare(f)){__result=false;return false;}
-            while(rateIdx>0&&__instance.warpRates[rateIdx]>f.Settings.SurfaceWarpLimit)rateIdx--;
+            rateIdx=RingSurfaceWarp.AllowedIndex(__instance.warpRates,rateIdx,f.Settings.SurfaceWarpLimit);
             return true;
         }
     }
@@ -115,7 +127,7 @@ namespace NivenRingworld
         private static bool Prefix(int tgtRateIdx,ref ClearToSaveStatus reason,ref int __result)
         {
             var f=RingworldFlight.Instance;if(f==null||!f.Active||!f.surfaceWarp.CanAdvance(f))return true;
-            reason=ClearToSaveStatus.CLEAR;__result=tgtRateIdx;return false;
+            reason=ClearToSaveStatus.CLEAR;__result=RingSurfaceWarp.AllowedIndex(TimeWarp.fetch.warpRates,tgtRateIdx,f.Settings.SurfaceWarpLimit);return false;
         }
     }
     [HarmonyPatch(typeof(OrbitDriver),"UpdateOrbit")]

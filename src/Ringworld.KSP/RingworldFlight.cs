@@ -567,7 +567,6 @@ namespace NivenRingworld
         }
         public void OnGUI()
         {
-            if(weatherEffects!=null)weatherEffects.DrawVeil();
             if(!visible||(toolbar!=null&&!toolbar.UiVisible)||Settings==null||(visuals!=null&&visuals.PhotoActive))return;
             window.x=Mathf.Clamp(window.x,0,Mathf.Max(0,Screen.width-window.width));
             window.y=Mathf.Clamp(window.y,0,Mathf.Max(0,Screen.height-100));
@@ -576,7 +575,7 @@ namespace NivenRingworld
         private void DrawWindow(int id)
         {
             panelScroll=GUILayout.BeginScrollView(panelScroll,GUILayout.Height(Mathf.Max(240,Mathf.Min(610,Screen.height-150))));
-            if(weatherEffects!=null&&Owns(FlightGlobals.ActiveVessel))GUILayout.Label("Weather: "+RingCloudField.Describe(weatherEffects.Current));
+            if(weatherEffects!=null&&Owns(FlightGlobals.ActiveVessel))GUILayout.Label("Weather: "+weatherEffects.Description);
             panelTab=GUILayout.Toolbar(panelTab,SandboxControls?new[]{"Expedition","Settings","Research"}:new[]{"Expedition","Research"});
             if(panelTab==(SandboxControls?2:1)){State.Research.Draw(FlightGlobals.ActiveVessel);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
             if(panelTab==1){settingsPanel.Draw(this);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}

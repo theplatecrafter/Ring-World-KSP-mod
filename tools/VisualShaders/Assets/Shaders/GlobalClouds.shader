@@ -1,7 +1,9 @@
 Shader "NivenRingworld/GlobalClouds"
 {
  SubShader { Tags { "Queue"="Transparent-20" "RenderType"="Transparent" }
- Pass { Cull Back ZWrite Off Offset -2, -2 Blend SrcAlpha OneMinusSrcAlpha
+ // Seen both from orbit and from the floor. The analytical hull test below
+ // hides the shell through the exterior; back-face culling hid it when landed.
+ Pass { Cull Off ZWrite Off Offset -2, -2 Blend SrcAlpha OneMinusSrcAlpha
  CGPROGRAM
  #pragma vertex vert
  #pragma fragment frag

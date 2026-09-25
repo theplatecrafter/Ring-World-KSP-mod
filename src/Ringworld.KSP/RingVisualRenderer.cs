@@ -4,6 +4,7 @@ using System.Collections;
 using System.Linq;
 using Ringworld.Core;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace NivenRingworld
 {
@@ -17,17 +18,21 @@ namespace NivenRingworld
         private DepthTextureMode previousDepth;
         private AssetBundle bundle;
         private Material material;
+        private Extensions.RingworldClouds clouds;
+        internal bool CloudRendering {get{return Rendering&&Extensions.RingworldClouds.Requested(Settings);}}
         private RenderTexture volume,photoBase,photoDepth,photoA,photoB,photoResult;
         private float savedTimeScale;
         private int savedFrameRate,photoFrame,photoSamples;
         private bool savedUi,photoStarted,photoFinished,failed;
+        private int postProcessedFrame=-1;
+        private static readonly int PostSource=Shader.PropertyToID("_NivenRingworldPostSource");
         private static readonly int[] PhotoEdges={0,1280,1920,2560,3840,7680,15360};
         private static readonly string[] PhotoSizes={"Screen","720p class (1280)","1080p class (1920)","1440p class (2560)","4K (3840)","8K (7680)","16K (15360)"};
         private int photoSize,outputWidth,outputHeight,viewportWidth,viewportHeight;
         private bool photoSizeChooser,capturingPhoto,captureQueued;
         private RenderTexture captureTarget;
         private bool photoChooser;private int photoPreset=2;private Vector2 photoScroll;
-        internal bool SimplePhoto {get{return PhotoActive&&(!Settings.Atmosphere||(Settings.VisualQuality==0&&Settings.AtmosphereBackend==0));}}
+        internal bool SimplePhoto {get{return PhotoActive&&(!Settings.Atmosphere||(Settings.VisualQuality==0&&Settings.AtmosphereBackend==0&&!Extensions.RingworldClouds.Requested(Settings)));}}
         internal void DrawPhotoEntry()
         {
             if(GUILayout.Button("Photo quality: "+RingQualityPresets.Names[photoPreset]+"  v"))photoChooser=!photoChooser;
@@ -37,7 +42,9 @@ namespace NivenRingworld
             GUILayout.Label("Output keeps the screen aspect ratio; sizes specify the longer edge. High resolutions need substantial GPU memory and can take minutes.");
             if(GUILayout.Button("Enter photo mode (freezes flight)"))BeginPhoto(null,photoPreset);
         }
-        private Vector4 PhotoQuality {get{return new Vector4(Settings.CloudSteps,CylaActive?0:Settings.AtmosphereSteps,Settings.VisualQuality==2?6:4,(float)Settings.CloudRange);}}
+        internal float PrecipitationBase { get { return clouds==null?700:clouds.RainBase; } }
+        internal float StormTop { get { return clouds==null?12000:clouds.StormTop; } }
+        private Vector4 PhotoQuality {get{return new Vector4(Settings.CloudSteps,CylaActive?16:Settings.AtmosphereSteps,Settings.VisualQuality==2?6:4,(float)Settings.RenderCloudRange);}}
         private Vector3 photoPosition;
         private Quaternion photoRotation;
         private float photoFov;
@@ -61,18 +68,19 @@ namespace NivenRingworld
                 var shader=bundle.LoadAsset<Shader>("Assets/Shaders/RingAtmosphere.shader");
                 if(shader==null||!shader.isSupported)throw new InvalidOperationException("Ringworld volumetric shader is unsupported on this graphics API.");
                 material=new Material(shader);material.SetTexture("_Noise",bundle.LoadAsset<Texture3D>("Assets/CloudNoise.asset"));
+                clouds=new Extensions.RingworldClouds(material,bundle);
                 Debug.Log("[NivenRingworld] GPU atmosphere ready: "+SystemInfo.graphicsDeviceType+" / "+SystemInfo.graphicsDeviceName);
                 return true;
             }
-            catch(Exception e){failed=true;Status=e.Message+" Using laptop atmosphere.";Debug.LogError("[NivenRingworld] "+Status);return false;}
+            catch(Exception e){if(material!=null)Destroy(material);material=null;clouds=null;failed=true;Status=e.Message+" Using laptop atmosphere.";Debug.LogError("[NivenRingworld] "+Status);return false;}
         }
-        internal Shader WaterShader(){return EnsureAssets()?bundle.LoadAsset<Shader>("Assets/Shaders/RingWater.shader"):null;}
+        internal Shader WaterShader(bool refraction=false){return EnsureAssets()?bundle.LoadAsset<Shader>(refraction?"Assets/Shaders/RingWaterRefraction.shader":"Assets/Shaders/RingWater.shader"):null;}
         internal void Prepare(bool allowed,Vector3d star)
         {
             if(PhotoActive&&(!allowed||MapView.MapIsEnabled)){EndPhoto();Status="Photo cancelled after camera/scene change.";}
             if(Settings.AtmosphereBackend==1)EnsureAssets();
             cyla.Prepare(allowed&&!MapView.MapIsEnabled&&!RingworldFlight.Instance.AtmosphereTransition,Settings,star,PhotoActive,photoStarted,material);
-            Rendering=allowed&&(Settings.VisualQuality>0||PhotoActive||CylaActive)&&EnsureAssets();
+            Rendering=allowed&&(Settings.VisualQuality>0||PhotoActive||CylaActive||Extensions.RingworldClouds.Requested(Settings))&&EnsureAssets();
             if(!Rendering){enabled=PhotoActive;return;}
             var observer=ConvertVector.Core((Vector3d)cameraComponent.transform.position-star);var g=Settings.Geometry;var c=g.Coordinates(observer);
             Rendering=PhotoActive||(c.Altitude>-1000&&c.Altitude<600000&&Math.Abs(c.Across)<g.P.Width/2+500000&&Settings.Atmosphere);
@@ -82,8 +90,13 @@ namespace NivenRingworld
             if(PhotoActive&&photoStarted)
             {cameraComponent.transform.SetPositionAndRotation(photoPosition,photoRotation);cameraComponent.fieldOfView=photoFov;return;}
             double time=Planetarium.GetUniversalTime();
-            double extent=Math.Max(150000,Settings.CloudRange*1.15);
+            double extent=Math.Max(150000,Settings.RenderCloudRange*1.15);
             var currentWeather=RingCloudField.Apply(material,Settings,c.Along,c.Across,c.Altitude,time);
+            clouds.Update(Settings,currentWeather,time);
+            var surface=Settings.Terrain.Sample(c.Along,c.Across);
+            string localWeather=RingWeather.SurfaceKind(currentWeather,surface.Biome,Math.Abs(c.Across)/(g.P.Width*.5),g.Daylight(c.Along,time));
+            material.SetVector("_SurfaceWeather",new Vector4(localWeather=="Rim-shadow fog"?(float)currentWeather.Cloud:0,localWeather=="Blowing dust"?(float)currentWeather.Storm:0,(float)surface.Height,surface.Biome==Biome.Snow?1:0));
+
             material.SetVector("_CloudHandoff",RingCloudField.Handoff(Settings,true));
             DVec up=g.Up(observer),along=g.SpinVelocity(observer).Unit,across=DVec.Cross(up,along).Unit;
             Func<Vector3,Vector3> local=v=>new Vector3((float)DVec.Dot(ConvertVector.Core(v),along),(float)DVec.Dot(ConvertVector.Core(v),across),(float)DVec.Dot(ConvertVector.Core(v),up));
@@ -96,14 +109,15 @@ namespace NivenRingworld
             material.SetVector("_Habitat",new Vector4((float)c.Altitude,(float)g.P.Radius,(float)c.Across,(float)(g.P.Width/2)));
             material.SetVector("_WeatherMap",new Vector4(0,0,(float)extent,(float)currentWeather.Cloud));
             material.SetVector("_Look",new Vector4(CylaActive?0:(float)Settings.Haze,(float)g.Daylight(c.Along,time),(float)Settings.CloudShadow,(float)Settings.AtmosphereExposure));
-            material.SetVector("_Quality",new Vector4(Settings.VisualQuality==0?Math.Min(32,Settings.CloudSteps):Settings.CloudSteps,CylaActive?0:Settings.AtmosphereSteps,Settings.VisualQuality==2?6:4,(float)Settings.CloudRange));
-            if(!PhotoActive)Status=(Settings.AtmosphereBackend==1?cyla.Status+" | ":"")+"Weather: "+(currentWeather.Storm>.1?"thunderstorm":currentWeather.Rain>.1?"rain":currentWeather.Cloud>.5?"cloudy":"fair")+" / GPU clouds / "+Settings.CloudSteps+" view steps / "+Settings.AtmosphereSteps+" atmosphere steps.";
+            material.SetVector("_Quality",new Vector4(Settings.VisualQuality==0?Math.Min(32,Settings.CloudSteps):Settings.CloudSteps,CylaActive?(currentWeather.Rain>.01||localWeather=="Rim-shadow fog"?16:0):Settings.AtmosphereSteps,Settings.VisualQuality==2?6:4,(float)Settings.RenderCloudRange));
+            if(!PhotoActive)Status=(Settings.AtmosphereBackend==1?cyla.Status+" | ":"")+"Weather: "+(currentWeather.Storm>.1?"thunderstorm":currentWeather.Rain>.1?"rain":currentWeather.Cloud>.5?"cloudy":"fair")+" / Ringworld Clouds: "+(CloudRendering?Settings.CloudMode+" / "+Settings.CloudSteps+" view steps":"layers only")+" / "+Settings.AtmosphereSteps+" atmosphere steps.";
         }
         private static RenderTexture Target(int w,int h,RenderTextureFormat format,string name)
         {var rt=new RenderTexture(w,h,0,format,RenderTextureReadWrite.Linear){name=name,filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};rt.Create();return rt;}
         private static void Free(ref RenderTexture rt){if(rt==null)return;rt.Release();Destroy(rt);rt=null;}
         public void OnRenderImage(RenderTexture source,RenderTexture destination)
         {
+            if(!PhotoActive&&postProcessedFrame==Time.frameCount){Graphics.Blit(source,destination);return;}
             if(!Rendering||material==null){Graphics.Blit(source,destination);return;}
             try
             {
@@ -122,9 +136,26 @@ namespace NivenRingworld
                 int divisor=Settings.VisualQuality<2?2:1,w=Math.Max(1,source.width/divisor),h=Math.Max(1,source.height/divisor);
                 if(volume==null||volume.width!=w||volume.height!=h){Free(ref volume);volume=Target(w,h,RenderTextureFormat.ARGBHalf,"Ringworld realtime atmosphere");}
                 material.SetVector("_Photo",Vector4.zero);material.SetFloat("_Jitter",0);
-                Graphics.Blit(source,volume,material,0);material.SetTexture("_Volume",volume);Graphics.Blit(source,destination,material,1);RenderedFrames++;
+                Graphics.Blit(source,volume,material,0);material.SetTexture("_Volume",volume);Graphics.Blit(source,destination,material,1);RingWeatherEffects.Instance?.Draw(cameraComponent,destination);RenderedFrames++;
             }
             catch(Exception e){Debug.LogException(e);Status="Visual render failed: "+e.Message;EndPhoto();Rendering=false;failed=true;Graphics.Blit(source,destination);}
+        }
+        // Insert clouds before TUFX's colour grading/bloom, rather than overlaying
+        // untreated clouds on the already graded world. TUFX owns the command buffer.
+        internal void AppendBeforePostProcessing(CommandBuffer commands,RenderTargetIdentifier source)
+        {
+            if(commands==null)return;
+            if(cyla!=null)cyla.OrderBefore(commands);
+            if(!Rendering||material==null||PhotoActive)return;
+            int width=Math.Max(1,cameraComponent.pixelWidth),height=Math.Max(1,cameraComponent.pixelHeight);
+            int divisor=Settings.VisualQuality<2?2:1,w=Math.Max(1,width/divisor),h=Math.Max(1,height/divisor);
+            if(volume==null||volume.width!=w||volume.height!=h){Free(ref volume);volume=Target(w,h,RenderTextureFormat.ARGBHalf,"Ringworld realtime atmosphere");}
+            material.SetVector("_FrameSize",new Vector2(width,height));material.SetVector("_Photo",Vector4.zero);material.SetFloat("_Jitter",0);
+            commands.GetTemporaryRT(PostSource,width,height,0,FilterMode.Bilinear,RenderTextureFormat.ARGBHalf);
+            commands.Blit(source,PostSource);
+            commands.Blit(PostSource,volume,material,0);material.SetTexture("_Volume",volume);
+            commands.Blit(PostSource,source,material,1);RingWeatherEffects.Instance?.Append(commands,cameraComponent,source);commands.ReleaseTemporaryRT(PostSource);
+            postProcessedFrame=Time.frameCount;RenderedFrames++;
         }
         internal bool BeginPhoto(int? sampleOverride=null,int? preset=null,int? edgeOverride=null)
         {
@@ -186,7 +217,7 @@ namespace NivenRingworld
                 Graphics.Blit(source,photoBase);Graphics.Blit(source,photoDepth,material,2);Graphics.Blit(Texture2D.blackTexture,photoA);Graphics.Blit(Texture2D.blackTexture,photoB);
                 material.SetTexture("_SavedDepth",photoDepth);photoStarted=true;
                 // Initialize all pixels cheaply, then refine one of 16 tiles per rendered frame.
-                material.SetVector("_Quality",new Vector4(24,16,2,(float)Settings.CloudRange));material.SetVector("_Photo",new Vector4(1,-1,4,0));material.SetFloat("_Jitter",0);
+                material.SetVector("_Quality",new Vector4(24,16,2,(float)Settings.RenderCloudRange));material.SetVector("_Photo",new Vector4(1,-1,4,0));material.SetFloat("_Jitter",0);
                 if(!SimplePhoto)Graphics.Blit(photoBase,photoA,material,0);material.SetVector("_Quality",PhotoQuality);
             }
             if(!photoFinished&&!SimplePhoto)
@@ -194,10 +225,11 @@ namespace NivenRingworld
                 int sample=photoFrame/16,tile=photoFrame%16;
                 material.SetVector("_Photo",new Vector4(1,tile,4,sample));material.SetFloat("_Jitter",sample+.5f);material.SetTexture("_Previous",photoA);
                 Graphics.Blit(photoBase,photoB,material,0);var swap=photoA;photoA=photoB;photoB=swap;
-                photoFrame++;Status="Rendering photo: "+(100*photoFrame/(16*photoSamples))+"% — Cancel restores flight.";
+                photoFrame++;Status="Rendering photo: "+(100*photoFrame/(16*photoSamples))+"% â€” Cancel restores flight.";
             }
             if(SimplePhoto){Graphics.Blit(photoBase,photoResult);photoFrame=photoSamples*16;}
             else {material.SetTexture("_Volume",photoA);Graphics.Blit(photoBase,photoResult,material,1);}
+            RingWeatherEffects.Instance?.Draw(cameraComponent,photoResult,photoDepth);
             Graphics.Blit(photoResult,destination);
             if(!photoFinished&&photoFrame>=photoSamples*16)
             {

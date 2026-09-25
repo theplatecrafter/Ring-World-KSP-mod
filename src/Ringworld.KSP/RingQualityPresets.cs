@@ -26,6 +26,8 @@ namespace NivenRingworld
             n.SetValue("atmosphereBackend",index<=5?1:0,true);
             n.SetValue("cylaViewSteps",new[]{500,192,128,80,48,32,24,16,8,4,1}[index],true);
             for(int k=0;k<Keys.Length;k++)n.SetValue(Keys[k],Values[index][k].ToString("R",CultureInfo.InvariantCulture),true);
+            n.SetValue("cloudRange",new[]{20000000,10000000,5000000,2000000,750000,300000,100000,75000,50000,40000,30000}[index],true);
+            n.SetValue("cloudMode",new[]{3,3,3,2,2,1,0,0,0,0,0}[index],true);n.SetValue("cloudDensity",1,true);
             n.SetValue("waterQuality",new[]{4,4,3,3,2,2,1,1,1,0,0}[index],true);
             n.SetValue("cylaDivisor",new[]{1,1,1,2,2,2,4,4,4,8,8}[index],true);n.SetValue("cylaLightSteps",new[]{50,24,16,8,6,4,3,2,2,1,1}[index],true);n.SetValue("cylaDither",false,true);
             n.SetValue("fullRingDetail",index<=5,true);n.SetValue("ambientParticles",index<=7,true);

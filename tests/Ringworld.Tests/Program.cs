@@ -46,6 +46,7 @@ static class Program
             Check(look.CanopyCover>=0&&look.CanopyCover<=1&&look.CanopyHeight>=0&&look.CanopyHeight<=48,"bounded biome representation");
             if(look.CanopyCover>.9){forestSamples++;Check(BiomePresentation.ForestMargin(t,a,b)>0,"near and distant forest share stand mask");}
             Near(BiomePresentation.Sample(t,a,b,ground,64,0).CanopyHeight,0,0,"disabled forest has no canopy relief");
+            Near(BiomePresentation.Sample(t,a,b,ground,380.001,1).CanopyCover,BiomePresentation.Sample(t,a,b,ground,379.999,1).CanopyCover,1e-8,"forest colour continuous across filter threshold");
             ground.Biome=Biome.Road;Near(BiomePresentation.Sample(t,a,b,ground,64,1).CanopyCover,0,0,"no forest canopy on roads");
         }
         Check(forestSamples>0,"forest coverage fixture exists");
@@ -76,10 +77,16 @@ static class Program
             Check(Math.Abs(w.Severity-next.Severity)<.0001,"weather continuous in UT");
             weatherMin=Math.Min(weatherMin,w.Severity);weatherMax=Math.Max(weatherMax,w.Severity);
             Check(w.Cloud>=0&&w.Cloud<=1&&w.Rain>=0&&w.Rain<=1&&w.Storm>=0&&w.Storm<=1,"weather bounded");
+            if(w.Rain>0)Check(w.Cloud>.81,"precipitation begins after overcast coverage threshold");
             var noStorm=RingWeather.Sample(t,123400,5600,ut,.45,true,600,1,0);Near(noStorm.Storm,0,0,"zero storm fraction");
             var clear=RingWeather.Sample(t,123400,5600,ut,0,true,600,1,1);Near(clear.Cloud+clear.Rain+clear.Storm,0,0,"forced clear weather");
         }
-        Check(weatherMin<.15&&weatherMax>.85,"weather spans sunny and storms");
+        Check(weatherMin<.30&&weatherMax>.85,"weather spans fair skies and storms");
+        var wetWeather=new WeatherSample{Cloud=1,Rain=1,Storm=1};
+        Check(RingWeather.SurfaceKind(wetWeather,Biome.Snow,0,1)=="Blizzard","snow biome storm phase");
+        Check(RingWeather.SurfaceKind(wetWeather,Biome.Desert,0,1)=="Blowing dust","dry storm presentation");
+        Check(RingWeather.SurfaceKind(new WeatherSample{Cloud=.8},Biome.Forest,.99,0)=="Rim-shadow fog","humid shadow rim fog");
+        Check(RingWeather.SurfaceKind(new WeatherSample(),Biome.Snow,0,1)=="Clear","cold alone does not precipitate");
         var storm=RingWeather.Sample(t,123400,5600,0,1,false,600,1,.4);Check(storm.Rain>.99&&storm.Storm>.99,"fixed storm fixture");
         for(int i=1;i<30;i++)Near(RingWeather.Sample(t,123400,5600,i*600-.00001,.45,true,600,1,.4).Severity,RingWeather.Sample(t,123400,5600,i*600+.00001,.45,true,600,1,.4).Severity,.00001,"weather interval seam");
         // Physical reference cases independent of the flight implementation.
@@ -289,7 +296,7 @@ static class Program
         string[] colors={"#074159","#186478","#267f92","#5d7046","#849453","#385d37","#baa373","#79746c","#e5ecec","#586a76","#ad9f83","#6d7885","#615e53"};
         using(var w=new StreamWriter(Path.Combine(dir,"terrain-preview.svg")))
         {
-            w.WriteLine("<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1320' viewBox='0 0 1200 1320'><rect width='1200' height='1320' fill='#111c25'/><text x='40' y='52' fill='white' font-family='sans-serif' font-size='26'>Ringworld | generated terrain near the expedition outpost</text><text x='40' y='85' fill='#bac8cf' font-family='sans-serif' font-size='18'>32 km square • same C# terrain sampler as the KSP plugin • plan view</text>");
+            w.WriteLine("<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1320' viewBox='0 0 1200 1320'><rect width='1200' height='1320' fill='#111c25'/><text x='40' y='52' fill='white' font-family='sans-serif' font-size='26'>Ringworld | generated terrain near the expedition outpost</text><text x='40' y='85' fill='#bac8cf' font-family='sans-serif' font-size='18'>32 km square â€¢ same C# terrain sampler as the KSP plugin â€¢ plan view</text>");
             for(int y=0;y<n;y++)for(int x=0;x<n;x++)
             {
                 var sample=terrain.Sample(origin.Along+(x/(double)n-.5)*size,origin.Across+(y/(double)n-.5)*size);

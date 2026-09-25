@@ -55,7 +55,8 @@ namespace NivenRingworld
             if(!HighLogic.LoadedSceneIsFlight||MapView.MapIsEnabled||flight==null||camera==null||vessel==null||vessel.mainBody!=star)return;
             var c=s.Geometry.Coordinates(ConvertVector.Core((Vector3d)camera.transform.position-s.Center));
             if(c.Altitude<=-1000||c.Altitude>=600000||Math.Abs(c.Across)>s.Geometry.P.Width/2+500000)return;
-            var handoff=RingCloudField.Handoff(s,flight.visuals!=null&&flight.visuals.Rendering);
+            if(flight.visuals!=null&&flight.visuals.Rendering&&!flight.visuals.CloudRendering&&!flight.visuals.SimplePhoto)return;
+            var handoff=RingCloudField.Handoff(s,flight.visuals!=null&&flight.visuals.CloudRendering);
             material.SetVector("_Local",new Vector4((float)(c.Along/s.Geometry.P.Circumference),(float)(c.Across/s.Geometry.P.Width+.5),(float)c.Altitude,1));
             material.SetVector("_CloudHandoff",handoff);
             double span=s.Geometry.P.Circumference/16384,sector=Math.Floor(c.Along/span);

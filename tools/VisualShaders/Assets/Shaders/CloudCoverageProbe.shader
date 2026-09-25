@@ -11,7 +11,7 @@ Shader "NivenRingworld/CloudCoverageProbe"
  float4 frag(v2f_img i):SV_Target
  {
    float2 p=i.uv*128000000+float2(_ProbeOffset,0);
-   float c=cloudCoverage(p);
+   float c=cloudCoverageAt(_CoverageOrigin.xy,_CoverageOrigin.zw+p*float2(_CoverageScaleX,1.0/4000000),_CloudAmount,0);
    return float4(c,c,c,1);
  }
  ENDCG

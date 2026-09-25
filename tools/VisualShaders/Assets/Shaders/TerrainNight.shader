@@ -18,7 +18,7 @@ Shader "NivenRingworld/TerrainNight"
  {
   if(ringHullOccludes(_WorldSpaceCameraPos-_RingScaledCenter,i.world-_RingScaledCenter,_RingScaledSize.x,_RingScaledSize.y))discard;
   float phase=frac(20*i.longitude-_RingNightPhase),edge=min(phase,1-phase);
-  return float4(tex2D(_MainTex,i.uv).rgb*lerp(.07,1,saturate((edge-.138307)/.02)),1);
+  return float4(tex2D(_MainTex,i.uv).rgb*lerp(.08,1,saturate((edge-.138307)/.02)),1);
  }
  ENDCG
  }}

@@ -1,12 +1,13 @@
 # Niven Ringworld documentation
 
-Build an expedition, land on a rotating world, and explore its biomes and ancient structures. These guides describe **v1.1.3** for **KSP 1.12.5 on Windows x64 / Direct3D 11**.
+Build an expedition, land on a rotating world, and explore its biomes and ancient structures. These guides describe **v1.1.4**, with explicitly marked v1.1.5 development notes for **KSP 1.12.5 on Windows x64 / Direct3D 11**.
 
 ## Start here
 
 - [Installation and your first expedition](guides/GETTING-STARTED.md)
 - [Flight, landing, saving and time warp](guides/FLIGHT-AND-SAVING.md)
 - [Graphics, performance and photo mode](guides/QUALITY-PRESETS.md)
+- [Ringworld extensions and water (v1.1.5 development)](guides/RINGWORLD-EXTENSIONS.md)
 - [Science and expedition rewards](guides/SCIENCE-AND-EXPEDITIONS.md)
 - [Creating multiple rings in Sandbox](guides/MULTIPLE-RINGS.md)
 - [Limitations and troubleshooting](guides/KNOWN-LIMITATIONS.md)
@@ -17,7 +18,7 @@ Build an expedition, land on a rotating world, and explore its biomes and ancien
 Explore the world's design or plan an add-on:
 
 - [Canon, dimensions and adaptations](reference/CANON-AND-SCALE.md)
-- [Biomes, terrain and scatter rules](reference/BIOME-ASSET-CATALOG.md) — includes the [biome frequency survey](reference/BIOME-FREQUENCY-SURVEY.txt).
+- [Biomes, terrain and scatter rules](reference/BIOME-ASSET-CATALOG.md) â€” includes the [biome frequency survey](reference/BIOME-FREQUENCY-SURVEY.txt).
 - [Habitat and city inventory](reference/HABITAT-LIBRARY.md)
 - [Landmark model inventory](reference/LANDMARK-INVENTORY.md)
 - [Colossi and forest placement](reference/COLOSSI-AND-FORESTS.md)
@@ -26,11 +27,13 @@ Explore the world's design or plan an add-on:
 
 - [Asset authoring and model overrides](developers/ASSET-AUTHORING.md)
 - [Adding research sites and objectives](developers/MODDING-RESEARCH.md)
+- [Resource instruments and gravitic-drive compatibility](developers/RESOURCE-AND-DRIVE-COMPATIBILITY.md)
+- [Parallax terrain integration reply](developers/PARALLAX-REPLY.md)
 - [Reference frames and mod compatibility](developers/MOD-INTEROPERABILITY.md)
+- [Visual and utility integrations: v1.1.5 test plan](developers/VISUAL-INTEGRATIONS.md)
 - [Cyla integration](developers/CYLA-INTEGRATION.md)
 - [Clouds and weather implementation](developers/CLOUDS-AND-WEATHER.md)
 - [CKAN publishing](publishing/CKAN-PUBLISHING.md)
-- [Forum introduction](publishing/FORUM-INTRODUCTION.md)
 
 ## Development archive
 

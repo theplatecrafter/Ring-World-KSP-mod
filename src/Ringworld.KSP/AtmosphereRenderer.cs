@@ -135,7 +135,7 @@ namespace NivenRingworld
                 double cover=1;uv[i]=new Vector2(x/(float)n,y/(float)n);
                 // Mountains pierce the cloud deck; fade the finite patch boundary.
                 if(Math.Abs(across)>settings.Geometry.P.Width/2||settings.Terrain.Sample(along,across).Height>height)cover=0;
-                double fade=Math.Max(0,Math.Min(1,(extent-Math.Max(Math.Abs(da),Math.Abs(db)))/45000));
+                double fade=Math.Max(0,Math.Min(1,(extent-Math.Sqrt(da*da+db*db))/65000));
                 float light=(float)(.12+.88*settings.Geometry.Daylight(along,time));
                 float shade=(float)(.68+.13*layer+.06*billow);
                 colors[i]=new Color(light*shade*.94f,light*shade*.97f,light*shade,(float)(cover*fade*(layer==1?.4:.3)));

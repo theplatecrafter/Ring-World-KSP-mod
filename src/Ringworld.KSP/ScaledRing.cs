@@ -18,6 +18,7 @@ namespace NivenRingworld
         private bool farAttempted,farActive,wasLocal;
         private MeshRenderer ribbonRenderer;
         private GlobalClouds globalClouds;
+        private Extensions.RingworldScattering scattering;
         internal bool DetailActive { get { return farActive; } }
         internal string RingId="primary";
         private Vector3d Center {get{return settings.Center;}}
@@ -111,7 +112,7 @@ namespace NivenRingworld
                 {
                     visualBundle=RingVisualAssets.Acquire();
                     var shader=visualBundle!=null?visualBundle.LoadAsset<Shader>("Assets/Shaders/DistantSurface.shader"):null;
-                    if(shader!=null&&shader.isSupported){farMaterial=new Material(shader){renderQueue=2000};wallMaterial=new Material(shader){renderQueue=2000};ribbonRenderer.sharedMaterials=new[]{wallMaterial,farMaterial};globalClouds=new GlobalClouds(root.transform,options,visualBundle);Debug.Log("[NivenRingworld] Full-ring distant surface and cloud shaders ready.");}
+                    if(shader!=null&&shader.isSupported){farMaterial=new Material(shader){renderQueue=2000};wallMaterial=new Material(shader){renderQueue=2000};ribbonRenderer.sharedMaterials=new[]{wallMaterial,farMaterial};globalClouds=new GlobalClouds(root.transform,options,visualBundle);scattering=new Extensions.RingworldScattering(root.transform,options,visualBundle);Debug.Log("[NivenRingworld] Full-ring distant surface and cloud shaders ready.");}
                     else Debug.LogWarning("[NivenRingworld] Distant surface shader unavailable; using plain ribbon.");
                 }
                 catch(Exception e){Debug.LogWarning("[NivenRingworld] Distant surface: "+e.Message);}
@@ -125,6 +126,7 @@ namespace NivenRingworld
             farMaterial.SetFloat("_SeedLow",seed&65535);farMaterial.SetFloat("_SeedHigh",seed>>16);farMaterial.SetFloat("_Generation",options.GenerationVersion);
             double time=Planetarium.GetUniversalTime();
             if(globalClouds!=null)globalClouds.Update(options,flight,star,time);
+            if(scattering!=null)scattering.Update(options,time);
             float phase=(float)RingGeometry.Wrap(time/options.Geometry.P.DaySeconds,1);
             farMaterial.SetFloat("_DayPhase",phase);wallMaterial.SetFloat("_DayPhase",phase);if(LocalFlight!=null)Shader.SetGlobalFloat("_RingNightPhase",phase);
             farMaterial.SetFloat("_CloudAmount",(float)options.CloudAmount);
@@ -153,6 +155,7 @@ namespace NivenRingworld
         {
             Camera.onPreCull-=PrepareCamera;if(ribbonObject!=null)Destroy(ribbonObject);ribbonObject=null;
             if(globalClouds!=null)globalClouds.Dispose();globalClouds=null;
+            if(scattering!=null)scattering.Dispose();scattering=null;
             if(root!=null)Destroy(root);if(ring!=null)Destroy(ring);if(material!=null)Destroy(material);if(dark!=null)Destroy(dark);
             if(wallMaterial!=null)Destroy(wallMaterial);if(farMaterial!=null)Destroy(farMaterial);if(visualBundle!=null)RingVisualAssets.Release();
             root=null;ring=null;material=null;dark=null;farMaterial=null;wallMaterial=null;visualBundle=null;ribbonRenderer=null;farAttempted=false;farActive=false;

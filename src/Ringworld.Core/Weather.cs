@@ -22,11 +22,20 @@ namespace Ringworld.Core
                 double front=terrain.Noise(along-time*30,across+time*7,800000,1213);
                 double regional=Clamp(temporal+(front-.5)*.7);
                 double wetThreshold=1-stormChance;
-                double target=regional<=wetThreshold?.7*regional/Math.Max(.001,wetThreshold):.7+.3*(regional-wetThreshold)/Math.Max(.001,stormChance);
+                double target=regional<=wetThreshold?.20+.50*regional/Math.Max(.001,wetThreshold):.7+.3*(regional-wetThreshold)/Math.Max(.001,stormChance);
                 severity=baseCloud+(target-baseCloud)*variation;
             }
             double cloud=Smooth((severity-.12)/.66);
             return new WeatherSample{Severity=severity,Cloud=cloud,Rain=Smooth((severity-.60)/.30),Storm=Smooth((severity-.78)/.20)};
+        }
+        // Presentation model, not a solved rotating climate. Cold biomes replace rain
+        // with snow; dry storm fronts lift dust; humid rim shadows favour shallow fog.
+        public static string SurfaceKind(WeatherSample w,Biome biome,double rimFraction,double daylight)
+        {
+            if(biome==Biome.Snow&&w.Rain>.05)return w.Storm>.2?"Blizzard":"Snow";
+            if(biome==Biome.Desert&&w.Storm>.2)return "Blowing dust";
+            if(rimFraction>.96&&daylight<.2&&w.Cloud>.65)return "Rim-shadow fog";
+            return w.Storm>.05?"Thunderstorm":w.Rain>.05?"Rain":w.Cloud>.65?"Overcast":w.Cloud>.15?"Partly cloudy":"Clear";
         }
         public static double Lightning(TerrainGenerator terrain,double time,double storm)
         {

@@ -7,8 +7,8 @@ namespace NivenRingworld
     {
         internal static Vector4 Handoff(Settings s,bool volume)
         {
-            float range=volume?(float)Math.Min(180000,s.CloudRange):180000;
-            return new Vector4(range*.4f,range*.72f,0,0);
+            float range=volume?(float)s.RenderCloudRange:180000;
+            return new Vector4(range*.65f,range*.95f,0,0);
         }
         internal static string Describe(WeatherSample w){return w.Storm>.05?"Thunderstorm":w.Rain>.05?"Rain":w.Cloud>.65?"Overcast":w.Cloud>.15?"Partly cloudy":"Clear";}
         internal static Vector3 Origin(Settings s,double along,double across,double altitude,double time)
@@ -30,6 +30,12 @@ namespace NivenRingworld
         {
             var weather=s.Weather(along,across,time);
             material.SetVector("_CoverageOrigin",CoverageOrigin(s,along,across,time));
+            // Slowly morph the shared field as well as advecting it. Interpolate
+            // seeded epochs so warp never jumps at a weather-period boundary.
+            double epoch=Math.Floor(time/s.WeatherPeriod),blend=time/s.WeatherPeriod-epoch;
+            blend=blend*blend*(3-2*blend);
+            Func<int,float> evolution=salt=>s.DynamicWeather?(float)(.5*(s.Terrain.Scatter((long)epoch,0,salt)*(1-blend)+s.Terrain.Scatter((long)epoch+1,0,salt)*blend-.5)):0;
+            material.SetVector("_CoverageEvolution",new Vector4(evolution(1553),evolution(1559),0,0));
             material.SetFloat("_CoveragePeriod",(float)Math.Round(s.Geometry.P.Circumference/CoverageScale));
             material.SetFloat("_CoverageScaleX",(float)(Math.Round(s.Geometry.P.Circumference/CoverageScale)/s.Geometry.P.Circumference));
             uint seed=unchecked((uint)s.Geometry.P.Seed);material.SetVector("_CoverageSeed",new Vector4(seed&65535,seed>>16,0,0));

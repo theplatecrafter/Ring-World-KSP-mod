@@ -1,4 +1,4 @@
-param([int]$TimeoutSeconds=900,[switch]$MapOnly,[switch]$TerrainOnly,[switch]$WarpOnly,[switch]$UnmatchedOnly,[switch]$PhotoOnly,[switch]$DistantOnly,[switch]$WeatherOnly,[switch]$SceneryOnly,[switch]$GlobalCloudsOnly,[switch]$ResidenceOnly,[switch]$GuidanceOnly,[switch]$StabilityOnly,[switch]$LandmarksOnly,[switch]$GearOnly,[switch]$CylaOnly,[switch]$CylaDiagnosticOnly,[switch]$CylaSaveProbe,[switch]$TrackingOnly,[switch]$ReentryOnly,[switch]$RenderOnly,[switch]$VisualOptionsOnly,[switch]$WallOnly,[switch]$ScienceOnly,[switch]$MultiRingOnly,[switch]$WithoutCyla)
+param([int]$TimeoutSeconds=900,[switch]$IntegrationsOnly,[switch]$MapOnly,[switch]$TerrainOnly,[switch]$WarpOnly,[switch]$UnmatchedOnly,[switch]$PhotoOnly,[switch]$DistantOnly,[switch]$WeatherOnly,[switch]$SceneryOnly,[switch]$GlobalCloudsOnly,[switch]$ResidenceOnly,[switch]$GuidanceOnly,[switch]$StabilityOnly,[switch]$LandmarksOnly,[switch]$GearOnly,[switch]$CylaOnly,[switch]$CylaDiagnosticOnly,[switch]$CylaSaveProbe,[switch]$TrackingOnly,[switch]$ReentryOnly,[switch]$RenderOnly,[switch]$VisualOptionsOnly,[switch]$WallOnly,[switch]$ScienceOnly,[switch]$MultiRingOnly,[switch]$WithoutCyla)
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
 $gameRoot=Join-Path $taskRoot 'template_instance'
@@ -19,6 +19,7 @@ try {
     }
     & (Join-Path $taskRoot 'build.ps1') -Install -SmokeTest
     $taskArguments=@('-ringworld-smoketest','-screen-fullscreen','0','-screen-width','1280','-screen-height','720','-popupwindow','-logFile',$logName)
+    if ($IntegrationsOnly) { $taskArguments += '-ringworld-integrations-only' }
     if ($WithoutCyla) { $taskArguments += '-ringworld-no-cyla' }
     if ($MultiRingOnly) { $taskArguments += '-ringworld-multi-ring-only' }
     if ($ScienceOnly) { $taskArguments += '-ringworld-science-only' }
@@ -54,6 +55,7 @@ try {
     $reportDir=Join-Path $taskRoot 'artifacts\validation'
     New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
     $reportName='game-smoke.txt'
+    if ($IntegrationsOnly) { $reportName='integrations-smoke.txt' }
     if ($MultiRingOnly) { $reportName='multi-ring-smoke.txt' }
     if ($ScienceOnly) { $reportName='science-smoke.txt' }
     if ($WallOnly) { $reportName='wall-smoke.txt' }

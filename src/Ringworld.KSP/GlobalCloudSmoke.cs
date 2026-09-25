@@ -11,7 +11,12 @@ namespace NivenRingworld
         {
             var s=Settings.Load();s.CloudAmount=.8;s.DynamicWeather=false;s.FullRingDetail=false;
             var parent=new GameObject("Global cloud validation");var bundle=RingVisualAssets.Acquire();
+            WeatherParticleSmoke.Run(bundle);
+            VisualOptionsSmoke.CheckWater(bundle.LoadAsset<Shader>("Assets/Shaders/RingWater.shader"),new[]{0,1,2});
+            VisualOptionsSmoke.CheckWater(bundle.LoadAsset<Shader>("Assets/Shaders/RingWaterRefraction.shader"),new[]{3,4});
+            CloudVolumeSmoke.Run(Settings.Load(),bundle);
             CheckCoverage(s,bundle);
+            CheckDistantSurface(s,bundle);
             var clouds=new GlobalClouds(parent.transform,s,bundle);clouds.Update(s,null,null,0);
             var obj=GameObject.Find("Ringworld global cloud shell");if(obj==null)throw new Exception("Global cloud renderer missing");
             var mesh=obj.GetComponent<MeshFilter>().sharedMesh;var material=obj.GetComponent<MeshRenderer>().sharedMaterial;
@@ -42,6 +47,11 @@ namespace NivenRingworld
             double transition=Capture(camera,target,Path.Combine(output,"handoff.png"));
             if(day<.01||night>day*.4||transition>=day*.98)throw new Exception("Cloud shading/handoff failed: "+day+" / "+night+" / "+transition);
             material.SetVector("_Local",Vector4.zero);
+            cameraObj.transform.position=ConvertVector.Unity(s.Geometry.Position(along,0,1000)*ScaledSpace.InverseScaleFactor);
+            cameraObj.transform.LookAt(ConvertVector.Unity(s.Geometry.Position(along,0,5500)*ScaledSpace.InverseScaleFactor),Vector3.up);
+            double underside=Capture(camera,target,Path.Combine(output,"underside.png"));
+            if(underside<.01)throw new Exception("Cloud sheet invisible from below: "+underside);
+            Debug.Log("[RingworldSmoke] CLOUD UNDERSIDE luminance="+underside);
             cameraObj.transform.position=ConvertVector.Unity(s.Geometry.Position(along,0,-1000000)*ScaledSpace.InverseScaleFactor);
             cameraObj.transform.LookAt(ConvertVector.Unity(s.Geometry.Position(along,0,5500)*ScaledSpace.InverseScaleFactor),Vector3.up);
             camera.farClipPlane=(float)(s.Geometry.P.Radius*3*ScaledSpace.InverseScaleFactor);
@@ -50,6 +60,43 @@ namespace NivenRingworld
             Debug.Log("[RingworldSmoke] CLOUD EXTERIOR luminance="+exterior);
             s.CloudAmount=0;clouds.Update(s,null,null,0);if(obj.activeSelf)throw new Exception("Cloud off setting ignored");
             Debug.Log("[RingworldSmoke] PASS global-clouds-only: 16384 continuous UV segments; day="+day+" night="+night+" handoff="+transition+"; low-detail and off settings OK");
+            var atmosphere=new Extensions.RingworldScattering(parent.transform,s,bundle);
+            s.FullRingAtmosphere=true;s.Atmosphere=true;s.Haze=1;atmosphere.Update(s,0);
+            var airObject=GameObject.Find("Ringworld full-ring atmosphere");
+            if(airObject==null)throw new Exception("Full-ring atmosphere missing");
+            var air=airObject.GetComponent<MeshRenderer>().sharedMaterial;
+            air.SetFloat("_DayPhase",dayPhase);air.SetFloat("_LocalBlend",0);
+            cameraObj.transform.position=ConvertVector.Unity(s.Geometry.Position(along,0,1000000)*ScaledSpace.InverseScaleFactor);
+            cameraObj.transform.LookAt(ConvertVector.Unity(s.Geometry.Position(along,0,30000)*ScaledSpace.InverseScaleFactor),Vector3.up);
+            double airDay=Capture(camera,target,Path.Combine(output,"atmosphere-day.png"));
+            air.SetFloat("_DayPhase",(float)(20*.0123));
+            double airNight=Capture(camera,target,Path.Combine(output,"atmosphere-night.png"));
+            if(airDay<.005||airNight>airDay*.1)throw new Exception("Full-ring atmospheric day/night failed: "+airDay+" / "+airNight);
+            air.SetFloat("_DayPhase",dayPhase);air.SetFloat("_LocalBlend",1);
+            cameraObj.transform.position=ConvertVector.Unity(s.Geometry.Position(along,0,1000)*ScaledSpace.InverseScaleFactor);
+            cameraObj.transform.LookAt(ConvertVector.Unity(s.Geometry.Position(along,0,30000)*ScaledSpace.InverseScaleFactor),Vector3.up);
+            camera.orthographicSize=1;camera.farClipPlane=100; // Isolate the nearby handoff; the opposite ring remains legitimately visible.
+            double airLocal=Capture(camera,target,Path.Combine(output,"atmosphere-local-handoff.png"));
+            if(airLocal>.001)throw new Exception("Full-ring atmosphere overlaps nearby sky: "+airLocal);
+            camera.farClipPlane=(float)(s.Geometry.P.Radius*3*ScaledSpace.InverseScaleFactor);
+            cameraObj.transform.LookAt(ConvertVector.Unity(s.Geometry.Position(along+10000000,0,30000)*ScaledSpace.InverseScaleFactor),Vector3.up);
+            double airDistant=Capture(camera,target,Path.Combine(output,"atmosphere-landed-distant.png"));
+            if(airDistant<.005)throw new Exception("Distant atmosphere invisible while landed");
+            cameraObj.transform.position=ConvertVector.Unity(s.Geometry.Position(along,0,-1000000)*ScaledSpace.InverseScaleFactor);
+            cameraObj.transform.LookAt(ConvertVector.Unity(s.Geometry.Position(along,0,30000)*ScaledSpace.InverseScaleFactor),Vector3.up);
+            double airExterior=Capture(camera,target,Path.Combine(output,"atmosphere-exterior.png"));
+            if(airExterior>.001)throw new Exception("Atmosphere leaked through hull");
+            air.SetFloat("_LocalBlend",0);
+            float scaledRadius=(float)(s.Geometry.P.Radius*ScaledSpace.InverseScaleFactor);
+            cameraObj.transform.position=new Vector3(scaledRadius*2,scaledRadius,scaledRadius);
+            cameraObj.transform.LookAt(Vector3.zero,Vector3.up);camera.orthographicSize=scaledRadius*1.1f;
+            Capture(camera,target,Path.Combine(output,"atmosphere-full-ring.png"));
+            s.FullRingAtmosphere=false;atmosphere.Update(s,0);
+            if(airObject.activeSelf)throw new Exception("Atmosphere switch ignored");
+            var saved=Settings.Load();saved.Apply(s.Save());
+            if(saved.FullRingAtmosphere)throw new Exception("Atmosphere switch not saved");
+            Debug.Log("[RingworldSmoke] FULL RING ATMOSPHERE day="+airDay+" night="+airNight+" local="+airLocal+" landedDistant="+airDistant+" exterior="+airExterior+"; off/roundtrip passed");
+            atmosphere.Dispose();
             camera.targetTexture=null;target.Release();UnityEngine.Object.Destroy(target);UnityEngine.Object.Destroy(cameraObj);clouds.Dispose();UnityEngine.Object.Destroy(parent);RingVisualAssets.Release();
         }
         private static void CheckCoverage(Settings s,AssetBundle bundle)
@@ -80,7 +127,47 @@ namespace NivenRingworld
                 Debug.Log("[RingworldSmoke] CLOUD FBM offset="+offset+" meanDifference="+difference);
             }
             Debug.Log("[RingworldSmoke] CLOUD FBM coverage="+coverage);
-            target.Release();UnityEngine.Object.Destroy(target);UnityEngine.Object.Destroy(mat);
+            mat.SetVector("_CoverageEvolution",new Vector4(.2f,-.15f,0,0));
+            var evolved=sample(0);double evolutionDifference=0;
+            for(int i=0;i<original.Length;i++)evolutionDifference+=Math.Abs(original[i].r-evolved[i].r)/(255.0*original.Length);
+            if(evolutionDifference<.005)throw new Exception("Cloud evolution has no visible effect");
+            Debug.Log("[RingworldSmoke] CLOUD EVOLUTION meanDifference="+evolutionDifference);
+            RenderTexture.active=null;target.Release();UnityEngine.Object.Destroy(target);UnityEngine.Object.Destroy(mat);
+        }
+        private static void CheckDistantSurface(Settings s,AssetBundle bundle)
+        {
+            var shader=bundle.LoadAsset<Shader>("Assets/Shaders/DistantSurface.shader");
+            var transition=bundle.LoadAsset<Shader>("Assets/Shaders/TerrainTransition.shader");
+            if(shader==null||!shader.isSupported||transition==null||!transition.isSupported)throw new Exception("Terrain shader unsupported");
+            var mat=new Material(shader);var target=new RenderTexture(1024,256,0);
+            var previous=RenderTexture.active;
+            mat.SetFloat("_CircumferenceKm",(float)(s.Geometry.P.Circumference/1000));mat.SetFloat("_WidthKm",(float)(s.Geometry.P.Width/1000));
+            uint seed=unchecked((uint)s.Geometry.P.Seed);mat.SetFloat("_SeedLow",seed&65535);mat.SetFloat("_SeedHigh",seed>>16);mat.SetFloat("_Generation",s.GenerationVersion);
+            try
+            {
+                for(int detail=0;detail<=1;detail++)
+                {
+                    mat.SetFloat("_Detail",detail);Graphics.Blit(null,target,mat);
+                    RenderTexture.active=target;var pixels=new Texture2D(1024,256,TextureFormat.RGB24,false);
+                    try
+                    {
+                        pixels.ReadPixels(new Rect(0,0,1024,256),0,0);pixels.Apply();
+                        int ocean=0,land=0;double minRatio=10,maxRatio=0;
+                        foreach(var c in pixels.GetPixels32())
+                        {
+                            if(c.b>c.r*1.5&&c.b>c.g)ocean++;
+                            if(c.g>c.b*1.2){land++;if(c.g>60){double ratio=(double)c.r/c.g;minRatio=Math.Min(minRatio,ratio);maxRatio=Math.Max(maxRatio,ratio);}}
+                        }
+                        if(ocean<100||land<1000)throw new Exception("Coarse terrain lost land/ocean at detail "+detail+": "+land+" / "+ocean);
+                        if(maxRatio-minRatio<.05)throw new Exception("Full-ring overview collapsed to flat land colour");
+                        string folder=Path.GetFullPath(Path.Combine(KSPUtil.ApplicationRootPath,"../artifacts/validation/global-clouds"));Directory.CreateDirectory(folder);
+                        File.WriteAllBytes(Path.Combine(folder,"terrain-detail-"+detail+".png"),pixels.EncodeToPNG());
+                        Debug.Log("[RingworldSmoke] GLOBAL TERRAIN detail="+detail+" landPixels="+land+" oceanPixels="+ocean);
+                    }
+                    finally{UnityEngine.Object.Destroy(pixels);}
+                }
+            }
+            finally{RenderTexture.active=previous;target.Release();UnityEngine.Object.Destroy(target);UnityEngine.Object.Destroy(mat);}
         }
         private static double Capture(Camera camera,RenderTexture target,string path)
         {

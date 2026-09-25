@@ -1,8 +1,32 @@
-# Niven Ringworld — release notes
+# Niven Ringworld â€” release notes
 
 Consolidated release history, newest first. Historical installation and dependency instructions apply only to the version in their section; use the current requirements below for v1.1.4. This is the single release-note source used by the release publisher.
 
-## Current requirements — v1.1.4
+## 1.1.5 (unreleased)
+
+Development only; no download archive or CKAN update has been published. Players currently testing through CKAN have reported v1.1.3; these changes are not in that build.
+
+- Softer local cloud boundaries and irregular cluster coverage; rainy weather closes overhead gaps before precipitation starts, with more partly cloudy automatic weather.
+- Ten weather-dependent cloud families, expanded upper-preset cloud distances, and uncapped finite cloud-distance input.
+- Crustal resource definitions from stock ResourceCache now feed a shared ring abundance provider, stock scanner display and stock harvester queries; default primary-ring Ore configuration included. Orbital surveys/background mining remain unsupported.
+- Surface API v5 adds position-based air/gravity/water queries and buoyancy helpers. Experimental KFS hover, Hooligan Labs and Heisenberg static-lift query adapters; full mod craft validation pending.
+- Read-only loaded terrain mesh interface for prospective Parallax adapters; no Parallax scatter integration yet.
+
+- Weather realism work: world-space rain/snow and post-cloud particle composition, longer cloud distances, cloud-linked rain shafts, local fog/dust and less regular water waves with filtered sunlight glints.
+
+- Added a switchable full-ring distant atmosphere approximation for map, space and landed views, grouped with enhanced water as Ringworld Scattering. Nearby sky remains handled by Cyla or Original.
+
+- Automatic TUFX profiles and a Scatterer panel-flare adapter when those mods are installed.
+- Coarse land/oceans at every preset, visible cloud undersides, cloud-field evolution and configurable cloud handoff distance.
+- Terrain lighting transition work and optional Deferred/Waterfall checks.
+- Neighbour-aware colour feathering at fine/coarse terrain borders and a gradual forest colour filter transition.
+- Replacement Ringworld Clouds volume extension with editable cloud types, new shape noise, self-shadowing, curl detail and quality controls.
+- Switchable Ringworld Water extension; Detailed/Ultra add screen refraction and coloured absorption.
+- Read-only ring environment API and custom warp-rate table safeguards.
+
+See the [integration matrix](docs/developers/VISUAL-INTEGRATIONS.md) for tested versions, limitations and remaining visual/utility work. Optional mods are installed separately and are never bundled.
+
+## Current requirements â€” v1.1.4
 
 | Component | Requirement | Tested / supported version | Installation |
 | --- | --- | --- | --- |
@@ -35,7 +59,7 @@ The stock Sun flare now follows the shadow-panel daylight mask in ring flight vi
 
 ### Physics and EVA
 
-Stock loose physical objects, such as jettisoned covers, now receive the rotating ring frame's acceleration instead of the reference body's gravity. Stock drag and object lifetime remain intact. A stock-converted loose-object test measured about 9.7154 m/s² toward the floor.
+Stock loose physical objects, such as jettisoned covers, now receive the rotating ring frame's acceleration instead of the reference body's gravity. Stock drag and object lifetime remain intact. A stock-converted loose-object test measured about 9.7154 m/sÂ² toward the floor.
 
 Stock EVA helmet safety checks use ring air, oxygen availability and temperature. Pressure and temperature safety limits remain in force, and disabling the atmosphere prevents helmet removal. The Sun's atmosphere properties are not changed. The live EVA safety and existing science/career regression checks passed.
 
@@ -61,7 +85,7 @@ The release includes separate `.netkan` and version-specific `.ckan` files for C
 
 ### Sandbox: multiple ring worlds
 
-Ringworld panel → Settings → **Sandbox: manage ring worlds**. Spawn, name, move or delete habitats with their own dimensions, seeds and saved identities. Select an existing star, including a loaded planet-pack star, or no designated star. Enter center offsets in kilometers. Use **Visit selected ring** for a spin-matched sandbox transfer.
+Ringworld panel â†’ Settings â†’ **Sandbox: manage ring worlds**. Spawn, name, move or delete habitats with their own dimensions, seeds and saved identities. Select an existing star, including a loaded planet-pack star, or no designated star. Enter center offsets in kilometers. Use **Visit selected ring** for a spin-matched sandbox transfer.
 
 Distant outlines, walls, clouds and panels render for each habitat; detailed terrain is streamed around the current habitat. Saved residents and science use per-ring identities. Occupied rings cannot be moved/deleted, overlapping habitat envelopes are rejected, and at least one habitat must remain.
 
@@ -69,7 +93,7 @@ This initial editor supports parallel rings fixed relative to a reference body. 
 
 ### Exploration and science
 
-Stock instruments, crew/EVA reports and surface samples now produce separate science for flight regions, biomes, named landmarks, individual megastructures, rim walls and shadow panels. Science values range from 6× to 20× stock subject multipliers. The Research tab tracks twelve expedition milestones; Career awards one-time funds and reputation on qualifying data delivery. Progress persists and duplicate delivery does not repay milestones. No new science part is required; legacy RW-1 craft remain supported.
+Stock instruments, crew/EVA reports and surface samples now produce separate science for flight regions, biomes, named landmarks, individual megastructures, rim walls and shadow panels. Science values range from 6Ã— to 20Ã— stock subject multipliers. The Research tab tracks twelve expedition milestones; Career awards one-time funds and reputation on qualifying data delivery. Progress persists and duplicate delivery does not repay milestones. No new science part is required; legacy RW-1 craft remain supported.
 
 Also includes the development fix for nearby/faraway rim-wall material consistency.
 
@@ -95,7 +119,7 @@ The release includes separate `.netkan` and version-specific `.ckan` files for C
 
 #### Sandbox: multiple ring worlds
 
-Ringworld panel → Settings → **Sandbox: manage ring worlds**. Spawn, name, move or delete habitats with their own dimensions, seeds and saved identities. Select an existing star, including a loaded planet-pack star, or no designated star. Enter center offsets in kilometers. Use **Visit selected ring** for a spin-matched sandbox transfer.
+Ringworld panel â†’ Settings â†’ **Sandbox: manage ring worlds**. Spawn, name, move or delete habitats with their own dimensions, seeds and saved identities. Select an existing star, including a loaded planet-pack star, or no designated star. Enter center offsets in kilometers. Use **Visit selected ring** for a spin-matched sandbox transfer.
 
 Distant outlines, walls, clouds and panels render for each habitat; detailed terrain is streamed around the current habitat. Saved residents and science use per-ring identities. Occupied rings cannot be moved/deleted, overlapping habitat envelopes are rejected, and at least one habitat must remain.
 
@@ -103,7 +127,7 @@ This initial editor supports parallel rings fixed relative to a reference body. 
 
 #### Exploration and science
 
-Stock instruments, crew/EVA reports and surface samples now produce separate science for flight regions, biomes, named landmarks, individual megastructures, rim walls and shadow panels. Science values range from 6× to 20× stock subject multipliers. The Research tab tracks twelve expedition milestones; Career awards one-time funds and reputation on qualifying data delivery. Progress persists and duplicate delivery does not repay milestones. No new science part is required; legacy RW-1 craft remain supported.
+Stock instruments, crew/EVA reports and surface samples now produce separate science for flight regions, biomes, named landmarks, individual megastructures, rim walls and shadow panels. Science values range from 6Ã— to 20Ã— stock subject multipliers. The Research tab tracks twelve expedition milestones; Career awards one-time funds and reputation on qualifying data delivery. Progress persists and duplicate delivery does not repay milestones. No new science part is required; legacy RW-1 craft remain supported.
 
 Also includes the development fix for nearby/faraway rim-wall material consistency.
 
@@ -127,7 +151,7 @@ Maintenance release of the integrated Cyla build, with the original ZIP layout r
 
 These features were integrated on main for v1.1.1. This release rebuilds the current source, increments the version and clarifies installation; it does not introduce a new asset layout or a new atmospheric solver.
 
-### Installation — unchanged ZIP structure
+### Installation â€” unchanged ZIP structure
 
 Extract the ZIP into the **KSP instance root**, beside `KSP_x64.exe`. The result must include:
 
@@ -167,7 +191,7 @@ Maintenance release of the integrated Cyla build, with the original ZIP layout r
 
 These features were integrated on main for v1.1.1. This release rebuilds the current source, increments the version and clarifies installation; it does not introduce a new asset layout or a new atmospheric solver.
 
-#### Installation — unchanged ZIP structure
+#### Installation â€” unchanged ZIP structure
 
 Extract the ZIP into the **KSP instance root**, beside `KSP_x64.exe`. The result must include:
 
@@ -217,7 +241,7 @@ The release build runs 108,655 core checks. Package verification checks archive 
 
 - Photo output resolution preserves screen aspect ratio, with long-edge choices through 8K and 16K, subject to GPU texture/memory limits. The world is rendered at the output resolution rather than upscaled.
 
-- Advanced Cyla controls expose optical scattering coefficients/intensities, scale heights, asymmetry, 1–500 view steps, lighting boundaries and proxy geometry/offsets.
+- Advanced Cyla controls expose optical scattering coefficients/intensities, scale heights, asymmetry, 1â€“500 view steps, lighting boundaries and proxy geometry/offsets.
 
 - Both photo entry points offer eleven temporary quality presets. Terrain, forest, water and atmosphere follow the selection; Resume/Cancel restore gameplay settings.
 
@@ -344,7 +368,7 @@ The development instance has the normal plugin installed automatically. Blender,
 
 Large landmarks stream independently to 60 km, one prefab per frame, with three visual LODs and simplified exterior contact meshes. They appear around the existing city, rim, spill-mountain, map-island, scrith and expedition sites. Flight scenery is not mirrored as individual map-mode building models.
 
-Four individual tree variants and two seven-tree groves thicken woodland without changing the terrain seed or existing individual-tree coordinates. Additional grove caps are 16/24/32 per tile for Laptop/High/Ultra. Stock scatter settings and Ringworld forest density remain authoritative. The Laptop fixture reached 5,488 added tree silhouettes over 49 tiles at 28.9–35.5 FPS across two five-second samples; this is not a general FPS guarantee.
+Four individual tree variants and two seven-tree groves thicken woodland without changing the terrain seed or existing individual-tree coordinates. Additional grove caps are 16/24/32 per tile for Laptop/High/Ultra. Stock scatter settings and Ringworld forest density remain authoritative. The Laptop fixture reached 5,488 added tree silhouettes over 49 tiles at 28.9â€“35.5 FPS across two five-second samples; this is not a general FPS guarantee.
 
 ### Remaining boundaries
 

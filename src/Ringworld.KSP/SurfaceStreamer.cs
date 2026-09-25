@@ -62,6 +62,8 @@ namespace NivenRingworld
             // Render the local collision shell there too, with the same dark shader,
             // rather than stamping a separately lit black strip over the atmosphere.
             rimVisualBundle=RingVisualAssets.Acquire();
+            var terrainShader=rimVisualBundle!=null?rimVisualBundle.LoadAsset<Shader>("Assets/Shaders/TerrainTransition.shader"):null;
+            if(terrainShader!=null&&terrainShader.isSupported)terrainMaterial.shader=terrainShader;
             var rimShader=rimVisualBundle!=null?rimVisualBundle.LoadAsset<Shader>("Assets/Shaders/DistantSurface.shader"):null;
             rimMaterial=new Material(rimShader!=null&&rimShader.isSupported?rimShader:(Shader.Find("Unlit/Color")??scrithMaterial.shader));
             rimMaterial.SetFloat("_Detail",-1);if(rimMaterial.HasProperty("_Color"))rimMaterial.color=new Color(.012f,.015f,.019f);rimMaterial.renderQueue=900;
@@ -87,25 +89,7 @@ namespace NivenRingworld
             foreach(var tile in tiles.Values)if(tile.ForestQuality!=settings.ForestQuality){RebuildScenery(tile);break;}
             sunlight.shadows=QualitySettings.shadows==ShadowQuality.Disable?LightShadows.None:QualitySettings.shadows==ShadowQuality.HardOnly?LightShadows.Hard:LightShadows.Soft;
             RingPoint p=settings.Geometry.Coordinates(observer);
-            var f=RingworldFlight.Instance;int waterQuality=settings.WaterQuality;
-            if(f!=null&&f.visuals!=null)
-            {
-                var shader=f.visuals.WaterShader();if(shader!=null)
-                {
-                    waterMaterial.shader=shader;
-                    waterMaterial.SetVector("_WaveCamera",(Vector3)(star+ConvertVector.Ksp(observer)));
-                    waterMaterial.SetVector("_WaveAlong",ConvertVector.Unity(settings.Geometry.SpinVelocity(observer).Unit));
-                    waterMaterial.SetVector("_WaveAcross",Vector3.up);waterMaterial.SetVector("_WaveUp",ConvertVector.Unity(settings.Geometry.Up(observer)));
-                    double time=Planetarium.GetUniversalTime();
-                    waterMaterial.SetVector("_Wave",new Vector4(0,0,0,waterQuality>=2?(float)settings.WaveHeight:0));
-                    Func<double,float> phase=a=>(float)RingGeometry.Wrap(a,Math.PI*2);
-                    waterMaterial.SetVector("_WavePhase",new Vector4(phase(p.Along*.037+p.Across*.012-time*1.1),phase(-p.Along*.016+p.Across*.029-time*.8),phase(p.Along*.063-p.Across*.054-time*1.7),0));
-                    waterMaterial.SetVector("_RipplePhase",new Vector4(phase(p.Along*1.7+p.Across*.64-time*2),phase(p.Across*1.3-p.Along*.92+time*1.6),phase(p.Along*5+p.Across*3.1+time*2.4),phase(p.Across*4.2-p.Along*3.7-time*2.1)));
-                    waterMaterial.SetVector("_NoiseOffset",new Vector4((float)RingGeometry.Wrap(p.Along,65536),(float)RingGeometry.Wrap(p.Across,65536),(float)RingGeometry.Wrap(time*.15,65536),0));
-                    waterMaterial.SetFloat("_WaterLight",(float)settings.Geometry.Daylight(p.Along,time));waterMaterial.SetFloat("_WaterQuality",waterQuality);
-                }
-            }
-            else waterMaterial.shader=simpleWaterShader;
+            Extensions.RingworldWater.Update(settings,waterMaterial,simpleWaterShader,observer,star);
             sunlight.transform.rotation=Quaternion.LookRotation(-ConvertVector.Unity(settings.Geometry.Up(observer)),Vector3.up);
             long cx=(long)Math.Floor(p.Along/settings.TileSize),cy=(long)Math.Floor(p.Across/settings.TileSize);
             int radius=settings.TileRadius;
@@ -203,7 +187,7 @@ namespace NivenRingworld
                 wet[i]=sample.Wet;
                 double water=double.IsNegativeInfinity(sample.WaterHeight)?sample.Height-1:sample.WaterHeight;
                 waterVerts[i]=ConvertVector.Unity(settings.Geometry.Position(a,b,water+.1)-t.Anchor);
-                waterUv[i]=new Vector2((float)Math.Max(0,water-sample.Height),0);
+                waterUv[i]=new Vector2((float)Math.Max(0,water-sample.Height),(float)(size/n));
             }
             var indices=new List<int>(n*n*6);var waterIndices=new List<int>();
             for(int y=0;y<n;y++)for(int x=0;x<n;x++)
@@ -216,6 +200,7 @@ namespace NivenRingworld
                 if(wet[b]||wet[d]||wet[c])Add(waterIndices,b,c,d);
             }
             Mesh ground=new Mesh{name="Ringworld ground"};ground.vertices=vertices;ground.uv=uv;ground.SetTriangles(indices,0);ground.RecalculateNormals();ground.RecalculateBounds();t.Meshes.Add(ground);
+            RingworldTerrainApi.Add(settings.RingId,t.Root,ground,x0,y0,size);
             t.Texture=TerrainTint.Texture(n+1,colors);
             t.Root.AddComponent<MeshFilter>().sharedMesh=ground;var renderer=t.Root.AddComponent<MeshRenderer>();renderer.sharedMaterial=terrainMaterial;
             var colorBlock=new MaterialPropertyBlock();colorBlock.SetTexture("_MainTex",t.Texture);renderer.SetPropertyBlock(colorBlock);
@@ -408,9 +393,10 @@ namespace NivenRingworld
             }
         }
         private void ClearProps(){foreach(var p in props)UnityEngine.Object.Destroy(p);props.Clear();propPositions.Clear();propRotations.Clear();}
-        private static void Destroy(Tile t){UnityEngine.Object.Destroy(t.Texture);UnityEngine.Object.Destroy(t.Root);foreach(var m in t.Meshes)UnityEngine.Object.Destroy(m);}
+        private static void Destroy(Tile t){RingworldTerrainApi.Remove(t.Root);UnityEngine.Object.Destroy(t.Texture);UnityEngine.Object.Destroy(t.Root);foreach(var m in t.Meshes)UnityEngine.Object.Destroy(m);}
         public void Dispose()
         {
+            Extensions.WaterScreenCopy.Enable(false);
             foreach(var t in tiles.Values)Destroy(t);tiles.Clear();ClearProps();
             SceneryAssets.Release();
             landmarks.Dispose();

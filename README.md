@@ -114,6 +114,11 @@ See [release notes](RELEASE-NOTES.md) for version changes, dependency requiremen
 10. Kerbal expedition experience and awards on safe return; avoid granting repeated XP for the same destination.
 11. Add-on content validation for duplicate research IDs, missing prerequisites/cycles and generation migrations; localisation of journal/config text.
 12. Science-overhaul adapters (especially Kerbalism), research-driven map markers and saved discovery coordinates for individual procedural colossi.
+13. Weather realism: continue cloud shadow projection, cloud-aware branching lightning, transported precipitation, humidity/temperature modelling and high-preset validation. Current development includes world-space rain/snow, shallow weather effects and distance-scaled cloud detail.
+14. Ringworld ocean FFT/whitecap spectra, wave silhouette LOD, underwater scattering and object reflections.
+15. Parallax-style Ringworld terrain extension after weather/water work; keep laptop presets viable.
+16. Ring resource deposits and shared scanner/harvester provider, per-ring exploration unlocks, stock drill tests and optional resource-pack adapters. KFS gravitic-drive integration needs ring up/acceleration, surface coordinates and safe warp handling.
+17. Flattened map of Earth or Kerbol system stellar objects in the great oceans just like in the books.
 
 ### Active visual compatibility work
 

@@ -12,7 +12,7 @@ namespace NivenRingworld
     {
         private sealed class Patch
         {
-            internal bool Retired;internal IEnumerator<Mesh> CanopyWork;internal GameObject Root;internal Mesh Mesh,WaterMesh,CanopyMesh;internal DVec Anchor;internal double Phase;internal bool Scaled;internal Texture2D Texture;
+            internal string BoundaryKey;internal bool Retired;internal IEnumerator<Mesh> CanopyWork;internal GameObject Root;internal Mesh Mesh,WaterMesh,CanopyMesh;internal DVec Anchor;internal double Phase;internal bool Scaled;internal Texture2D Texture;
         }
         private AssetBundle visualBundle;private bool nightShader;
         private readonly Settings settings;private readonly Material material,farMaterial,waterMaterial,forestMaterial;
@@ -21,6 +21,8 @@ namespace NivenRingworld
         internal int CanopyPending {get{return canopyPending.Count;}}
         private HashSet<string> wanted=new HashSet<string>();
         private List<LodBlock> pending=new List<LodBlock>();
+        private readonly List<LodBlock> layout=new List<LodBlock>();
+        private readonly Dictionary<Tuple<double,double,double>,Color> edgeColours=new Dictionary<Tuple<double,double,double>,Color>();
         private long lastX=long.MinValue,lastY;private double plannedAlong;
         internal int Count {get{return patches.Count;}}
         internal int Pending {get{return pending.Count;}}
@@ -35,11 +37,18 @@ namespace NivenRingworld
             long x=(long)Math.Floor(along/settings.TileSize),y=(long)Math.Floor(across/settings.TileSize);
             if(x!=lastX||y!=lastY)
             {
-                lastX=x;lastY=y;plannedAlong=along;wanted.Clear();pending.Clear();
+                lastX=x;lastY=y;plannedAlong=along;wanted.Clear();pending.Clear();layout.Clear();
                 foreach(var b in TerrainLodPlan.Create(along,across,settings.TileSize,settings.TileRadius,Math.Min(settings.LodRange,settings.Geometry.P.Circumference/2+settings.Geometry.P.Width),settings.Geometry.P.Width/2,settings.Geometry.P.Circumference/2,Math.Sqrt(8*settings.Geometry.P.Radius*250)*settings.LodResolution))
                 {
                     if(b.Y>=settings.Geometry.P.Width/2||b.Y+b.Size<=-settings.Geometry.P.Width/2)continue;
-                    wanted.Add(b.Key);if(!patches.ContainsKey(b.Key))pending.Add(b);
+                    layout.Add(b);wanted.Add(b.Key);if(!patches.ContainsKey(b.Key))pending.Add(b);
+                }
+                // A retained block may now border a different coarse grid. Rebuild
+                // its feathered texture with that topology instead of keeping a seam.
+                foreach(var b in layout)
+                {
+                    Patch old;if(!patches.TryGetValue(b.Key,out old)||old.BoundaryKey==BoundaryKey(b))continue;
+                    Destroy(old);patches.Remove(b.Key);pending.Add(b);
                 }
                 pending.Sort((a,b)=>a.DistanceSquared(along,across).CompareTo(b.DistanceSquared(along,across)));
             }
@@ -73,12 +82,47 @@ namespace NivenRingworld
                 }
             }
         }
+        // Blend the fine colour field toward the actual neighbouring coarse grid.
+        // The opaque mesh and collision height are unchanged; no overlapping alpha
+        // terrain or screen-wide blur is needed. Only a boundary strip is sampled.
+        private string BoundaryKey(LodBlock b)
+        {
+            string key="";foreach(var o in layout)if(o.Size>b.Size&&o.X<=b.X+b.Size&&o.X+o.Size>=b.X&&o.Y<=b.Y+b.Size&&o.Y+o.Size>=b.Y)key+=o.Key+";";
+            return key;
+        }
+        private Color GridColour(double a,double b,double footprint)
+        {
+            b=Math.Max(-settings.Geometry.P.Width/2+.01,Math.Min(settings.Geometry.P.Width/2-.01,b));
+            var key=Tuple.Create(a,b,footprint);Color cached;if(edgeColours.TryGetValue(key,out cached))return cached;
+            var ground=settings.Terrain.Sample(a,b);
+            cached=TerrainTint.WithCanopy(ground,BiomePresentation.Sample(settings.Terrain,a,b,ground,footprint,Math.Min(2,settings.ForestDensity*StockGraphics.Scatter)));
+            edgeColours[key]=cached;return cached;
+        }
+        private Color FeatherColour(LodBlock block,List<LodBlock> neighbours,double a,double b,Color fine)
+        {
+            foreach(var other in neighbours)
+            {
+                double d=Math.Sqrt(other.DistanceSquared(a,b)),width=block.Size*.3;
+                if(d>=width)continue;
+                double step=other.Size/settings.LodResolution;
+                double gx=Math.Max(other.X,Math.Min(other.X+other.Size,a)),gy=Math.Max(other.Y,Math.Min(other.Y+other.Size,b));
+                double x=other.X+Math.Min(settings.LodResolution-1,Math.Floor((gx-other.X)/step))*step;
+                double y=other.Y+Math.Min(settings.LodResolution-1,Math.Floor((gy-other.Y)/step))*step;
+                float tx=(float)((gx-x)/step),ty=(float)((gy-y)/step);
+                Color coarse=Color.Lerp(Color.Lerp(GridColour(x,y,step),GridColour(x+step,y,step),tx),Color.Lerp(GridColour(x,y+step,step),GridColour(x+step,y+step,step),tx),ty);
+                float t=(float)(d/width);t=t*t*(3-2*t);fine=Color.Lerp(coarse,fine,t);
+            }
+            return fine;
+        }
         private Patch Build(LodBlock b)
         {
             // Near canopy resolves stand edges and low crown relief; far blocks retain
             // an area-filtered biome colour/height without individual tree draws.
+            edgeColours.Clear();
             int n=settings.LodResolution;int count=(n+1)*(n+1);
-            var p=new Patch{Root=new GameObject("Ring terrain LOD "+b.Key),Anchor=settings.Geometry.Position(b.X,b.Y,0),Phase=settings.Geometry.OrientationRadians};
+            var neighbours=new List<LodBlock>();
+            foreach(var other in layout)if(other.Size>b.Size&&other.X<=b.X+b.Size&&other.X+other.Size>=b.X&&other.Y<=b.Y+b.Size&&other.Y+other.Size>=b.Y)neighbours.Add(other);
+            var p=new Patch{BoundaryKey=BoundaryKey(b),Root=new GameObject("Ring terrain LOD "+b.Key),Anchor=settings.Geometry.Position(b.X,b.Y,0),Phase=settings.Geometry.OrientationRadians};
             p.Scaled=b.Size>=65536&&b.DistanceSquared(lastX*settings.TileSize,lastY*settings.TileSize)>250000.0*250000;
             p.Root.layer=p.Scaled?10:15;
             var colors=new Color[count];
@@ -90,8 +134,8 @@ namespace NivenRingworld
                 var appearance=BiomePresentation.Sample(settings.Terrain,a,c,s,b.Size/n,Math.Min(2,settings.ForestDensity*StockGraphics.Scatter));
                 double h=(s.Wet?s.WaterHeight+.5:s.Height+(b.Size>ForestCanopy.MaximumDistantBlock(settings)?appearance.CanopyHeight:0))-.2;
                 vertices.Add(ConvertVector.Unity(settings.Geometry.Position(a,c,h)-p.Anchor));
-                wet[y*(n+1)+x]=s.Wet;waterUv[y*(n+1)+x]=new Vector2(s.Wet?(float)Math.Max(0,s.WaterHeight-s.Height):0,0);
-                uv.Add(new Vector2((x+.5f)/(n+1),(y+.5f)/(n+1)));longitude.Add(new Vector2((float)(a/settings.Geometry.P.Circumference),0));colors[y*(n+1)+x]=TerrainTint.WithCanopy(s,appearance);
+                wet[y*(n+1)+x]=s.Wet;waterUv[y*(n+1)+x]=new Vector2(s.Wet?(float)Math.Max(0,s.WaterHeight-s.Height):0,(float)(b.Size/n));
+                uv.Add(new Vector2((x+.5f)/(n+1),(y+.5f)/(n+1)));longitude.Add(new Vector2((float)(a/settings.Geometry.P.Circumference),0));colors[y*(n+1)+x]=FeatherColour(b,neighbours,a,c,TerrainTint.WithCanopy(s,appearance));
                 if(x<n&&y<n&&rawAcross<settings.Geometry.P.Width/2&&rawAcross+b.Size/n>-settings.Geometry.P.Width/2){int i=y*(n+1)+x;triangles.AddRange(new[]{i,i+n+1,i+1,i+1,i+n+1,i+n+2});}
             }
             var f=RingworldFlight.Instance;

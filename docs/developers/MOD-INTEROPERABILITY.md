@@ -8,9 +8,11 @@ Inspection of the installed KSP 1.12.5 assemblies confirmed `CelestialBody.inver
 
 The ring already performs the analogous operation in `RingworldFlight`: arrival/exit converts loaded vessel positions, rotations and linear/angular velocities; saved vessel records carry frame state. Its cylindrical surface, rotation and surface acceleration cannot be represented by the Sun's spherical threshold. Changing that threshold alone would not implement a ring frame and could affect ordinary solar vessels.
 
-## Read-only API, version 2
+## Read-only API, version 3
 
 `RingworldSurfaceApi.TryGetSurfaceState(Vessel, out RingworldSurfaceState)` supplies surface-relative velocity, up direction, cylindrical location, terrain/water elevations, biome, frame epoch and physical tangential ring speed. Units are metres and seconds; vectors use the current Unity world axes. The API returns false for orbital/non-ring vessels, packed vessels and frame transitions. Call on the Unity main thread and refresh each physics tick. Do not use these rotating-frame velocities to construct stock Keplerian orbital elements.
+
+Version 3 adds TryGetEnvironmentState with ring air density, pressure (kPa), temperature (K), sound speed, surface-relative Mach, daylight and weather coverage. It has the same main-thread and vessel/frame scope as the surface snapshot.
 
 This is an opt-in integration point for instruments and future adapters. It does **not** automatically adapt an autopilot, FAR, Principia or other third-party physics system. Those combinations remain unverified.
 
@@ -46,21 +48,6 @@ Other mods can opt into `RingworldSurfaceApi.TryGetSurfaceState` for `OverWater`
 
 All visual levels are translucent near shore, becoming nearly opaque over deep water. Flat avoids procedural fragment noise; Ripples adds filtered waves and a smooth random normal field; Waves enables displacement; Detailed/Ultra add extra noise octaves. Reflection colour approximates the sky, not boats, terrain or planar reflections. Distant scaled water remains an inexpensive surface colour; no costly global ocean simulation is added.
 
-## Optional visual integrations under evaluation for v1.1.4
+## Optional visual integrations
 
-Installing a visual framework does not automatically give every new object its effects. Planet packs supply configuration and assets that match that framework's geometry. Ringworld is a cylindrical surface, not a spherical celestial body, so a configuration naming the Sun would apply effects to the wrong object.
-
-| Framework | Relevant integration boundary | Current Ringworld status |
-| --- | --- | --- |
-| Cyla | Public cylindrical atmosphere shader interface | Existing optional renderer; v1.1.4 precision and camera tests in progress. No upstream shader source or binary is redistributed. |
-| Scatterer | Named celestial body, atmosphere/ocean configuration and scattering tables | No cylindrical atmosphere/ocean adapter. Merely adding `hasOcean` or a planet-list entry is insufficient. Custom Sun-flare occlusion is a separate possible adapter. |
-| EVE / raymarched clouds | Planet cloud layers, coverage/type maps and altitude ranges | Ringworld retains its own cylindrical clouds. No verified config-only adapter; a geometry-aware implementation would be required. Installing EVE Redux alone is not equivalent to installing a raymarched-cloud configuration. |
-| Parallax Continued | Terrain/scatter framework with Kopernicus and texture dependencies | Ringworld terrain and forest meshes are not Parallax terrain. No automatic replacement is advertised. |
-| Waterfall | Vessel engine effects and their controllers | Engine visual effects are distinct from terrain/atmosphere rendering. Pressure-dependent controller compatibility needs source inspection and an installed-mod test before claiming support. |
-| TUFX | Camera post-processing profiles | A shared camera-effects integration, not a source of cylindrical atmosphere geometry. Render ordering and photo capture require testing. |
-
-Sources: [Scatterer planet configuration](https://github.com/LGhassen/Scatterer/wiki/PlanetsConfig), [EVE raymarched-cloud configuration](https://github.com/LGhassen/EnvironmentalVisualEnhancements/wiki/Raymarched-cloud-configuration), [Parallax Continued CKAN dependencies](https://raw.githubusercontent.com/KSP-CKAN/NetKAN/master/NetKAN/ParallaxContinued.netkan), [Waterfall documentation](https://github.com/KSPModStewards/Waterfall/wiki), [TUFX](https://github.com/KSPModStewards/TUFX). These are feasibility findings, not a tested compatibility list. Additional adapters and supported versions will be documented after validation.
-
-The existing rotating frame remains in place. Kopernicus can provide celestial-body infrastructure, but substituting a spherical body would not itself solve cylindrical terrain, local up, surface velocity or atmosphere queries. A full replacement needs a separate design and migration plan; it is not a prerequisite for scoped integrations.
-
-Waterfall's current [atmosphere controller](https://github.com/KSPModStewards/Waterfall/blob/master/Source/Waterfall/EffectControllers/AtmosphereDensityController.cs) reads `part.atmDensity`; its [Mach controller](https://github.com/KSPModStewards/Waterfall/blob/master/Source/Waterfall/EffectControllers/MachController.cs) reads `vessel.mach`. Existing Ringworld atmosphere integration supplies both fields for participants, so these paths do not require a separate planet config. This is a source-level compatibility finding pending an installed Waterfall plume test. Its velocity controller has surface, orbital and vertical modes; orbital-mode effects must not be silently relabeled as ring-surface motion.
+See [Visual integrations and test status](VISUAL-INTEGRATIONS.md) for supported adapters, versions tested, geometry limitations, research sources and the unpublished development checklist.

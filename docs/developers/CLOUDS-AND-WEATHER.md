@@ -14,13 +14,15 @@ Coverage now uses an original seeded gradient-Perlin implementation with quintic
 
 Distant/fake clouds target approximately 50% coverage, measured as coverage-field values above 0.5. This is a statistical surface-area target, not a promise that half of every view is white. Smooth edges and translucent cloud shading reduce average opacity. Weather lightly shifts distant coverage; local weather is not capped at 50% and can remain clear or overcast. Across the existing handoff band, the field blends to the local weather's amount.
 
-Integer lattice cells and fractional offsets are carried separately, with double-precision CPU origins, so local movement does not lose precision at large ring longitudes. Both renderers evaluate the same field with universal-time wind and ring rotation. Fine 3-D erosion still uses the existing noise texture for volumetric cloud shape; that texture no longer determines repeated large cloud banks. Distant fBm octaves are filtered when smaller than a pixel.
+Integer lattice cells and fractional offsets are carried separately, with double-precision CPU origins, so local movement does not lose precision at large ring longitudes. Both renderers evaluate the same field with universal-time wind and ring rotation. In v1.1.5 the replacement volume uses a separate generated fBm/Worley shape texture; that texture no longer determines repeated large cloud banks. Distant fBm octaves are filtered when smaller than a pixel.
 
 This follows the gradient-noise, multiscale fBm and frequency-filtering concepts in [PBRT: Noise](https://www.pbr-book.org/3ed-2018/Texture/Noise). [OpenSimplex2](https://github.com/KdotJPG/OpenSimplex2) was also reviewed as an alternative. No third-party noise implementation or art assets were copied; Perlin was chosen to retain explicit cylindrical seam handling and cell/fraction precision.
 
 ### Map layering
 
-The cloud shell faces inward only. An analytic ray/hull test prevents far-side clouds and terrain bleeding through the outer hull when scaled-space depth values collapse together; views into the opening above the rim remain possible.
+In the v1.1.5 development build the cloud shell is visible from both above and below. An analytic ray/hull test prevents clouds bleeding through the exterior hull; disabling back-face culling does not make the hull transparent. This fixes the distant layer disappearing for a landed observer below the cloud sheet.
+
+The local/global handoff uses the configured volumetric cloud range (65–95% of that range), with complementary opacity weights. The lightweight cloud deck keeps its own 180 km extent. Dynamic weather also morphs the shared domain warp smoothly between seeded weather epochs, so coverage changes shape as well as moving with wind. Disabling dynamic weather freezes that morphing; wind can still move clouds.
 
 The base ribbon renders first, streamed terrain second, transparent clouds afterward. The scaled terrain uses a small depth bias. Night shading is evaluated from the same shadow-square phase in each layer; matching shadow multipliers on terrain and clouds is algebraically equivalent to darkening their final composite. There is no extra coplanar shadow mesh to z-fight.
 
@@ -53,9 +55,9 @@ Open Ringworld → Settings, apply changes, then save the game to persist them.
 - **Storm fraction of weather range**: 0–1, default 0.25. This remaps the upper part of the weather field; it is not a promise that exactly that percentage of play time is stormy. Zero prevents generated thunderstorms. A manually fixed maximum baseline can still create a storm.
 - **Visual cloud drift**: 0–100 m/s, default 8. This moves cloud features without applying a wind force to craft.
 - **Rain visuals / density**: up to 48 streaks in Laptop, 144 in High and 384 in Ultra/photo, scaled by storm strength and density. Disabling rain does not remove clouds.
-- **Storm lightning**: optional seeded bolt and cloud illumination, without damage. Individual events are shown at up to 10×. Higher warp uses a low-opacity rain veil and suppresses individual bolts/flashes because very short events cannot be represented reliably when each frame advances minutes.
+- **Storm lightning**: optional seeded bolt and cloud illumination, without damage. Individual events are shown at up to 10×. Higher warp suppresses individual particles and bolts/flashes because very short events cannot be represented reliably when each frame advances minutes.
 
-A continuous seeded regional front and time-varying severity drive fair skies, cloud cover, rain and thunderstorms. All quality tiers use the same state; their rendering detail differs. Rain/lightning are local visual effects below the cloud layer. There is no fluid weather simulation, precipitation accumulation, physical wind, thunder audio, lightning damage or global climate model. The far ring's cloud albedo remains a coarse separate representation; it does not show every local storm exactly.
+A continuous seeded regional front and time-varying severity drive fair skies, cloud cover, rain and thunderstorms. All quality tiers use the same state; their rendering detail differs. In v1.1.5 rain/snow are world-space local particles composited after clouds with scene-depth clipping, with additional cloud-linked distant shafts and anchored lightning. See the extension guide for the current approximations. There is no fluid weather simulation, precipitation accumulation, physical wind, thunder audio, lightning damage or global climate model. The far ring's cloud albedo remains a coarse separate representation; it does not show every local storm exactly.
 
 ### Stars and night bands
 
@@ -67,3 +69,11 @@ The broad bands are analytical masks with a soft penumbra. They are not ray-trac
 
 For a reproducible visual storm test, turn evolving fronts off and set the baseline to 100%. For clear skies, set it to zero. Re-enable evolving fronts afterward for ordinary weather.
 
+
+## Replacement cloud volume: v1.1.5 development
+
+`Extensions/RingworldClouds.cs` loads four editable cloud-type profiles and supplies the independent volume switch, mode and density controls. `RingCloudVolume.cginc` replaces the previous fixed-band density/shadow model. The atmosphere and photo compositor remain shared with Cyla integration. Cylindrical shell intersections restrict the integration interval; radial altitude uses a rationalized difference to avoid subtracting giant float radii. Camera depth clips the integration at foreground surfaces.
+
+Modes select type shaping, detail erosion, high cirrus, curl and low-order multiple-scattering approximations. The light integral and dual-lobe phase function are original approximations, not EVE code. The coarse global cloud layer retains the shared seeded coverage field. If the volume extension is disabled while Cyla still renders, the global layer no longer cuts a hole for a nonexistent local volume.
+
+References: [EVE Redux source and licences](https://github.com/LGhassen/EnvironmentalVisualEnhancements), [raymarched cloud configuration](https://github.com/LGhassen/EnvironmentalVisualEnhancements/wiki/Raymarched-cloud-configuration). The public Redux source inspected uses geometry-shader particles and spherical placement. The documented newer raymarcher is a separate implementation. No EVE source, shader, texture or preset has been redistributed. See the [extension guide](../guides/RINGWORLD-EXTENSIONS.md) for supported controls and remaining differences.

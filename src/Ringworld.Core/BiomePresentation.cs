@@ -29,6 +29,8 @@ namespace Ringworld.Core
                 double margin=ForestMargin(t,x,y);
                 double w=Math.Max(0,Math.Min(1,.5+margin/.12));cover+=w*w*(3-2*w)/count;
             }
+            double blend=Math.Max(0,Math.Min(1,(footprint-380)/380));blend=blend*blend*(3-2*blend);
+            if(count>1){double m=ForestMargin(t,a,b);double w=Math.Max(0,Math.Min(1,.5+m/.12));cover=w*w*(3-2*w)*(1-blend)+cover*blend;}
             result.CanopyCover=cover;
             result.CanopyHeight=result.CanopyCover*(24+24*t.Noise(a,b,64,2127));
             return result;

@@ -23,11 +23,23 @@
     "repository": "https://github.com/theplatecrafter/Ring-World-KSP-mod",
     "bugtracker": "https://github.com/theplatecrafter/Ring-World-KSP-mod/issues"
   },
-  "x_netkan_note": "Harmony is required; indexed Cyla is optional. Install only GameData/NivenRingworld from this archive. The upstream NetKAN dependency stanza must also be changed from depends to suggests for Cyla.",
+  "x_netkan_note": "Unpublished v1.1.5 metadata proposal. Harmony is required; Cyla and tested visual/utility integrations are optional. Install only GameData/NivenRingworld. External dependencies are never bundled. Do not submit this proposal until v1.1.5 is ready.",
   "suggests": [
     {
       "name": "Cyla",
       "min_version": "1.1.0.0"
+    },
+    {
+      "name": "TUFX"
+    },
+    {
+      "name": "Scatterer"
+    },
+    {
+      "name": "Deferred"
+    },
+    {
+      "name": "BetterTimeWarpCont"
     }
   ]
 }

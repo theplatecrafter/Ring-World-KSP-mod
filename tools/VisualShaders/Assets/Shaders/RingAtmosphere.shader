@@ -20,7 +20,8 @@ Shader "NivenRingworld/VolumetricAtmosphere"
   float4 _Photo; // active, tile index (-1 for full screen), grid side, sample index
   float2 _FrameSize;
   float _Jitter;
-  float4 _CloudHandoff;
+  float4 _CloudHandoff;float4 _SurfaceWeather; // fog, dust, ground height, snow
+
   struct v2f {float4 pos:SV_POSITION;float2 uv:TEXCOORD0;};
   v2f vert(appdata_img v){v2f o;o.pos=UnityObjectToClipPos(v.vertex);o.uv=v.texcoord;return o;}
   float3 ray(float2 uv){return normalize(_RayForward+(uv.x*2-1)*_RayRight+(uv.y*2-1)*_RayUp);}
@@ -31,29 +32,7 @@ Shader "NivenRingworld/VolumetricAtmosphere"
    if(_Photo.x>.5)return tex2D(_SavedDepth,uv).r;
    return LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture,uv));
   }
-  float density(float3 p)
-  {
-   float h=height(p);if(_WeatherMap.w<=0||h<2200||h>10000||abs(_Habitat.z+p.y)>_Habitat.w)return 0;
-   float2 uv=(p.xy+_WeatherMap.xy)/(_WeatherMap.z*2)+.5;
-   float fade=saturate((.5-max(abs(uv.x-.5),abs(uv.y-.5)))*12);
-   float2 weather=float2(cloudCoverage(p.xy),tex3Dlod(_Noise,float4((p+_CloudOrigin)/512000,0)).g);
-   if(weather.r<.001)return 0;
-   float top=5200+weather.g*4300;
-   float vertical=saturate((h-2400)/650)*(1-smoothstep(top-1800,top,h));
-   float3 q=(p+_CloudOrigin)/64000;
-   float4 n=tex3Dlod(_Noise,float4(q,0));
-   float shape=n.r*.55+n.g*.45;
-   float detail=.65*tex3Dlod(_Noise,float4(q*5,0)).g+.35*tex3Dlod(_Noise,float4(q*17,0)).b;
-   float body=saturate((shape-(.72-weather.r*.62))*3.4);
-   float local=1-smoothstep(_CloudHandoff.x,max(_CloudHandoff.x+1,_CloudHandoff.y),length(p));
-   return saturate(body-(1-detail)*.32)*vertical*fade*local;
-  }
-  float shadow(float3 p)
-  {
-   float tau=0,ds=4000/max(1,_Quality.z);
-   [loop]for(int j=0;j<8;j++){if(j>=_Quality.z)break;tau+=density(p+_Sun*((j+.5)*ds))*ds*.0011;}
-   return lerp(1,exp(-tau),_Look.z);
-  }
+  #include "RingCloudVolume.cginc"
   float4 volume(v2f i):SV_Target
   {
    if(_Photo.x>.5&&_Photo.y>=0)
@@ -63,6 +42,7 @@ Shader "NivenRingworld/VolumetricAtmosphere"
    }
    float3 d=ray(i.uv);float scene=depthAt(i.uv)/max(.001,dot(d,normalize(_RayForward)));
    float limit=min(scene,_Quality.w);float jitter=hash(floor(i.uv*_FrameSize));
+   if(_Photo.x<.5)jitter=lerp(.5,jitter,.35);
    float3 light=0;float transmission=1;
    // Atmosphere interval: tangent approximation corrected for ring curvature per sample.
    float atmoEnd=min(scene,400000);
@@ -79,30 +59,40 @@ Shader "NivenRingworld/VolumetricAtmosphere"
     if(h<0||h>60000||abs(_Habitat.z+p.y)>_Habitat.w)continue;
     float rho=exp(-h/8500)*pow(saturate((60000-h)/5000),2),mie=exp(-h/1200)*.000012;
     float3 beta=float3(.0000058,.0000135,.0000331)*rho;
-    float3 ext=(beta+mie)*_Look.x;
+    float precipitation=0;
+    if(_CloudControls.w>.001&&h>0&&h<_PrecipitationBase&&length(p)<_Quality.w)
+    {
+      float cover=cloudCoverage(p.xy);
+      float shaft=smoothstep(.2,.65,cover);
+      precipitation=shaft*_CloudControls.w*.000045*smoothstep(0,350,h)*(1-smoothstep(_Quality.w*.65,_Quality.w,length(p)));
+    }
+    float low=saturate(1-length(p)/30000)*exp(-max(0,h-_SurfaceWeather.z)/120);
+    float fog=(_SurfaceWeather.x+_SurfaceWeather.y)*low*.00015;
+    float3 ext=(beta+mie)*_Look.x+precipitation+fog;
     float3 sunDepth=beta*8500+mie*1200;
-    airLight+=(beta*phaseR+mie*phaseM)*exp(-optical-ext*ads*.5-sunDepth)*ads*_Look.y*8*_Look.x;
+    airLight+=((beta*phaseR+mie*phaseM)*_Look.x+precipitation*.06+fog*lerp(float3(.07,.08,.09),float3(.09,.06,.03),_SurfaceWeather.y))*exp(-optical-ext*ads*.5-sunDepth)*ads*_Look.y*8;
     optical+=ext*ads;
    }
    float airT=dot(exp(-optical),float3(.333333,.333333,.333333));
    // Restrict cloud integration to the cloud band; depth clips foreground craft/terrain.
-   float start=0,end=limit;
-   if(_Habitat.x<2200){if(d.z<=0)end=0;else {start=(2200-_Habitat.x)/d.z;end=min(end,(10200-_Habitat.x)/d.z);}}
-   else if(_Habitat.x>10200){if(d.z>=0)end=0;else {start=(_Habitat.x-10200)/-d.z;end=min(end,(_Habitat.x-2000)/-d.z);}}
-   else if(d.z>.00001)end=min(end,(10200-_Habitat.x)/d.z);
-   else if(d.z<-.00001)end=min(end,(_Habitat.x-2000)/-d.z);
-   float ds=max(0,end-start)/max(1,_Quality.x);
-   float phase=.35+.65*pow(saturate(mu),8);
+   float4 intervals=cloudIntervals(d,limit);
+   float firstLength=max(0,intervals.y-intervals.x),secondLength=max(0,intervals.w-intervals.z);
+   float distanceInCloud=firstLength+secondLength;
+   float ds=distanceInCloud/max(1,_Quality.x),position=0;
    [loop]for(int c=0;c<256;c++)
    {
-    if(c>=_Quality.x||ds<=0||transmission<.008)break;
-    float3 p=d*(start+(c+jitter)*ds);float den=density(p);if(den<.001)continue;
-    float t=exp(-den*ds*.0011);
-    float direct=shadow(p);float ambient=.13+.23*saturate((height(p)-2400)/6000);
-    // Ambient fill approximates multiple scattering; direct sunlight is self-shadowed.
-    float3 illumination=float3(.72,.82,1)*ambient+float3(1,.95,.86)*direct*(.75+phase);
-    illumination=illumination*(.035+_Look.y*.965)+_Lightning*1.7;
-    light+=transmission*(1-t)*illumination;transmission*=t;
+    if(c>=_Quality.x||ds<=0||transmission<.008||_CloudControls.x<.5)break;
+    float f0=(float)c/max(1,_Quality.x),f1=(c+1.0)/max(1,_Quality.x);
+    // Spend the budget in cloud-bearing shell segments, not the empty space
+    // between the nearby and far side of the cylindrical ring.
+    float cellStart=distanceInCloud*f0*f0;
+    float step=distanceInCloud*(f1*f1-f0*f0);
+    float opticalPosition=cellStart+jitter*step;
+    position=opticalPosition<firstLength?intervals.x+opticalPosition:intervals.z+opticalPosition-firstLength;
+    float3 p=d*position;float den=density(p);
+    if(den<.001){position+=step;continue;}
+    float t=exp(-den*step*.001);
+    light+=transmission*(1-t)*cloudIllumination(p,den,mu);transmission*=t;position+=step;
    }
    float4 result=float4((airLight*transmission+light*sqrt(airT))*_Look.w,1-airT*transmission);
    if(_Photo.x>.5&&_Photo.w>0)result=lerp(tex2D(_Previous,i.uv),result,1/(_Photo.w+1));
@@ -121,6 +111,20 @@ Shader "NivenRingworld/VolumetricAtmosphere"
      float weight=exp(-abs(depthAt(uv)-z)/max(2,z*.015));fog+=tex2D(_Volume,uv)*weight;sum+=weight;
     }
     fog=sum>.0001?fog/sum:tex2D(_Volume,i.uv);
+   }
+   if(_Photo.x<.5&&_CloudControls.x>=2)
+   {
+    // Small bilateral reconstruction reduces stochastic speckle while keeping
+    // cloud-opacity boundaries and foreground silhouettes distinct.
+    float4 centre=fog,filtered=0;float total=0,z=depthAt(i.uv);
+    [unroll]for(int y=-1;y<=1;y++)[unroll]for(int x=-1;x<=1;x++)
+    {
+     float2 uv=i.uv+float2(x,y)*_Volume_TexelSize.xy;
+     float4 tap=tex2D(_Volume,uv);
+     float w=exp(-abs(tap.a-centre.a)*12-abs(depthAt(uv)-z)/max(2,z*.015))*(x==0&&y==0?4:1);
+     filtered+=tap*w;total+=w;
+    }
+    if(total>.001)fog=lerp(centre,filtered/total,.65);
    }
    float3 scene=tex2D(_MainTex,i.uv).rgb;
    #ifdef UNITY_COLORSPACE_GAMMA

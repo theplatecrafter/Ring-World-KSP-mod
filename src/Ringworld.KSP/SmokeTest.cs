@@ -23,6 +23,8 @@ namespace NivenRingworld
             DontDestroyOnLoad(gameObject);deadline=Time.realtimeSinceStartup+1200;running=true;
             Debug.Log("[RingworldSmoke] MAIN MENU READY");
             yield return new WaitForSeconds(3);
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-integrations-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-visual-options-only")>=0)
+            {try{GlobalCloudSmoke.Run();}catch(Exception ex){Fail("Global visual integrations: "+ex);yield break;}}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-global-clouds-only")>=0)
             {
                 try{GlobalCloudSmoke.Run();if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-scenery-only")>=0){ScenerySmoke.Run();LibrarySmoke.Run();}}catch(Exception ex){Fail("Global clouds/assets: "+ex);yield break;}
@@ -125,6 +127,7 @@ namespace NivenRingworld
             var smokeOptions=RingworldScenario.Instance.GetOptions().CreateCopy();smokeOptions.SetValue("seed",-739779896,true);RingQualityPresets.Apply(smokeOptions,6);
             flight.ApplyOptions(smokeOptions,true);
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-multi-ring-only")>=0){yield return MultiRingSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-integrations-only")>=0){yield return IntegrationSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-science-only")>=0){yield return ResearchSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-wall-only")>=0){yield return WallSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-visual-options-only")>=0){yield return VisualOptionsSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}

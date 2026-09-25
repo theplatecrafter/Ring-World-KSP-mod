@@ -6,7 +6,7 @@
     <KspRoot Condition="'$(KspRoot)' == ''">$(MSBuildThisFileDirectory)..\..\template_instance</KspRoot>
     <ManagedPath>$(KspRoot)\KSP_x64_Data\Managed</ManagedPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>1.1.4</Version>
+    <Version>1.1.5-dev</Version>
     <DefineConstants Condition="'$(SmokeTest)' == 'true'">$(DefineConstants);RINGWORLD_SMOKE_TEST</DefineConstants>
   </PropertyGroup>
   <ItemGroup>

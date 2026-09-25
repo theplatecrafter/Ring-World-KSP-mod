@@ -136,6 +136,21 @@ namespace NivenRingworld
             Active=true;Status="Cyla local optical approximation / "+(optics["ViewSteps"])+" view, "+(s.CylaLightSteps)+" light steps";
         }
         private void Detach(){if(attached&&camera!=null)camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects,commands);attached=false;}
+        internal void OrderBefore(CommandBuffer postProcessing)
+        {
+            if(!attached||postProcessing==null)return;
+            var buffers=camera.GetCommandBuffers(CameraEvent.BeforeImageEffects);
+            int own=Array.IndexOf(buffers,commands),post=Array.IndexOf(buffers,postProcessing);
+            if(own<0||post<0||own<post)return;
+            // Keep every other buffer's relative order, inserting only our optical pass.
+            foreach(var buffer in buffers)camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects,buffer);
+            foreach(var buffer in buffers)
+            {
+                if(buffer==commands)continue;
+                if(buffer==postProcessing)camera.AddCommandBuffer(CameraEvent.BeforeImageEffects,commands);
+                camera.AddCommandBuffer(CameraEvent.BeforeImageEffects,buffer);
+            }
+        }
         private void BindDepth(MaterialPropertyBlock binding)
         {
             binding.Clear();binding.SetTexture("_CameraDepthTexture",scaledDepth);
