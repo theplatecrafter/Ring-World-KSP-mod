@@ -17,16 +17,25 @@ namespace NivenRingworld
                 if(i==0&&(check.WaterQuality!=4||check.Cyla["ViewSteps"]!=500)){fail("Cow maximum optics/water");yield break;}
                 if(i==10&&(check.WaterQuality!=0||check.Cyla["ViewSteps"]!=1)){fail("Rotten minimum optics/water");yield break;}
             }
+            var scattering=f.Settings.Save();scattering.SetValue("waterScattering",true,true);var scatterSettings=Settings.Load();scatterSettings.Apply(scattering);if(!scatterSettings.WaterScattering||scatterSettings.Save().GetValue("waterScattering")!="True"){fail("Water scattering save roundtrip");yield break;}
             var toggle=f.Settings.Save();toggle.SetValue("waterExtension",false,true);var disabled=Settings.Load();disabled.Apply(toggle);var restored=Settings.Load();restored.Apply(disabled.Save());if(restored.WaterExtension){fail("Water extension disable did not persist");yield break;}
             var custom=f.Settings.Save();foreach(var d in CylaOptions.Definitions)custom.SetValue(d.Key,((d.Min+d.Max)/2).ToString("R",System.Globalization.CultureInfo.InvariantCulture),true);
             custom.SetValue("cylaLightingMode",2,true);var first=Settings.Load();first.Apply(custom);var second=Settings.Load();second.Apply(first.Save());
             foreach(var d in CylaOptions.Definitions)if(first.Save().GetValue(d.Key)!=second.Save().GetValue(d.Key)){fail("Cyla option roundtrip "+d.Key);yield break;}
             Debug.Log("[RingworldSmoke] VISUAL OPTIONS all 11 presets and 21 Cyla optical values roundtrip; highest tiers checked without rendering");
+            var stockVessel=FlightGlobals.ActiveVessel;var stockPart=stockVessel.rootPart;var stockModule=stockPart.Modules[0];
+            var stockPosition=(Vector3d)stockPart.transform.position;
+            if(StockIntegration.Applies(stockVessel)||RingAquaticCompatibility.Ocean(stockVessel.mainBody,stockModule)!=stockVessel.mainBody.ocean||RingAquaticCompatibility.Altitude(stockPosition,stockVessel.mainBody,stockModule)!=FlightGlobals.getAltitudeAtPos(stockPosition,stockVessel.mainBody))
+            {fail("Aquatic adapter changed non-ring queries");yield break;}
+            if(stockPart.partBuoyancy!=null && !(bool)AccessTools.Method(typeof(RingWaterPhysics),"Prefix").Invoke(null,new object[]{stockPart.partBuoyancy,stockPart}))
+            {fail("Ring water patch intercepted non-ring buoyancy");yield break;}
+            Debug.Log("[RingworldSmoke] WATER non-ring ocean/altitude queries and stock buoyancy dispatch unchanged");
             f.arrivalHeight=80;f.Visit();while(!f.Ready)yield return null;for(int i=0;i<30;i++)yield return null;
             var vessel=FlightGlobals.ActiveVessel;var part=vessel.rootPart;
             RingworldSurfaceState surfaceState;
             if(!RingworldSurfaceApi.TryGetSurfaceState(vessel,out surfaceState)||Vector3d.Dot(surfaceState.StationaryFrameAcceleration,surfaceState.SurfaceUp)>=-1||double.IsNaN(surfaceState.FrameAcceleration.magnitude))
             {fail("Ring acceleration API is invalid");yield break;}
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-include-issue3")>=0) {
             var biomeScanner=(ModuleBiomeScanner)part.AddModule("ModuleBiomeScanner");
             var resourceScanner=(ModuleResourceScanner)part.AddModule("ModuleResourceScanner");
             bool landed=vessel.Landed;
@@ -40,6 +49,7 @@ namespace NivenRingworld
             }
             finally {vessel.Landed=landed;part.RemoveModule(biomeScanner);part.RemoveModule(resourceScanner);}
             RingCompatibilitySmoke.Run(vessel);
+            }
               // Check the replacement's live routing without rendering a heavy preset.
             int oldMode=f.Settings.CloudMode,oldSteps=f.Settings.CloudSteps;bool oldCloudExtension=f.Settings.CloudExtension;
             f.Settings.CloudMode=1;f.Settings.CloudSteps=32;f.Settings.CloudExtension=true;
@@ -80,6 +90,9 @@ namespace NivenRingworld
             }
             if(!f.visuals.BeginPhoto(1,6,512)){fail("Photo cancellation entry");yield break;}f.visuals.EndPhoto();yield return null;
             if(f.visuals.PhotoActive||Time.timeScale!=1){fail("Photo cancellation failed");yield break;}
+            bool physicsFailed=false;
+            yield return WaterPhysicsSmoke.Run(f,message=>{physicsFailed=true;fail(message);});
+            if(physicsFailed)yield break;
             Debug.Log("[RingworldSmoke] PASS visual-options-only");
         }
         internal static void CheckWater(Shader shader,int[] qualities)
@@ -88,7 +101,7 @@ namespace NivenRingworld
             var cameraObject=new GameObject("Water transparency probe");var camera=cameraObject.AddComponent<Camera>();
             var water=GameObject.CreatePrimitive(PrimitiveType.Quad);var backing=GameObject.CreatePrimitive(PrimitiveType.Quad);
             var material=new Material(shader);var backMaterial=new Material(Shader.Find("Unlit/Color"));
-            var target=new RenderTexture(64,64,24);var pixels=new Texture2D(64,64,TextureFormat.RGB24,false);var previous=RenderTexture.active;
+            Mesh columnMesh=null;var target=new RenderTexture(64,64,24);var pixels=new Texture2D(64,64,TextureFormat.RGB24,false);var previous=RenderTexture.active;
             try
             {
                 camera.enabled=false;camera.cullingMask=1<<30;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=Color.black;
@@ -106,8 +119,28 @@ namespace NivenRingworld
                     File.WriteAllBytes(Path.Combine(KSPUtil.ApplicationRootPath,"Ringworld-water-probe-"+quality+".png"),pixels.EncodeToPNG());
                     Debug.Log("[RingworldSmoke] WATER transparency GPU probe quality="+quality+" red="+red+" blue="+blue);
                 }
+                if(shader.name=="NivenRingworld/WaterRefraction")
+                {
+                    camera.orthographic=false;camera.fieldOfView=8;
+                    columnMesh=water.GetComponent<MeshFilter>().mesh;
+                    columnMesh.uv=new[]{new Vector2(1000,1),new Vector2(1000,1),new Vector2(1000,1),new Vector2(1000,1)};
+                    backing.transform.localScale=Vector3.one*200;
+                    backMaterial.shader=Shader.Find("Standard");backMaterial.color=Color.black;backMaterial.EnableKeyword("_EMISSION");
+                    material.SetFloat("_WaterQuality",4);material.SetFloat("_WaterScattering",1);material.SetFloat("_SeaCount",0);
+                    Func<float,Color,Color> column=(depth,tint)=>{
+                        backing.transform.position=Vector3.forward*depth;backMaterial.SetColor("_EmissionColor",tint);
+                        camera.Render();RenderTexture.active=target;pixels.ReadPixels(new Rect(0,0,64,64),0,0);pixels.Apply();return pixels.GetPixel(32,32);
+                    };
+                    var nearRed=column(1,Color.red);var nearBlue=column(1,Color.blue);
+                    var farRed=column(100,Color.red);var farBlue=column(100,Color.blue);
+                    float nearContrast=nearRed.r-nearBlue.r,farContrast=farRed.r-farBlue.r;
+                    if(nearContrast<.5||farContrast>=nearContrast*.8)throw new Exception("Water column depth regression: near="+nearContrast+" far="+farContrast);
+                    var shafts=column(50,Color.black);material.SetFloat("_WaterScattering",0);var noShafts=column(50,Color.black);
+                    if(shafts.g<=noShafts.g)throw new Exception("Above-water scattering toggle has no effect");
+                    Debug.Log("[RingworldSmoke] WATER COLUMN above-surface deep ocean: near contrast="+nearContrast+" far="+farContrast+" shafts="+shafts.g+" off="+noShafts.g);
+                }
             }
-            finally{water.SetActive(false);backing.SetActive(false);Extensions.WaterScreenCopy.Detach(camera);RenderTexture.active=previous;camera.targetTexture=null;target.Release();UnityEngine.Object.Destroy(target);UnityEngine.Object.Destroy(pixels);UnityEngine.Object.Destroy(water);UnityEngine.Object.Destroy(backing);UnityEngine.Object.Destroy(material);UnityEngine.Object.Destroy(backMaterial);UnityEngine.Object.Destroy(cameraObject);}
+            finally{if(columnMesh!=null)UnityEngine.Object.Destroy(columnMesh);water.SetActive(false);backing.SetActive(false);Extensions.WaterScreenCopy.Detach(camera);RenderTexture.active=previous;camera.targetTexture=null;target.Release();UnityEngine.Object.Destroy(target);UnityEngine.Object.Destroy(pixels);UnityEngine.Object.Destroy(water);UnityEngine.Object.Destroy(backing);UnityEngine.Object.Destroy(material);UnityEngine.Object.Destroy(backMaterial);UnityEngine.Object.Destroy(cameraObject);}
         }
     }
 }

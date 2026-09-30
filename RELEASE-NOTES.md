@@ -1,11 +1,41 @@
-# Niven Ringworld â€” release notes
+# Niven Ringworld ? release notes
 
-Consolidated release history, newest first. Historical installation and dependency instructions apply only to the version in their section; use the current requirements below for v1.1.4. This is the single release-note source used by the release publisher.
+Consolidated release history, newest first. Historical requirements apply only to their own version. This is the release publisher's single source for release descriptions.
 
-## 1.1.5 (unreleased)
+## Current requirements ? v1.1.5
 
-Development only; no download archive or CKAN update has been published. Players currently testing through CKAN have reported v1.1.3; these changes are not in that build.
+| Component | Requirement | Version |
+| --- | --- | --- |
+| Kerbal Space Program | Required | 1.12.5 |
+| Harmony 2 / HarmonyKSP | Required, installed separately | 2.2.1.0 tested; CKAN minimum 2.2.1.0 |
+| Cyla | Optional local atmosphere | 1.1.0.0 release (Cyla-1.1.0.zip) |
+| Ringworld Clouds | Optional volumetric clouds | 1.0.0, paired with base 1.1.5 |
+| Ringworld Scattering | Optional enhanced water and distant atmosphere | 1.0.0, paired with base 1.1.5 |
 
+No dependencies or extensions are bundled. Extract each ZIP into the **KSP installation root**, merging GameData. The base works without either extension and uses Original atmosphere without Cyla. Optional metadata is supplied for CKAN submission; publication alone does not update the central index.
+
+## Release-v1.1.5
+
+### Dependencies and optional integrations
+
+- Required: KSP 1.12.5 and separately installed Harmony 2 >= 2.2.1.0 (tested 2.2.1.0).
+- Optional extension: Ringworld Clouds 1.0.0 for advanced cloud volumes; base lightweight layers and weather remain available without it.
+- Optional extension: Ringworld Scattering 1.0.0 for enhanced water, underwater optics and distant full-ring atmosphere. Water physics remains in the base.
+- Optional local atmosphere: Cyla 1.1.0 (CKAN version 1.1.0.0); Original is the fallback.
+- Optional integrations: TUFX profiles, Scatterer panel-flare handling, Deferred rendering and BetterTimeWarpContinued rate-table safeguards. These do not turn the ring into a PQS planet. Waterfall remains a part effect, not ring terrain rendering.
+- Part compatibility targets: ReStock 1.5.1 (Surveyor model) and SunkWorks 1.3.1 (ballast/aquatic-engine checks). The regression document records the precise tested cases; general autopilot/boat support is not implied.
+- Parallax, planetary EVE/scatterer configurations and Trajectories do not automatically gain cylindrical terrain/flight support. See the integration matrix for limits.
+
+Each extension is a separate download with a dependency on base 1.1.5; none is bundled in the base ZIP. CKAN metadata is provided for submission and does not itself guarantee an extension is indexed. Extract all ZIPs into the KSP root, merging GameData.
+
+
+KSP 1.12.5, Windows x64 / Direct3D 11. This version separates enhanced rendering from the base mod. Users upgrading from the public v1.1.3 or v1.1.4 builds can install either optional extension separately. CKAN availability follows its maintainers' indexing process.
+
+- ReStock compatibility for the legacy Surveyor, contributed by john-d-alexander (PR #2), with a stock model fallback when ModuleManager is absent.
+- Ring water now supplies stock part immersion/contact state and displacement-based buoyancy, so additional ballast mass can overcome buoyancy. SunkWorks 1.3.1 ballast filling/venting and wet/dry aquatic-engine queries passed with the installed modules. These checks do not certify every boat, engine thrust configuration or autopilot.
+- Resident unpacking no longer resets the active craft's global velocity frame when a neighbouring craft enters physics range. Saved contact poses are refreshed before packing; large-base approach tests remain pending.
+- Detailed/Ultra water now uses scene-depth transmission and shared water scattering from both sides of the surface. Added a saved light-shafts toggle, enabled by Strong and higher presets; shallow submerged objects remain visible above deep seabeds.
+- Enhanced water adds camera-depth underwater absorption/haze, quality-scaled approximate sunlight shafts, broader surface glitter and oblique-path absorption. Transparent local LOD water retains its seabed geometry; mean water levels are unchanged.
 - Softer local cloud boundaries and irregular cluster coverage; rainy weather closes overhead gaps before precipitation starts, with more partly cloudy automatic weather.
 - Ten weather-dependent cloud families, expanded upper-preset cloud distances, and uncapped finite cloud-distance input.
 - Crustal resource definitions from stock ResourceCache now feed a shared ring abundance provider, stock scanner display and stock harvester queries; default primary-ring Ore configuration included. Orbital surveys/background mining remain unsupported.
@@ -21,27 +51,17 @@ Development only; no download archive or CKAN update has been published. Players
 - Terrain lighting transition work and optional Deferred/Waterfall checks.
 - Neighbour-aware colour feathering at fine/coarse terrain borders and a gradual forest colour filter transition.
 - Replacement Ringworld Clouds volume extension with editable cloud types, new shape noise, self-shadowing, curl detail and quality controls.
-- Switchable Ringworld Water extension; Detailed/Ultra add screen refraction and coloured absorption.
+- Ringworld Scattering water controls; Detailed/Ultra add screen refraction and coloured absorption.
 - Read-only ring environment API and custom warp-rate table safeguards.
+
+### Validation scope
+
+ReStock 1.5.1 Surveyor prefab/model/material checks and SunkWorks 1.3.1 installed ballast/engine water queries passed. The base-only, Clouds-only, Scattering-only and combined installations passed their runtime rendering tests. Water probes cover transparency at all five quality levels, above-surface transmission, underwater absorption, shafts and dry-camera bypass. The Slow flight test passed photo output/restoration and 1,500 physics ticks of calibrated flotation.
+
+The flotation fixture retained damage immunity; it does not certify every boat, engine-thrust setup or autopilot. Non-ring query/dispatch checks passed. Issue #3 was excluded from this verification pass and its unresolved cases remain documented. Tests ran on the development laptop with Direct3D 11; native Linux and other GPU/API results are not certified.
 
 See the [integration matrix](docs/developers/VISUAL-INTEGRATIONS.md) for tested versions, limitations and remaining visual/utility work. Optional mods are installed separately and are never bundled.
 
-## Current requirements â€” v1.1.4
-
-| Component | Requirement | Tested / supported version | Installation |
-| --- | --- | --- | --- |
-| Kerbal Space Program | Required | 1.12.5 | Install the game separately |
-| [HarmonyKSP / Harmony 2](https://github.com/KSPModdingLibs/HarmonyKSP/releases) | Required; CKAN `Harmony2 >= 2.2.1.0` | 2.2.1.0 | Install separately; keep only one compatible copy |
-| [Cyla](https://github.com/LGhassen/Cyla/releases) | Optional atmosphere backend | 1.1.0 | Install separately to use Cyla atmosphere |
-
-
-Neither Harmony nor Cyla is bundled in v1.1.4. Missing Cyla falls back to Original atmosphere. The Harmony minimum is declared in CKAN metadata; it is not a promise that every future Harmony version is compatible. Cyla 1.1.0 is the supported/tested integration target; compatibility with other Cyla versions is not certified. The release metadata requires Harmony and suggests indexed Cyla >= 1.1.0.0. CKAN's central NetKAN recipe must also accept the optional-dependency update; supplying metadata in a release does not by itself update CKAN.
-
-Extract the mod ZIP into the KSP instance root beside `KSP_x64.exe`, preserving `GameData/NivenRingworld`. See [installation instructions](README.md#install-and-play).
-
-## Release history
-
-The sections below preserve the available local release notes and nonempty published GitHub descriptions. Some descriptions overlap. Missing notes are explicitly identified rather than reconstructed from guesses. GitHub descriptions were retrieved on 2026-09-18.
 
 ## Release-v1.1.4
 

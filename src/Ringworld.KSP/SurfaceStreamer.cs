@@ -396,7 +396,7 @@ namespace NivenRingworld
         private static void Destroy(Tile t){RingworldTerrainApi.Remove(t.Root);UnityEngine.Object.Destroy(t.Texture);UnityEngine.Object.Destroy(t.Root);foreach(var m in t.Meshes)UnityEngine.Object.Destroy(m);}
         public void Dispose()
         {
-            Extensions.WaterScreenCopy.Enable(false);
+            Extensions.WaterScreenCopy.Enable(false);Extensions.RingUnderwater.Enable(false);
             foreach(var t in tiles.Values)Destroy(t);tiles.Clear();ClearProps();
             SceneryAssets.Release();
             landmarks.Dispose();

@@ -25,18 +25,9 @@ public static class BuildVisuals
             pixels[(z*n+y)*n+x]=new Color(Value(p),Mathf.Clamp01(1-distance*.8f),Value(p*2),1);
         }
         noise.SetPixels(pixels);noise.Apply(true,false);AssetDatabase.DeleteAsset("Assets/CloudNoise.asset");AssetDatabase.CreateAsset(noise,"Assets/CloudNoise.asset");
-        var shape=new Texture3D(n,n,n,TextureFormat.RGBA32,true){name="Ringworld cloud shape",wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Trilinear};
-        var shapePixels=new Color[pixels.Length];
-        for(int z=0;z<n;z++)for(int y=0;y<n;y++)for(int x=0;x<n;x++)
-        {
-            var p=new Vector3(x,y,z)*(16f/n);int index=(z*n+y)*n+x;
-            float fbm=(Value(p)+.5f*Value(p*2)+.25f*Value(p*4)+.125f*Value(p*8))/1.875f;
-            shapePixels[index]=new Color(fbm,pixels[index].g,Value(p*4),Value(p+new Vector3(7,3,11)));
-        }
-        shape.SetPixels(shapePixels);shape.Apply(true,false);AssetDatabase.DeleteAsset("Assets/CloudShape.asset");AssetDatabase.CreateAsset(shape,"Assets/CloudShape.asset");
         AssetDatabase.SaveAssets();AssetDatabase.Refresh();
         string output=Path.GetFullPath(Path.Combine(Application.dataPath,"../../../GameData/NivenRingworld/Assets"));Directory.CreateDirectory(output);
-        var bundle=new AssetBundleBuild{assetBundleName="ringworldvisuals",assetNames=new[]{"Assets/Shaders/RingAtmosphere.shader","Assets/Shaders/Precipitation.shader","Assets/Shaders/FullRingAtmosphere.shader","Assets/Shaders/RingWater.shader","Assets/Shaders/RingWaterRefraction.shader","Assets/Shaders/DistantSurface.shader","Assets/Shaders/CloudDeck.shader","Assets/Shaders/GlobalClouds.shader","Assets/Shaders/CloudCoverageProbe.shader","Assets/Shaders/TerrainNight.shader","Assets/Shaders/TerrainTransition.shader","Assets/CloudNoise.asset","Assets/CloudShape.asset"}};
+        var bundle=new AssetBundleBuild{assetBundleName="ringworldvisuals",assetNames=new[]{"Assets/Shaders/RingAtmosphere.shader","Assets/Shaders/Precipitation.shader","Assets/Shaders/DistantSurface.shader","Assets/Shaders/CloudDeck.shader","Assets/Shaders/GlobalClouds.shader","Assets/Shaders/CloudCoverageProbe.shader","Assets/Shaders/TerrainNight.shader","Assets/Shaders/TerrainTransition.shader","Assets/CloudNoise.asset"}};
         EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Standalone,BuildTarget.StandaloneWindows64);
         PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneWindows64,new[]{UnityEngine.Rendering.GraphicsDeviceType.Direct3D11});
         var built=BuildPipeline.BuildAssetBundles(output,new[]{bundle},BuildAssetBundleOptions.ForceRebuildAssetBundle|BuildAssetBundleOptions.ChunkBasedCompression,BuildTarget.StandaloneWindows64);

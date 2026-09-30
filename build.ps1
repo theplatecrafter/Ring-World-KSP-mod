@@ -1,5 +1,5 @@
 param(
-    [string]$KspRoot = (Join-Path $PSScriptRoot 'template_instance'),
+    [string]$KspRoot = (Join-Path (Split-Path -Parent $PSScriptRoot) 'template_instance'),
     [switch]$Install,
     [switch]$SmokeTest,
     [switch]$Package
@@ -25,6 +25,9 @@ foreach ($dll in @('NivenRingworld.dll','Ringworld.Core.dll')) { Copy-Item -Lite
 if ($Install) {
     $target = Join-Path $gameRoot 'GameData\NivenRingworld'
     New-Item -ItemType Directory -Path $target -Force | Out-Null
+    # This shipped configuration moved to the optional Clouds package.
+    $obsoleteCloudConfig=Join-Path $target 'Extensions/CloudTypes.cfg'
+    if(Test-Path -LiteralPath $obsoleteCloudConfig){Copy-Item -LiteralPath $obsoleteCloudConfig -Destination (Join-Path $taskRoot ('artifacts/legacy-cloud-config-'+[Guid]::NewGuid().ToString('N')+'.cfg'));Remove-Item -LiteralPath $obsoleteCloudConfig}
     Copy-Item -Path (Join-Path $stage '*') -Destination $target -Recurse -Force
     Write-Host "Installed into $target"
 }

@@ -12,8 +12,12 @@ namespace NivenRingworld
             var s=Settings.Load();s.CloudAmount=.8;s.DynamicWeather=false;s.FullRingDetail=false;
             var parent=new GameObject("Global cloud validation");var bundle=RingVisualAssets.Acquire();
             WeatherParticleSmoke.Run(bundle);
-            VisualOptionsSmoke.CheckWater(bundle.LoadAsset<Shader>("Assets/Shaders/RingWater.shader"),new[]{0,1,2});
-            VisualOptionsSmoke.CheckWater(bundle.LoadAsset<Shader>("Assets/Shaders/RingWaterRefraction.shader"),new[]{3,4});
+            var scatteringBundle=Extensions.ExtensionProviders.Scattering?.Assets;
+            if(Extensions.ExtensionProviders.Scattering!=null&&scatteringBundle==null)throw new Exception("Installed Scattering bundle missing");
+            if(scatteringBundle!=null){WaterOpticsSmoke.Run(scatteringBundle);
+            VisualOptionsSmoke.CheckWater(scatteringBundle.LoadAsset<Shader>("Assets/Shaders/RingWater.shader"),new[]{0,1,2});
+            VisualOptionsSmoke.CheckWater(scatteringBundle.LoadAsset<Shader>("Assets/Shaders/RingWaterRefraction.shader"),new[]{3,4});
+            }
             CloudVolumeSmoke.Run(Settings.Load(),bundle);
             CheckCoverage(s,bundle);
             CheckDistantSurface(s,bundle);
@@ -60,6 +64,7 @@ namespace NivenRingworld
             Debug.Log("[RingworldSmoke] CLOUD EXTERIOR luminance="+exterior);
             s.CloudAmount=0;clouds.Update(s,null,null,0);if(obj.activeSelf)throw new Exception("Cloud off setting ignored");
             Debug.Log("[RingworldSmoke] PASS global-clouds-only: 16384 continuous UV segments; day="+day+" night="+night+" handoff="+transition+"; low-detail and off settings OK");
+            if(Extensions.ExtensionProviders.Scattering!=null){
             var atmosphere=new Extensions.RingworldScattering(parent.transform,s,bundle);
             s.FullRingAtmosphere=true;s.Atmosphere=true;s.Haze=1;atmosphere.Update(s,0);
             var airObject=GameObject.Find("Ringworld full-ring atmosphere");
@@ -97,6 +102,7 @@ namespace NivenRingworld
             if(saved.FullRingAtmosphere)throw new Exception("Atmosphere switch not saved");
             Debug.Log("[RingworldSmoke] FULL RING ATMOSPHERE day="+airDay+" night="+airNight+" local="+airLocal+" landedDistant="+airDistant+" exterior="+airExterior+"; off/roundtrip passed");
             atmosphere.Dispose();
+            }
             camera.targetTexture=null;target.Release();UnityEngine.Object.Destroy(target);UnityEngine.Object.Destroy(cameraObj);clouds.Dispose();UnityEngine.Object.Destroy(parent);RingVisualAssets.Release();
         }
         private static void CheckCoverage(Settings s,AssetBundle bundle)

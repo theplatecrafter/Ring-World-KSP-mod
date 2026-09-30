@@ -2,6 +2,7 @@
 
 No credentials are saved or printed. Run only when publication is authorized.
 """
+import sys
 import hashlib
 import json
 import pathlib
@@ -12,6 +13,7 @@ import urllib.request
 from release_notes import release_body
 
 root = pathlib.Path(__file__).resolve().parents[1]
+subprocess.run([sys.executable, str(root/'tools/verify_release.py')], cwd=root, check=True)
 repo = 'theplatecrafter/Ring-World-KSP-mod'
 version_data=json.loads((root/'GameData/NivenRingworld/NivenRingworld.version').read_text())['VERSION']
 version='.'.join(str(version_data[k]) for k in ('MAJOR','MINOR','PATCH'))

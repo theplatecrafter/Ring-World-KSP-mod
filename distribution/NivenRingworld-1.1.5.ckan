@@ -5,8 +5,6 @@
   "abstract": "Landable rotating habitats with procedural terrain, ring-relative flight and exploration science.",
   "author": "theplatecrafter",
   "license": "MIT",
-  "$kref": "#/ckan/github/theplatecrafter/Ring-World-KSP-mod",
-  "$vref": "#/ckan/ksp-avc",
   "depends": [
     {
       "name": "Harmony2",
@@ -23,11 +21,22 @@
     "repository": "https://github.com/theplatecrafter/Ring-World-KSP-mod",
     "bugtracker": "https://github.com/theplatecrafter/Ring-World-KSP-mod/issues"
   },
-  "x_netkan_note": "v1.1.5 proposal: Harmony required; Cyla and Ringworld extensions optional. Extension identifiers require indexing before submission. No dependencies are bundled.",
   "suggests": [
     {
       "name": "Cyla",
       "min_version": "1.1.0.0"
+    },
+    {
+      "name": "TUFX"
+    },
+    {
+      "name": "Scatterer"
+    },
+    {
+      "name": "Deferred"
+    },
+    {
+      "name": "BetterTimeWarpCont"
     },
     {
       "name": "RingworldClouds",
@@ -37,5 +46,14 @@
       "name": "RingworldScattering",
       "min_version": "1.0.0"
     }
-  ]
+  ],
+  "version": "1.1.5",
+  "ksp_version": "1.12.5",
+  "download": "https://github.com/theplatecrafter/Ring-World-KSP-mod/releases/download/Release-v1.1.5/NivenRingworld-1.1.5.zip",
+  "download_size": 4985307,
+  "download_hash": {
+    "sha256": "8ef5e695f8871d84e54d53ef48ef96d6f3cf412ee893dd45ff7f331b34b21b40"
+  },
+  "download_content_type": "application/zip",
+  "install_size": 9306529
 }

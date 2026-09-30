@@ -32,7 +32,10 @@ Shader "NivenRingworld/VolumetricAtmosphere"
    if(_Photo.x>.5)return tex2D(_SavedDepth,uv).r;
    return LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture,uv));
   }
-  #include "RingCloudVolume.cginc"
+  float4 _CloudControls;float _PrecipitationBase;
+  float4 cloudIntervals(float3 d,float limit){return 0;}
+  float density(float3 p){return 0;}
+  float3 cloudIllumination(float3 p,float den,float mu){return 0;}
   float4 volume(v2f i):SV_Target
   {
    if(_Photo.x>.5&&_Photo.y>=0)

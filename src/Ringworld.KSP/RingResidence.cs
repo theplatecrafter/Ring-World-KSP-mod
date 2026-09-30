@@ -12,7 +12,8 @@ namespace NivenRingworld
             if(v.packed)return v.Landed;
             bool contact=f.surfaceWarp.Anchored(v);
             if(v.parts!=null)foreach(var part in v.parts)if(part!=null)contact|=part.GroundContact||part.PermanentGroundContact;
-            v.Landed=contact;v.Splashed=false;
+            v.Landed=contact;v.Splashed=v.parts!=null&&v.parts.Exists(p=>p!=null&&p.submergedPortion>0);
+            if(!contact&&v.Splashed)v.situation=Vessel.Situations.SPLASHED;
             if(contact)
             {
                 v.situation=Vessel.Situations.LANDED;
@@ -47,6 +48,16 @@ namespace NivenRingworld
             v.Landed=true;v.situation=Vessel.Situations.LANDED;v.landedAt="Ringworld";v.displaylandedAt="Ringworld";
         }
     }
+    [HarmonyPatch(typeof(Vessel),"GoOnRails")]
+    internal static class RingResidentPack
+    {
+        private static void Prefix(Vessel __instance)
+        {
+            var f=RingworldFlight.Instance;VesselRecord r;
+            if(f==null||__instance.packed||!f.Owns(__instance)||!RingResidence.Saved(__instance,out r))return;
+            r.Position=ConvertVector.Core((Vector3d)__instance.transform.position-f.Center);r.Velocity=f.Velocity(__instance);r.Rotation=__instance.transform.rotation;r.Epoch=f.FrameEpoch;r.Landed=__instance.Landed;
+        }
+    }
     [HarmonyPatch(typeof(Vessel),"getCorrectedLandedAltitude")]
     internal static class RingResidentAltitude
     {
@@ -60,8 +71,8 @@ namespace NivenRingworld
     {
         private static void Prefix(Vessel __instance,out bool __state)
         {
-            VesselRecord r;__state=__instance.Landed&&RingResidence.Saved(__instance,out r);
-            if(__state)__instance.Landed=false;
+            VesselRecord r=null;__state=__instance.Landed&&RingResidence.Saved(__instance,out r);
+            if(__state){var f=RingworldFlight.Instance;if(f!=null&&f.FrameInUse&&r.RingId==f.Settings.RingId)RingResidence.HoldSaved(__instance,r);__instance.Landed=false;}
         }
         private static void Postfix(Vessel __instance,bool __state)
         {
@@ -69,7 +80,8 @@ namespace NivenRingworld
             VesselRecord r;var f=RingworldFlight.Instance;
             if(!__instance.packed&&f!=null&&RingResidence.Saved(__instance,out r)&&r.RingId==f.Settings.RingId)
             {
-                Krakensbane.ResetVelocityFrame(true);
+                if(__instance==FlightGlobals.ActiveVessel)Krakensbane.ResetVelocityFrame(true);
+                RingCollisionFrame.Reset(__instance);
                 __instance.SetWorldVelocity(ConvertVector.Ksp(RingGeometry.Rotate(r.Velocity,f.Settings.Geometry.P.Omega*(f.FrameEpoch-r.Epoch))));
             }
         }

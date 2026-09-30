@@ -10,6 +10,12 @@ for name in ('gear','guidance','residence','scenery','landmarks','game','trackin
     assert '[RingworldSmoke] PASS' in report and '[RingworldSmoke] FAIL' not in report, name+' regression not passed'
     if name=='reentry':
         assert report.count('CAMERA entry and exit blends completed')>=2, 'Camera transition regression missing'
+for name in ('installed-issues-smoke','extensions-Base','extensions-Clouds','extensions-Scattering','extensions-Combined'):
+    report=(root/f'artifacts/validation/{name}.txt').read_text(encoding='utf-8-sig')
+    assert '[RingworldSmoke] PASS' in report and '[RingworldSmoke] FAIL' not in report, name+' regression not passed'
+combined=(root/'artifacts/validation/extensions-Combined.txt').read_text(encoding='utf-8-sig')
+assert 'WATER sustained 1500-tick' in combined, 'Sustained flotation regression missing'
+assert 'WATER non-ring' in combined, 'Non-ring dispatch regression missing'
 with zipfile.ZipFile(archive) as package:
     assert package.testzip() is None,'ZIP CRC failure'
     names={n.replace('\\','/'):n for n in package.namelist()}

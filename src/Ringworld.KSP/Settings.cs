@@ -45,6 +45,7 @@ namespace NivenRingworld
         internal int VisualQuality=0,CloudSteps=64,AtmosphereSteps=32,PhotoSamples=16,WaterQuality=0;
         internal double CloudRange=180000,CloudShadow=.85,AtmosphereExposure=1,WaveHeight=.65;
         internal bool FullRingDetail=false;
+        internal bool WaterScattering=false;
         internal bool WaterExtension=true,CloudExtension=true,FullRingAtmosphere=true;
         internal int CloudMode=0;internal double CloudDensity=1;
         internal double WeatherPeriod=21600,WeatherVariation=1,StormChance=.25,CloudWind=8,RainDensity=.7;
@@ -70,6 +71,7 @@ namespace NivenRingworld
             CloudExtension=n.GetValue("cloudExtension")!="False";CloudMode=(int)Math.Max(0,Math.Min(3,Read(n,"cloudMode",VisualQuality>0?VisualQuality:0)));CloudDensity=Math.Max(0,Math.Min(3,Read(n,"cloudDensity",1)));
             WaterExtension=n.GetValue("waterExtension")!="False";FullRingAtmosphere=n.GetValue("fullRingAtmosphere")!="False";
             WaterQuality=(int)Math.Max(0,Math.Min(4,Read(n,"waterQuality",0)));
+            WaterScattering=n.HasValue("waterScattering")?n.GetValue("waterScattering")=="True":WaterQuality>=3;
             CloudRange=Math.Max(30000,Read(n,"cloudRange",180000));
             CloudShadow=Math.Max(0,Math.Min(1,Read(n,"cloudShadow",.85)));
             AtmosphereExposure=Math.Max(.25,Math.Min(2,Read(n,"atmosphereExposure",1)));
@@ -110,7 +112,7 @@ namespace NivenRingworld
             n.AddValue("atmosphereBackend",AtmosphereBackend);n.AddValue("cylaLightSteps",CylaLightSteps);n.AddValue("cylaDivisor",CylaDivisor);n.AddValue("cylaDither",CylaDither);
             n.AddValue("weatherPeriod",WeatherPeriod.ToString("R",CultureInfo.InvariantCulture));n.AddValue("weatherVariation",WeatherVariation.ToString("R",CultureInfo.InvariantCulture));n.AddValue("stormChance",StormChance.ToString("R",CultureInfo.InvariantCulture));n.AddValue("cloudWind",CloudWind.ToString("R",CultureInfo.InvariantCulture));n.AddValue("rainDensity",RainDensity.ToString("R",CultureInfo.InvariantCulture));n.AddValue("rainEnabled",RainEnabled);n.AddValue("lightningEnabled",LightningEnabled);
             n.AddValue("fullRingDetail",FullRingDetail);n.AddValue("forestQuality",ForestQuality);
-            n.AddValue("visualQuality",VisualQuality);n.AddValue("cloudSteps",CloudSteps);n.AddValue("atmosphereSteps",AtmosphereSteps);n.AddValue("photoSamples",PhotoSamples);n.AddValue("waterQuality",WaterQuality);n.AddValue("waterExtension",WaterExtension);n.AddValue("fullRingAtmosphere",FullRingAtmosphere);n.AddValue("cloudExtension",CloudExtension);n.AddValue("cloudMode",CloudMode);n.AddValue("cloudDensity",CloudDensity.ToString("R",CultureInfo.InvariantCulture));
+            n.AddValue("visualQuality",VisualQuality);n.AddValue("cloudSteps",CloudSteps);n.AddValue("atmosphereSteps",AtmosphereSteps);n.AddValue("photoSamples",PhotoSamples);n.AddValue("waterQuality",WaterQuality);n.AddValue("waterExtension",WaterExtension);n.AddValue("waterScattering",WaterScattering);n.AddValue("fullRingAtmosphere",FullRingAtmosphere);n.AddValue("cloudExtension",CloudExtension);n.AddValue("cloudMode",CloudMode);n.AddValue("cloudDensity",CloudDensity.ToString("R",CultureInfo.InvariantCulture));
             n.AddValue("cloudRange",CloudRange.ToString("R",CultureInfo.InvariantCulture));n.AddValue("cloudShadow",CloudShadow.ToString("R",CultureInfo.InvariantCulture));n.AddValue("atmosphereExposure",AtmosphereExposure.ToString("R",CultureInfo.InvariantCulture));n.AddValue("waveHeight",WaveHeight.ToString("R",CultureInfo.InvariantCulture));
             foreach(var pair in new[]{new[]{"radius",Geometry.P.Radius.ToString("R",CultureInfo.InvariantCulture)},new[]{"width",Geometry.P.Width.ToString("R",CultureInfo.InvariantCulture)},new[]{"gravity",Geometry.P.Gravity.ToString("R",CultureInfo.InvariantCulture)},new[]{"wallHeight",Geometry.P.WallHeight.ToString("R",CultureInfo.InvariantCulture)},new[]{"surfaceDensity",Geometry.P.SurfaceDensity.ToString("R",CultureInfo.InvariantCulture)},new[]{"predictionSeconds",PredictionSeconds.ToString("R",CultureInfo.InvariantCulture)},new[]{"surfaceWarpLimit",SurfaceWarpLimit.ToString("R",CultureInfo.InvariantCulture)},new[]{"pondAmount",PondAmount.ToString("R",CultureInfo.InvariantCulture)}})n.AddValue(pair[0],pair[1]);
             n.AddValue("showTrajectory",ShowTrajectory);n.AddValue("detailDistance",DetailDistance.ToString("R",CultureInfo.InvariantCulture));n.AddValue("ambientParticles",AmbientParticles);

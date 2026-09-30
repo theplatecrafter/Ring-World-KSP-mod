@@ -1,9 +1,9 @@
 ManifestFileVersion: 0
-CRC: 2826538682
+CRC: 2075679984
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: 0e5ffd07d2924efff5f28f71a629f9a1
+    Hash: ae5fdaa3b4a342d50b637ea787d842f1
   TypeTreeHash:
     serializedVersion: 2
     Hash: 0750d4576eedfd971a9815dc06e921b6
@@ -17,15 +17,11 @@ SerializeReferenceClassIdentifiers: []
 Assets:
 - Assets/Shaders/CloudCoverageProbe.shader
 - Assets/Shaders/GlobalClouds.shader
-- Assets/Shaders/RingWater.shader
-- Assets/Shaders/RingWaterRefraction.shader
 - Assets/Shaders/DistantSurface.shader
 - Assets/CloudNoise.asset
 - Assets/Shaders/Precipitation.shader
-- Assets/Shaders/FullRingAtmosphere.shader
 - Assets/Shaders/TerrainNight.shader
 - Assets/Shaders/TerrainTransition.shader
 - Assets/Shaders/RingAtmosphere.shader
-- Assets/CloudShape.asset
 - Assets/Shaders/CloudDeck.shader
 Dependencies: []

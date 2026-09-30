@@ -127,6 +127,7 @@ namespace NivenRingworld
             var smokeOptions=RingworldScenario.Instance.GetOptions().CreateCopy();smokeOptions.SetValue("seed",-739779896,true);RingQualityPresets.Apply(smokeOptions,6);
             flight.ApplyOptions(smokeOptions,true);
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-multi-ring-only")>=0){yield return MultiRingSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-installed-issues-only")>=0){yield return InstalledIssueSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-integrations-only")>=0){yield return IntegrationSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-science-only")>=0){yield return ResearchSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-wall-only")>=0){yield return WallSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
@@ -604,12 +605,14 @@ namespace NivenRingworld
             if(clearance<.59){Fail("Camera stayed below floor");yield break;}
             var lake=flight.Settings.Terrain.Landmarks.Find(l=>l.Id=="waterway");
             var lakeSample=flight.Settings.Terrain.Sample(lake.Along,lake.Across);
-            var wetCamera=(Vector3)(flight.Star.position+ConvertVector.Ksp(geom.Position(lake.Along,lake.Across,lakeSample.WaterHeight-2)));
+            double cameraDepth=Math.Min(2,(lakeSample.WaterHeight-lakeSample.Height)*.5);
+            if(!lakeSample.Wet||cameraDepth<.7){Fail("Underwater camera fixture too shallow");yield break;}
+            var wetCamera=(Vector3)(flight.Star.position+ConvertVector.Ksp(geom.Position(lake.Along,lake.Across,lakeSample.WaterHeight-cameraDepth)));
             var wetTarget=(Vector3)(flight.Star.position+ConvertVector.Ksp(geom.Position(lake.Along,lake.Across,lakeSample.WaterHeight+10)));
             var waterSafe=flight.ConstrainCamera(wetCamera,wetTarget,.6f);
             double waterClearance=geom.Coordinates(ConvertVector.Core((Vector3d)waterSafe-flight.Star.position)).Altitude-lakeSample.WaterHeight;
             Debug.Log("[RingworldSmoke] WATER CAMERA clearance="+waterClearance+" ALTITUDE="+flight.SurfaceClearance(v)+" LOD blocks="+flight.LodCount);
-            if(waterClearance<.55||flight.SurfaceClearance(v)>10||flight.LodCount<50){Fail("Water camera, ring altitude or terrain LOD failed");yield break;}
+            if(Math.Abs(waterClearance+cameraDepth)>.25||flight.SurfaceClearance(v)>10||flight.LodCount<50){Fail("Underwater camera, ring altitude or terrain LOD failed");yield break;}
             Debug.Log("[RingworldSmoke] GRAPHICS "+StockGraphics.Description+" KSP_AA="+GameSettings.ANTI_ALIASING+" KSP_TEXTURE="+GameSettings.TEXTURE_QUALITY);
             var detailFixture=new GroundDetails(flight.Settings);bool originalScatter=GameSettings.PLANET_SCATTER;float originalDensity=GameSettings.PLANET_SCATTER_FACTOR;
             try

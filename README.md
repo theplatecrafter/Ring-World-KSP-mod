@@ -1,4 +1,4 @@
-# Niven Ringworld Expedition 1.1.4
+# Niven Ringworld Expedition 1.1.5
 
 A Larry Niven-inspired, star-encircling habitat with a landable rotating interior, procedural terrain, atmosphere, science and persistent expeditions. The default world uses one-tenth of the published linear ring dimensions. Original geography and architecture are interpretations of the setting.
 
@@ -22,7 +22,13 @@ When settled on dry ground, use **KSP's stock time-warp controls**. Universal ti
 
 Open the Ringworld panel → Settings → **Sandbox: manage ring worlds**. Select an existing star or no designated star, enter the center offset in km, dimensions and seed, then spawn a new ring. The list selects a ring for editing; **Visit selected ring** transfers the active vessel. All rings have distant outlines, while detailed terrain runs around the current habitat. Moving/deleting an occupied ring is blocked; at least one ring must remain. See [multiple-ring behavior and limits](docs/guides/MULTIPLE-RINGS.md).
 
-## v1.1.4
+## v1.1.5
+
+Enhanced rendering is now provided by two optional downloads: [Ringworld Clouds](https://github.com/theplatecrafter/Ringworld-Clouds-KSP) and [Ringworld Scattering](https://github.com/theplatecrafter/Ringworld-Scattering-KSP). The base mod retains lightweight visuals and all gameplay. Install either extension, both, or neither. They require base 1.1.5 and have their own quality controls in the Ringworld panel.
+
+This release also adds stock-compatible immersion and displacement-based buoyancy, SunkWorks water-query support, and the ReStock Surveyor model fix. See the release notes for tested cases and remaining limitations.
+
+## Previous v1.1.4 highlights
 
 - Cyla optical-distance and scene-depth scaling corrects a locally reproduced near-surface black sky. Confirmation on affected NVIDIA/Proton machines is pending; please report the new session's KSP.log if it persists.
 - Quality presets disable the unfiltered Cyla dithering that produced patterned skies. Low sample counts can still show broad gradients from high camera altitudes; further improvements are tracked.
@@ -73,7 +79,7 @@ This does not certify arbitrary fleets, every mod combination, every aircraft or
 
 ## Development and Blender sources
 
-All work stays in this project. The development game is `template_instance`. Editable art is under `art/first-set`, `art/habitat-kit`, `art/city-kit` and `art/landmark-kit`; the latest scene is `art/landmark-kit/Ringworld-Landmarks.blend`. The runtime ZIP contains compiled assets, not Blender or game files.
+The base and extension repositories share a parent workspace. The development game is the sibling `../template_instance`; see [workspace setup](docs/developers/WORKSPACE.md). Editable art is under `art/first-set`, `art/habitat-kit`, `art/city-kit` and `art/landmark-kit`; the latest scene is `art/landmark-kit/Ringworld-Landmarks.blend`. The runtime ZIP contains compiled assets, not Blender or game files.
 
 With a .NET SDK and your KSP 1.12.5 installation:
 

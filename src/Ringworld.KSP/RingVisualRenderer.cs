@@ -65,7 +65,7 @@ namespace NivenRingworld
             {
                 if(!SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBHalf)||!SystemInfo.supports3DTextures)throw new InvalidOperationException("GPU does not support the required volume textures.");
                 bundle=RingVisualAssets.Acquire();if(bundle==null)throw new InvalidOperationException("Ringworld visual shader bundle is missing or incompatible.");
-                var shader=bundle.LoadAsset<Shader>("Assets/Shaders/RingAtmosphere.shader");
+                var shader=Extensions.ExtensionProviders.Clouds?.AtmosphereShader??bundle.LoadAsset<Shader>("Assets/Shaders/RingAtmosphere.shader");
                 if(shader==null||!shader.isSupported)throw new InvalidOperationException("Ringworld volumetric shader is unsupported on this graphics API.");
                 material=new Material(shader);material.SetTexture("_Noise",bundle.LoadAsset<Texture3D>("Assets/CloudNoise.asset"));
                 clouds=new Extensions.RingworldClouds(material,bundle);
@@ -74,7 +74,7 @@ namespace NivenRingworld
             }
             catch(Exception e){if(material!=null)Destroy(material);material=null;clouds=null;failed=true;Status=e.Message+" Using laptop atmosphere.";Debug.LogError("[NivenRingworld] "+Status);return false;}
         }
-        internal Shader WaterShader(bool refraction=false){return EnsureAssets()?bundle.LoadAsset<Shader>(refraction?"Assets/Shaders/RingWaterRefraction.shader":"Assets/Shaders/RingWater.shader"):null;}
+        internal Shader WaterShader(bool refraction=false){return Extensions.ExtensionProviders.Scattering?.WaterShader(refraction);}
         internal void Prepare(bool allowed,Vector3d star)
         {
             if(PhotoActive&&(!allowed||MapView.MapIsEnabled)){EndPhoto();Status="Photo cancelled after camera/scene change.";}

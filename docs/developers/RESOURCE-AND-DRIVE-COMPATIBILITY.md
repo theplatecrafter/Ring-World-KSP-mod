@@ -34,6 +34,14 @@ Source audits: [KFS hover engine](https://github.com/Angel-125/FlyingSaucers/blo
 
 ## Adapter organization
 
+### Aquatic modules (development)
+
+Ring water supplies `Part.submergedPortion`, `Part.WaterContact`, `PartBuoyancy` immersion/force fields and `Vessel.Splashed`. Buoyancy uses displaced volume rather than fixed upward acceleration; ballast mass therefore changes the resulting acceleration. The host star's ocean flag and density are not modified.
+
+The optional `aquaticModules` compatibility switch redirects ocean-existence and intake/thrust-transform altitude queries in SunkWorks `WBIBallastTank.updateBallastResource` and `WBIAquaticEngine.checkUnderwater`. Above water or outside a wet terrain sample, intakes remain dry. Outside the ring, stock queries remain unchanged. The adapter also recognizes the legacy WildBlueIndustries type names when present.
+
+[SunkWorks source](https://github.com/Angel-125/SunkWorks/tree/main/source/SunkWorks/PartModules/Submarine) was chosen as a representative ballast/underwater-engine implementation; the original reporter's parts and version are unknown. This is not a claim of support for every aquatic mod. Dive computers, hull pressure damage, supercavitation and autopilot logic still require separate validation. No third-party code or assets are bundled.
+
 Public APIs are the shared source of data. Optional third-party bridges live in `src/Ringworld.KSP/Compatibility`, separate from stock integration. `GameData/NivenRingworld/Compatibility.cfg` exposes `hooliganLabsAirships`, `heisenbergLift` and `kfsHover`; each defaults true but is installed only when its target plugin exists. Restart KSP after changing these switches. ModuleManager can edit them, for example:
 
 ```cfg

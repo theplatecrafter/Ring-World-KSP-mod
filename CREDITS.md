@@ -1,5 +1,7 @@
 # Credits and attribution
 
+[john-d-alexander](https://github.com/john-d-alexander) contributed the legacy Surveyor's ReStock compatibility and Science-category fix in [PR #2](https://github.com/theplatecrafter/Ring-World-KSP-mod/pull/2).
+
 **Cyla by Ghassen Lahmar (LGhassen / blackrack)** provides the optional cylindrical atmosphere shader: https://github.com/LGhassen/Cyla . Copyright (c) 2024 Ghassen Lahmar. Integration targets 1.1.0. Install Cyla separately; v1.1.3 no longer bundles its binaries, shaders or source. Its original license/compiled-shader notice applies to that separate download.
 
 The Ringworld adapter, precision workaround, presets, camera isolation and photo workflow are this project's work, not upstream Cyla features. We do not claim ownership of Cyla or reconstruct its shader source. See THIRD-PARTY-NOTICES.md.

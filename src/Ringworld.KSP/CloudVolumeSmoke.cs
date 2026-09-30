@@ -30,7 +30,9 @@ namespace NivenRingworld
         internal static void Run(Settings settings,AssetBundle bundle)
         {
             CheckDeck(settings,bundle);
-            var shader=bundle.LoadAsset<Shader>("Assets/Shaders/RingAtmosphere.shader");
+            if(Extensions.ExtensionProviders.Clouds==null){Debug.Log("[RingworldSmoke] Cloud volume extension absent; base deck verified");return;}
+            bundle=Extensions.ExtensionProviders.Clouds.Assets;
+            var shader=Extensions.ExtensionProviders.Clouds.AtmosphereShader;
             if(shader==null||!shader.isSupported)throw new Exception("Cloud extension shader unsupported");
             var mat=new Material(shader);var extension=new Extensions.RingworldClouds(mat,bundle);
             var depth=new Texture2D(1,1,TextureFormat.RGBAFloat,false,true);depth.SetPixel(0,0,new Color(200000,0,0,0));depth.Apply();

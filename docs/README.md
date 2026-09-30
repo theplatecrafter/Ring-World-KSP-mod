@@ -31,6 +31,7 @@ Explore the world's design or plan an add-on:
 - [Parallax terrain integration reply](developers/PARALLAX-REPLY.md)
 - [Reference frames and mod compatibility](developers/MOD-INTEROPERABILITY.md)
 - [Visual and utility integrations: v1.1.5 test plan](developers/VISUAL-INTEGRATIONS.md)
+- [Reported issues and regression coverage](developers/ISSUE-REGRESSIONS.md)
 - [Cyla integration](developers/CYLA-INTEGRATION.md)
 - [Clouds and weather implementation](developers/CLOUDS-AND-WEATHER.md)
 - [CKAN publishing](publishing/CKAN-PUBLISHING.md)
@@ -38,3 +39,5 @@ Explore the world's design or plan an add-on:
 ## Development archive
 
 The [validation log](history/VALIDATION.md), [earlier design notes](history/DEVELOPMENT-NOTES.md) and [graphics investigation](history/GRAPHICS-DIAGNOSIS.md) preserve technical evidence. They describe specific builds and tests, and are not current installation or gameplay instructions.
+
+- [Shared development workspace](developers/WORKSPACE.md)

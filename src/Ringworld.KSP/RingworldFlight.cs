@@ -279,20 +279,11 @@ namespace NivenRingworld
                     // This acceleration belongs to the opted-in rotating frame, not to a spherical SOI.
                     DVec stock=ConvertVector.Core(FlightGlobals.getGeeForceAtPosition(rb.worldCenterOfMass,v.mainBody));
                     DVec acceleration=Acceleration(pos,vel,false)+ribbonPull-stock;
-                    if(Settings.Atmosphere && Math.Abs(coord.Across)<Settings.Geometry.P.Width/2)
-                    {
-                        var terrain=Settings.Terrain.Sample(coord.Along,coord.Across);
-                        // FlightIntegrator supplies aerodynamic drag. This term is water damping only.
-                        double drag=0,submersion=0;
-                        if(terrain.Wet)
-                        {
-                            submersion=Math.Max(0,Math.Min(1,(terrain.WaterHeight-coord.Altitude+1)/2));
-                            acceleration+=Settings.Geometry.Up(pos)*(Settings.Geometry.P.Gravity*2.5*submersion);
-                            drag+=submersion*.7;
-                        }
-                        double speed=vel.Length;
-                        if(speed>1e-6)acceleration-=vel*((1-Math.Exp(-drag*speed*Time.fixedDeltaTime))/Time.fixedDeltaTime);
-                    }
+                    // PartBuoyancy now supplies mass-independent displacement forces.
+                    // Retain bounded water damping, but never the old 2.5g lift which
+                    // made even arbitrarily heavy ballast tanks float.
+                    double drag=Math.Max(0,part.submergedPortion)*.7,speed=vel.Length;
+                    if(speed>1e-6)acceleration-=vel*((1-Math.Exp(-drag*speed*Time.fixedDeltaTime))/Time.fixedDeltaTime);
                     rb.AddForce(ConvertVector.Unity(acceleration),ForceMode.Acceleration);
                 }
             }

@@ -7,7 +7,7 @@ namespace NivenRingworld
     {
         private readonly RingSandboxEditor rings=new RingSandboxEditor();
         private bool cloudExtension;private int cloudMode;private float cloudDensity;
-        private bool fullRingAtmosphere;private bool waterExtension;private bool cylaAdvanced;private string[] cylaFields;private int cylaMode;
+        private bool fullRingAtmosphere;private bool waterExtension;private bool waterScattering;private bool cylaAdvanced;private string[] cylaFields;private int cylaMode;
         private bool initialized,dynamicWeather,trajectory,particles,fullRingDetail,rainEnabled,lightningEnabled;
         private string seed,range,height,forest,day,haze,cloud,diameter,width,gravity,wall,density,prediction,warp,ponds,detailDistance,message="";
         private int quality,budget,visualQuality,waterQuality,forestQuality;
@@ -29,7 +29,7 @@ namespace NivenRingworld
                 day=N(s.Geometry.P.DaySeconds/3600);haze=N(s.Haze);cloud=N(s.CloudAmount*100);dynamicWeather=s.DynamicWeather;
                 diameter=N(s.Geometry.P.Radius/500);width=N(s.Geometry.P.Width/1000);gravity=N(s.Geometry.P.Gravity);wall=N(s.Geometry.P.WallHeight/1000);density=N(s.Geometry.P.SurfaceDensity);prediction=N(s.PredictionSeconds/60);warp=N(s.SurfaceWarpLimit);ponds=N(s.PondAmount);trajectory=s.ShowTrajectory;
                 detailDistance=N(s.DetailDistance);particles=s.AmbientParticles;
-                weatherPeriod=N(s.WeatherPeriod/3600);weatherVariation=N(s.WeatherVariation);stormChance=N(s.StormChance);cloudWind=N(s.CloudWind);rainDensity=N(s.RainDensity);rainEnabled=s.RainEnabled;lightningEnabled=s.LightningEnabled;fullRingDetail=s.FullRingDetail;visualQuality=s.VisualQuality;waterQuality=s.WaterQuality;waterExtension=s.WaterExtension;fullRingAtmosphere=s.FullRingAtmosphere;cloudExtension=s.CloudExtension;cloudMode=s.CloudMode;cloudDensity=(float)s.CloudDensity;cloudSteps=N(s.CloudSteps);airSteps=N(s.AtmosphereSteps);cloudRange=N(s.CloudRange/1000);cloudShadow=N(s.CloudShadow);exposure=N(s.AtmosphereExposure);waveHeight=N(s.WaveHeight);photoSamples=N(s.PhotoSamples);
+                weatherPeriod=N(s.WeatherPeriod/3600);weatherVariation=N(s.WeatherVariation);stormChance=N(s.StormChance);cloudWind=N(s.CloudWind);rainDensity=N(s.RainDensity);rainEnabled=s.RainEnabled;lightningEnabled=s.LightningEnabled;fullRingDetail=s.FullRingDetail;visualQuality=s.VisualQuality;waterQuality=s.WaterQuality;waterExtension=s.WaterExtension;waterScattering=s.WaterScattering;fullRingAtmosphere=s.FullRingAtmosphere;cloudExtension=s.CloudExtension;cloudMode=s.CloudMode;cloudDensity=(float)s.CloudDensity;cloudSteps=N(s.CloudSteps);airSteps=N(s.AtmosphereSteps);cloudRange=N(s.CloudRange/1000);cloudShadow=N(s.CloudShadow);exposure=N(s.AtmosphereExposure);waveHeight=N(s.WaveHeight);photoSamples=N(s.PhotoSamples);
                 atmosphereBackend=s.AtmosphereBackend;cylaResolution=s.CylaDivisor==8?0:s.CylaDivisor==4?1:s.CylaDivisor==2?2:3;cylaDither=s.CylaDither;cylaLightSteps=N(s.CylaLightSteps);presetLabel=RingQualityPresets.Match(s);forestQuality=s.ForestQuality;quality=s.LodResolution==8?0:s.LodResolution==16?1:2;budget=s.GenerationBudget-1;initialized=true;
             }
             rings.Draw(flight);
@@ -63,6 +63,7 @@ namespace NivenRingworld
             cloudShadow=Field("Cloud self-shadow strength (0 to 1)",cloudShadow);
             exposure=Field("Atmosphere brightness (0.25 to 2)",exposure);
             GUILayout.Label("Ringworld extensions");
+            GUILayout.Label("Installed extensions: Clouds="+(Extensions.ExtensionProviders.Clouds!=null)+" | Scattering="+(Extensions.ExtensionProviders.Scattering!=null));
             cloudExtension=GUILayout.Toggle(cloudExtension,"Ringworld Clouds: cloud-volume extension");
             cloudMode=GUILayout.Toolbar(cloudMode,new[]{"Layers only","Economy","Balanced","Detailed"});
             GUILayout.Label("Volume density: "+cloudDensity.ToString("0.00"));cloudDensity=GUILayout.HorizontalSlider(cloudDensity,0,3);
@@ -71,6 +72,8 @@ namespace NivenRingworld
             fullRingAtmosphere=GUILayout.Toggle(fullRingAtmosphere,"Full-ring atmosphere (map, space and distant sky)");
             GUILayout.Label("Lightweight distant scattering blends into Cyla or Original nearby. No terrain distance cutoff. This is an optical approximation, not the external Scatterer mod.");
             waterExtension=GUILayout.Toggle(waterExtension,"Enhanced water surface");
+            waterScattering=GUILayout.Toggle(waterScattering,"Water light shafts (above and below surface)");
+            GUILayout.Label("Detailed/Ultra water: scattering through transparent water, including views from above.");
             GUILayout.Label("Disable for basic translucent water. This affects appearance only and needs no separate mod.");
             GUILayout.Label("Ringworld water quality");waterQuality=GUILayout.Toolbar(waterQuality,new[]{"Flat","Ripples","Waves","Detailed","Ultra"});
             waveHeight=Field("Visual wave amplitude (0 to 2 m)",waveHeight);
@@ -124,7 +127,7 @@ namespace NivenRingworld
                 else if(!int.TryParse(seed,NumberStyles.Integer,CultureInfo.InvariantCulture,out resolved)){message="Seed must be a signed 32-bit integer or blank.";return;}
                 var n=s.Save();for(int i=0;i<cylaFields.Length;i++){double value;var def=CylaOptions.Definitions[i];if(!Number(cylaFields[i],def.Min,def.Max,out value)){message="Invalid Cyla value: "+def.Label;return;}n.SetValue(def.Key,value.ToString("R",CultureInfo.InvariantCulture),true);}n.SetValue("cylaLightingMode",cylaMode,true);n.SetValue("atmosphereBackend",atmosphereBackend,true);n.SetValue("cylaLightSteps",(int)cls,true);n.SetValue("cylaDivisor",new[]{8,4,2,1}[cylaResolution],true);n.SetValue("cylaDither",cylaDither,true);
                 n.SetValue("weatherPeriod",N(wp*3600),true);n.SetValue("weatherVariation",N(wv),true);n.SetValue("stormChance",N(sc),true);n.SetValue("cloudWind",N(cw),true);n.SetValue("rainDensity",N(rd),true);n.SetValue("rainEnabled",rainEnabled,true);n.SetValue("lightningEnabled",lightningEnabled,true);
-                n.SetValue("forestQuality",forestQuality,true);n.SetValue("fullRingDetail",fullRingDetail,true);n.SetValue("visualQuality",visualQuality,true);n.SetValue("waterQuality",waterQuality,true);n.SetValue("waterExtension",waterExtension,true);n.SetValue("fullRingAtmosphere",fullRingAtmosphere,true);n.SetValue("cloudExtension",cloudExtension,true);n.SetValue("cloudMode",cloudMode,true);n.SetValue("cloudDensity",N(cloudDensity),true);n.SetValue("cloudSteps",(int)cs,true);n.SetValue("atmosphereSteps",(int)ats,true);n.SetValue("cloudRange",N(cr*1000),true);n.SetValue("cloudShadow",N(sh),true);n.SetValue("atmosphereExposure",N(ex),true);n.SetValue("waveHeight",N(wh),true);n.SetValue("photoSamples",(int)ps,true);
+                n.SetValue("forestQuality",forestQuality,true);n.SetValue("fullRingDetail",fullRingDetail,true);n.SetValue("visualQuality",visualQuality,true);n.SetValue("waterQuality",waterQuality,true);n.SetValue("waterExtension",waterExtension,true);n.SetValue("waterScattering",waterScattering,true);n.SetValue("fullRingAtmosphere",fullRingAtmosphere,true);n.SetValue("cloudExtension",cloudExtension,true);n.SetValue("cloudMode",cloudMode,true);n.SetValue("cloudDensity",N(cloudDensity),true);n.SetValue("cloudSteps",(int)cs,true);n.SetValue("atmosphereSteps",(int)ats,true);n.SetValue("cloudRange",N(cr*1000),true);n.SetValue("cloudShadow",N(sh),true);n.SetValue("atmosphereExposure",N(ex),true);n.SetValue("waveHeight",N(wh),true);n.SetValue("photoSamples",(int)ps,true);
                 n.SetValue("lodRange",N(r*1000));n.SetValue("lodResolution",new[]{8,16,32}[quality]);n.SetValue("generationBudget",budget+1);
                 n.SetValue("haze",N(a));n.SetValue("cloudAmount",N(c/100));n.SetValue("dynamicWeather",dynamicWeather);
                 n.SetValue("detailDistance",N(dd),true);n.SetValue("ambientParticles",particles,true);

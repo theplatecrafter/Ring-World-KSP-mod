@@ -126,14 +126,15 @@ namespace NivenRingworld
             p.Scaled=b.Size>=65536&&b.DistanceSquared(lastX*settings.TileSize,lastY*settings.TileSize)>250000.0*250000;
             p.Root.layer=p.Scaled?10:15;
             var colors=new Color[count];
-            var wet=new bool[count];var waterUv=new Vector2[count];
+            var seabed=new Vector3[count];var wet=new bool[count];var waterUv=new Vector2[count];
             var vertices=new List<Vector3>(count+4*(n+1));var uv=new List<Vector2>(vertices.Capacity);var longitude=new List<Vector2>(vertices.Capacity);var triangles=new List<int>();
             for(int y=0;y<=n;y++)for(int x=0;x<=n;x++)
             {
                 double a=Math.Max(plannedAlong-settings.Geometry.P.Circumference/2,Math.Min(plannedAlong+settings.Geometry.P.Circumference/2,b.X+b.Size*x/n)),c=b.Y+b.Size*y/n;double rawAcross=c;c=Math.Max(-settings.Geometry.P.Width/2,Math.Min(settings.Geometry.P.Width/2,c));var s=settings.Terrain.Sample(a,Math.Max(-settings.Geometry.P.Width/2+.01,Math.Min(settings.Geometry.P.Width/2-.01,c)));
                 var appearance=BiomePresentation.Sample(settings.Terrain,a,c,s,b.Size/n,Math.Min(2,settings.ForestDensity*StockGraphics.Scatter));
-                double h=(s.Wet?s.WaterHeight+.5:s.Height+(b.Size>ForestCanopy.MaximumDistantBlock(settings)?appearance.CanopyHeight:0))-.2;
+                double h=(s.Wet?s.WaterHeight+.3:s.Height+(b.Size>ForestCanopy.MaximumDistantBlock(settings)?appearance.CanopyHeight:0))-.2;
                 vertices.Add(ConvertVector.Unity(settings.Geometry.Position(a,c,h)-p.Anchor));
+                seabed[y*(n+1)+x]=ConvertVector.Unity(settings.Geometry.Position(a,c,s.Height)-p.Anchor);
                 wet[y*(n+1)+x]=s.Wet;waterUv[y*(n+1)+x]=new Vector2(s.Wet?(float)Math.Max(0,s.WaterHeight-s.Height):0,(float)(b.Size/n));
                 uv.Add(new Vector2((x+.5f)/(n+1),(y+.5f)/(n+1)));longitude.Add(new Vector2((float)(a/settings.Geometry.P.Circumference),0));colors[y*(n+1)+x]=FeatherColour(b,neighbours,a,c,TerrainTint.WithCanopy(s,appearance));
                 if(x<n&&y<n&&rawAcross<settings.Geometry.P.Width/2&&rawAcross+b.Size/n>-settings.Geometry.P.Width/2){int i=y*(n+1)+x;triangles.AddRange(new[]{i,i+n+1,i+1,i+1,i+n+1,i+n+2});}
@@ -141,21 +142,22 @@ namespace NivenRingworld
             var f=RingworldFlight.Instance;
             if(!p.Scaled&&(settings.WaterQuality>0))
             {
-                var waterIndices=new List<int>();var groundIndices=new List<int>();
+                var waterIndices=new List<int>();
                 for(int i=0;i<triangles.Count;i+=3)
                 {
-                    var target=wet[triangles[i]]&&wet[triangles[i+1]]&&wet[triangles[i+2]]?waterIndices:groundIndices;
+                    if(!(wet[triangles[i]]&&wet[triangles[i+1]]&&wet[triangles[i+2]]))continue;
+                    var target=waterIndices;
                     target.Add(triangles[i]);target.Add(triangles[i+1]);target.Add(triangles[i+2]);
                 }
-                triangles=groundIndices;
+                // Keep every ground triangle beneath transparent water.
                 if(waterIndices.Count>0)
                 {
                     p.WaterMesh=new Mesh{name="Ringworld LOD water"};p.WaterMesh.SetVertices(vertices);p.WaterMesh.uv=waterUv;p.WaterMesh.SetTriangles(waterIndices,0);p.WaterMesh.RecalculateNormals();p.WaterMesh.RecalculateBounds();var bounds=p.WaterMesh.bounds;bounds.Expand(4);p.WaterMesh.bounds=bounds;
                     var water=new GameObject("Ringworld LOD waves");water.layer=15;water.transform.SetParent(p.Root.transform,false);water.AddComponent<MeshFilter>().sharedMesh=p.WaterMesh;
                     var wr=water.AddComponent<MeshRenderer>();wr.sharedMaterial=waterMaterial;wr.shadowCastingMode=ShadowCastingMode.Off;
-                    // Terrain crack skirts must stay below wave troughs. Their old
-                    // mean-water tops appeared as dark lines between water patches.
-                    for(int i=0;i<count;i++)if(wet[i])vertices[i]-=ConvertVector.Unity(settings.Geometry.Up(p.Anchor+ConvertVector.Core(vertices[i])))*(float)(settings.WaveHeight+1);
+                    // Retain sampled bathymetry beneath the separate water surface. Old
+                    // mean-water ground/skirt tops caused lines between water patches.
+                    for(int i=0;i<count;i++)if(wet[i])vertices[i]=seabed[i];
                 }
             }
             // Render-only skirts conceal T-junction gaps; physical ground is exclusively

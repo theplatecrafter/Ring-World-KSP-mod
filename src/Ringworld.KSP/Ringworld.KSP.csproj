@@ -3,10 +3,10 @@
     <TargetFramework>net472</TargetFramework>
     <LangVersion>7.3</LangVersion>
     <AssemblyName>NivenRingworld</AssemblyName>
-    <KspRoot Condition="'$(KspRoot)' == ''">$(MSBuildThisFileDirectory)..\..\template_instance</KspRoot>
+    <KspRoot Condition="'$(KspRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\template_instance</KspRoot>
     <ManagedPath>$(KspRoot)\KSP_x64_Data\Managed</ManagedPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>1.1.5-dev</Version>
+    <Version>1.1.5</Version>
     <DefineConstants Condition="'$(SmokeTest)' == 'true'">$(DefineConstants);RINGWORLD_SMOKE_TEST</DefineConstants>
   </PropertyGroup>
   <ItemGroup>

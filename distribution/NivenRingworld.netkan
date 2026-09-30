@@ -23,7 +23,7 @@
     "repository": "https://github.com/theplatecrafter/Ring-World-KSP-mod",
     "bugtracker": "https://github.com/theplatecrafter/Ring-World-KSP-mod/issues"
   },
-  "x_netkan_note": "Unpublished v1.1.5 metadata proposal. Harmony is required; Cyla and tested visual/utility integrations are optional. Install only GameData/NivenRingworld. External dependencies are never bundled. Do not submit this proposal until v1.1.5 is ready.",
+  "x_netkan_note": "v1.1.5 proposal: Harmony required; Cyla and Ringworld extensions optional. Extension identifiers require indexing before submission. No dependencies are bundled.",
   "suggests": [
     {
       "name": "Cyla",
@@ -40,6 +40,14 @@
     },
     {
       "name": "BetterTimeWarpCont"
+    },
+    {
+      "name": "RingworldClouds",
+      "min_version": "1.0.0"
+    },
+    {
+      "name": "RingworldScattering",
+      "min_version": "1.0.0"
     }
   ]
 }

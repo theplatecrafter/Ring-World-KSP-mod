@@ -1,0 +1,20 @@
+# Reported issue regressions
+
+Development tracking for v1.1.5. A source change or isolated test is not equivalent to reproducing the reporter's craft. Public issues stay open until their remaining cases are verified.
+
+| Report | Development status | Remaining verification |
+| --- | --- | --- |
+| [PR #2: ReStock Surveyor](https://github.com/theplatecrafter/Ring-World-KSP-mod/pull/2) | Merged; stock MODEL retained, optional ModuleManager patch selects the verified ReStock thermometer path. Science category retained. | ReStock 1.5.1 actual loaded Surveyor prefab, meshes and materials passed on 2026-09-30; manual editor appearance remains unreviewed. |
+| [#3: EVA ragdoll](https://github.com/theplatecrafter/Ring-World-KSP-mod/issues/3) | Existing ring frame/contact/walking adapters reviewed. Not yet reproduced with the reporter's craft. | Ladder release, natural landing and recovery without manually forcing recovery. |
+| #3: nearby craft break apart | Removed global velocity-frame reset for non-active craft during unpacking; refresh saved pose before packing and collision history on unpack. Landed craft plus four deployed science units passed the Space Center save/reload regression (`RingworldSmoke-20260928-225932.log`), with 0.036 mm craft position error. | Multi-part landed neighbour crossing physics range with damage enabled; repeated warp regression. |
+| #3: arrival drop | Arrival altitude currently intentionally starts a normal-gravity descent. | Optional gentle arrival remains a feature request; default descent has not been changed. |
+| #3: resource lock/harvest | Development resource/scanner adapter uses ring deposits and does not require unlocking the host Sun biome. Shared abundance tests pass. | End-to-end deployed drill production, including configs removing solar Ore and modded drills. |
+| #3: map vessel switching | Save permission is restricted to grounded, settled ring craft; stock focus/switch paths need a targeted reproduction. | Switching between two supported residents without weakening airborne save restrictions. |
+| #3: Heisenberg lift | Experimental scoped air/gravity query adapters exist. | Actual Heisenberg craft; controller/autopilot support is not implied. |
+| #3: Sun/LANDED scanner labels | Development scanner UI adapter and ring resource identity tests pass. | Third-party instruments may still read host-body fields directly. |
+| [#4: cannot submerge](https://github.com/theplatecrafter/Ring-World-KSP-mod/issues/4) | Replaced mass-independent lift with displacement-based buoyancy; populate part immersion/contact and vessel splash state. Live sinking/lift regression passed in `RingworldSmoke-20260928-155426.log`. | The combined September 30 test adds 1,500 physics ticks of calibrated 49-part flotation, ending at 0.0192 m/s. Damage immunity was enabled; arbitrary boat stability remains unverified. |
+| #4: aquatic engines/ballast | Optional SunkWorks query adapter redirects ocean/intake checks only for ring vessels. | SunkWorks 1.3.1 installed-module wet fill, vent, dry intake rejection and aquatic-engine wet/dry nozzle checks passed (`RingworldSmoke-20260930-020644.log`). Non-ring ocean/altitude and buoyancy dispatch also passed. Full engine thrust, arbitrary boat designs and autopilots remain unverified. |
+
+Water rendering tests cover both sides of the surface: depth-based transmission preserves nearby submerged objects over deep seabeds; optional shafts contribute through the surface as well as beneath it. These checks do not certify reference-image parity or desktop performance. Full scenes use Slow on the development laptop.
+
+Validation logs are kept under `artifacts/validation` and the local KSP instance. Do not distribute decompiled KSP source used for API inspection.
