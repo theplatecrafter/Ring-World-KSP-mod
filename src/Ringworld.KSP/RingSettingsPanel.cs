@@ -168,7 +168,7 @@ namespace NivenRingworld
                 GUILayout.Label("Cyla by Ghassen Lahmar (LGhassen / blackrack). GPLv3 plugin; see GameData/Cyla/License.md. Cyla has separate view steps under Advanced optics. Clouds and photo capture remain Ringworld systems. Missing/unsupported Cyla falls back to Original.");
                 cylaAdvanced=GUILayout.Toggle(cylaAdvanced,"Advanced Cyla optics and diagnostics");
                 if(cylaAdvanced){GUILayout.Label("Optical geometry only: radius is a precision-limited proxy; width follows the ring. Inner radius = proxy radius minus thickness. These controls do not change flight physics. Nonzero offsets/tilt deliberately misalign the optical cylinder.");for(int i=0;i<cylaFields.Length;i++)cylaFields[i]=Field(CylaOptions.Definitions[i].Label,cylaFields[i]);GUILayout.Label("Lighting boundary");cylaMode=GUILayout.Toolbar(cylaMode,new[]{"Top / side","Floor","Unlit"});}
-    
+
                 if(GUILayout.Button("Apply Cyla settings")){
                     double steps;
                     if(!Number(cylaLightSteps,1,50,out steps)){message="Cyla light steps must be between 1 and 50.";return;}
