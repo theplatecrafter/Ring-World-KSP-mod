@@ -16,6 +16,12 @@ No dependencies or extensions are bundled. Extract each ZIP into the **KSP insta
 
 ## Release-v1.1.5
 
+### Extension control panel update
+
+- Dedicated Extensions tab with collapsible Clouds, Scattering and Cyla controls, available in all game modes.
+- Installed Ringworld extensions default to enabled; existing saved disabled choices are retained. Enable switches apply immediately. Quality presets continue to control cost, including layers-only clouds on Slow and lower.
+- Normal Settings no longer overwrites extension-specific edits.
+
 ### Dependencies and optional integrations
 
 - Required: KSP 1.12.5 and separately installed Harmony 2 >= 2.2.1.0 (tested 2.2.1.0).

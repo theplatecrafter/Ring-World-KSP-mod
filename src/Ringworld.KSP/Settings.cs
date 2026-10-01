@@ -68,8 +68,8 @@ namespace NivenRingworld
             CloudSteps=(int)Math.Max(32,Math.Min(256,Read(n,"cloudSteps",64)));
             AtmosphereSteps=(int)Math.Max(16,Math.Min(96,Read(n,"atmosphereSteps",32)));
             PhotoSamples=(int)Math.Max(1,Math.Min(64,Read(n,"photoSamples",16)));
-            CloudExtension=n.GetValue("cloudExtension")!="False";CloudMode=(int)Math.Max(0,Math.Min(3,Read(n,"cloudMode",VisualQuality>0?VisualQuality:0)));CloudDensity=Math.Max(0,Math.Min(3,Read(n,"cloudDensity",1)));
-            WaterExtension=n.GetValue("waterExtension")!="False";FullRingAtmosphere=n.GetValue("fullRingAtmosphere")!="False";
+            CloudExtension=!string.Equals(n.GetValue("cloudExtension"),"false",StringComparison.OrdinalIgnoreCase);CloudMode=(int)Math.Max(0,Math.Min(3,Read(n,"cloudMode",VisualQuality>0?VisualQuality:0)));CloudDensity=Math.Max(0,Math.Min(3,Read(n,"cloudDensity",1)));
+            WaterExtension=!string.Equals(n.GetValue("waterExtension"),"false",StringComparison.OrdinalIgnoreCase);FullRingAtmosphere=!string.Equals(n.GetValue("fullRingAtmosphere"),"false",StringComparison.OrdinalIgnoreCase);
             WaterQuality=(int)Math.Max(0,Math.Min(4,Read(n,"waterQuality",0)));
             WaterScattering=n.HasValue("waterScattering")?n.GetValue("waterScattering")=="True":WaterQuality>=3;
             CloudRange=Math.Max(30000,Read(n,"cloudRange",180000));

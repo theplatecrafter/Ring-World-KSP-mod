@@ -2,9 +2,11 @@
 
 Extensions add optional rendering features designed for the ring's cylindrical surface. They are separate downloads for base v1.1.5. Install [Ringworld Clouds](https://github.com/theplatecrafter/Ringworld-Clouds-KSP) for cloud volumes and [Ringworld Scattering](https://github.com/theplatecrafter/Ringworld-Scattering-KSP) for enhanced water and distant atmosphere. Both require the base; neither is required by it. Their first releases target base 1.1.5. CKAN availability depends on separate indexing.
 
+Installed extensions start enabled unless this save already contains an explicit disabled choice. Expand a section in **Extensions** to edit its settings. This tab is available in Sandbox, Science and Career. Clouds, Scattering and Cyla have separate sections. Quality presets still control detail: Slow and below use lightweight cloud layers even with Clouds installed. Disabling an extension is retained when you save the game.
+
 ## Ringworld Scattering: water
 
-Open the Ringworld panel, choose **Settings**, find **Ringworld extensions**, and enable or disable **Ringworld Water: enhanced surface rendering**. Click **Apply settings**, then save the game to retain the choice. Each ring stores its own choice. Quality presets change water quality but preserve the extension switch.
+Open the Ringworld panel, choose **Extensions**, expand **Ringworld Scattering**, and use the **Enabled** switch at the top. Changes to this switch apply immediately; other water controls use **Apply scattering settings**. Then then save the game to retain the choice. Each ring stores its own choice. Quality presets change water quality but preserve the extension switch.
 
 | Water quality | Rendering |
 | --- | --- |
@@ -26,13 +28,13 @@ This is original Ringworld rendering, not Scatterer running on the ring. Reflect
 
 Detailed and Ultra integrate the submerged part of the view ray even while the camera is above water. Scene depth limits absorption to the first opaque submerged object or seabed; a shallow object is no longer attenuated using the entire depth of a deep ocean. Clear shallow water transmits more of the scene, while long underwater paths progressively lose contrast and red light. Deep oceans are not expected to reveal their entire floor.
 
-**Settings -> Ringworld extensions -> Water light shafts (above and below surface)** controls the extra sampled illumination. It requires enhanced water and Detailed/Ultra water quality; Strong and higher presets enable it, lower presets disable it. Disabling shafts retains basic absorption and scattered water colour. Save the game after applying changes to retain the setting. Below-surface camera scattering and above-surface transmission share the same water-medium model. The expensive camera postprocess only runs while submerged; above-water scattering runs on visible water pixels.
+**Extensions -> Water light shafts (above and below surface)** controls the extra sampled illumination. It requires enhanced water and Detailed/Ultra water quality; Strong and higher presets enable it, lower presets disable it. Disabling shafts retains basic absorption and scattered water colour. Save the game after applying changes to retain the setting. Below-surface camera scattering and above-surface transmission share the same water-medium model. The expensive camera postprocess only runs while submerged; above-water scattering runs on visible water pixels.
 
 The depth path uses opaque objects that participate in Unity's depth pass. Transparent objects or materials without a depth/shadow pass may not supply a usable endpoint. Refraction remains a screen-space approximation, and shafts are not shadows cast by scene geometry.
 
 ## Ringworld Clouds
 
-With Ringworld Clouds installed, **Settings -> Ringworld extensions -> Ringworld Clouds** selects the replacement local cloud volume. Its switch is saved per ring. Disabling volumes keeps the lightweight/distant layers and evolving weather; set the cloud amount to zero to remove clouds altogether.
+With Ringworld Clouds installed, **Extensions -> Ringworld Clouds** selects the replacement local cloud volume. Its switch is saved per ring. Disabling volumes keeps the lightweight/distant layers and evolving weather; set the cloud amount to zero to remove clouds altogether.
 
 | Cloud mode | Features |
 | --- | --- |
@@ -59,7 +61,7 @@ See each extension's developer guide for build instructions. The shared local la
 
 ## Ringworld Scattering: full-ring atmosphere and water
 
-Version 1.1.5 groups distant atmosphere and enhanced water under **Settings -> Ringworld extensions -> Ringworld Scattering**. They have independent saved switches. This is Ringworld's own rendering module, not a port of the external Scatterer mod. Ringworld Scattering is a separate optional package; CKAN indexing is handled separately.
+Version 1.1.5 groups distant atmosphere and enhanced water under **Extensions -> Ringworld Scattering**. They have independent saved switches. This is Ringworld's own rendering module, not a port of the external Scatterer mod. Ringworld Scattering is a separate optional package; CKAN indexing is handled separately.
 
 **Full-ring atmosphere** adds a lightweight blue optical column over the entire inner ribbon in map, Tracking Station and distant flight views. It also remains visible along the distant ring while landed. It has no terrain-render-distance cutoff. The nearby contribution fades out between 250 and 600 km from the flight camera so Cyla or Original handles the local sky. Map cameras show the full layer. Shadow-panel night regions suppress the lit scattering, and the opaque hull blocks exterior views through the floor.
 

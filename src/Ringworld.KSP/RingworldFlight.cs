@@ -567,9 +567,10 @@ namespace NivenRingworld
         {
             panelScroll=GUILayout.BeginScrollView(panelScroll,GUILayout.Height(Mathf.Max(240,Mathf.Min(610,Screen.height-150))));
             if(weatherEffects!=null&&Owns(FlightGlobals.ActiveVessel))GUILayout.Label("Weather: "+weatherEffects.Description);
-            panelTab=GUILayout.Toolbar(panelTab,SandboxControls?new[]{"Expedition","Settings","Research"}:new[]{"Expedition","Research"});
-            if(panelTab==(SandboxControls?2:1)){State.Research.Draw(FlightGlobals.ActiveVessel);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
-            if(panelTab==1){settingsPanel.Draw(this);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
+            panelTab=GUILayout.Toolbar(panelTab,SandboxControls?new[]{"Expedition","Settings","Extensions","Research"}:new[]{"Expedition","Extensions","Research"});
+            if(panelTab==(SandboxControls?3:2)){State.Research.Draw(FlightGlobals.ActiveVessel);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
+            if(panelTab==(SandboxControls?2:1)){settingsPanel.Draw(this,true);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
+            if(SandboxControls&&panelTab==1){settingsPanel.Draw(this);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
             GUILayout.Label(Settings.RingName.ToUpperInvariant());
             GUILayout.Label("Tangential speed: "+(Settings.Geometry.P.Omega*Settings.Geometry.P.Radius/1000).ToString("N2")+" km/s");
             GUILayout.Label("Radius "+(Settings.Geometry.P.Radius/1000).ToString("N0")+" km   |   Width "+(Settings.Geometry.P.Width/1000).ToString("N0")+" km");
