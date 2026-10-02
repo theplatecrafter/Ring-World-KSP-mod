@@ -27,6 +27,7 @@ Explore the world's design or plan an add-on:
 
 - [Asset authoring and model overrides](developers/ASSET-AUTHORING.md)
 - [Adding research sites and objectives](developers/MODDING-RESEARCH.md)
+- [Local environment API and stock/mod consumer audit](developers/ENVIRONMENT-COMPATIBILITY.md)
 - [Resource instruments and gravitic-drive compatibility](developers/RESOURCE-AND-DRIVE-COMPATIBILITY.md)
 - [Parallax terrain integration reply](developers/PARALLAX-REPLY.md)
 - [Reference frames and mod compatibility](developers/MOD-INTEROPERABILITY.md)

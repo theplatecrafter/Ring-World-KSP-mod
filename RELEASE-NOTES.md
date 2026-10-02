@@ -16,6 +16,15 @@ No dependencies or extensions are bundled. Extract each ZIP into the **KSP insta
 
 ## Release-v1.1.5
 
+### Development follow-up: stock intakes and terrain streaming
+
+- Stock air intakes use local ring oxygen and airflow rather than the host star's oxygen flag. Stock pressure thresholds, intake alignment, shielding and resource consumption remain in effect.
+- Terrain keeps the previous complete LOD layout visible while replacement meshes build. Nearby terrain is retained until the replacement layout is ready.
+- Shared stock environment bridge also handles engine nozzle immersion, solar-panel underwater attenuation and the gravity instrument's local gravity/distance check.
+- Shared environment API adds explicit oxygen availability, sound speed, atmosphere height, water elevation, local airflow and derived Mach/dynamic pressure for other mods. Mods reading the host body's fields directly still need integration.
+- Stock intake production and staged terrain handoff passed the in-game module regressions; complete stock-plane flights and all third-party controllers are not certified.
+
+
 ### Extension control panel update
 
 - Dedicated Extensions tab with collapsible Clouds, Scattering and Cyla controls, available in all game modes.

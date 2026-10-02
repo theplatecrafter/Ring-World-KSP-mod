@@ -109,12 +109,14 @@ namespace NivenRingworld
             {
                 var c=pending[i];var t=Build(c.Item1,c.Item2);tiles.Add(c.Item1+":"+c.Item2,t);
             }
-            var remove=new List<string>();foreach(var kv in tiles)if(!wanted.Contains(kv.Key))remove.Add(kv.Key);
+            lod.Update(p.Along,p.Across,pending.Count<=budget);
+            var remove=new List<string>();
+            if(lod.Pending==0&&pending.Count<=budget)foreach(var kv in tiles)
+                if(!wanted.Contains(kv.Key)&&!lod.NeedsNearTile(kv.Value.X,kv.Value.Y))remove.Add(kv.Key);
             foreach(string key in remove){Destroy(tiles[key]);tiles.Remove(key);}
             double distance;var site=settings.Terrain.Nearest(p.Along,p.Across,out distance);
             string id=site!=null&&distance<8000?site.Id:"";
             if(id!=propSite){ClearProps();propSite=id;if(id!=""){propPhase=settings.Geometry.OrientationRadians;BuildProps(site);}}
-            lod.Update(p.Along,p.Across);
             Reposition(star);
             landmarks.Update(observer,star,groundFriction);
         }

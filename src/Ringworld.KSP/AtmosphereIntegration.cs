@@ -8,6 +8,8 @@ namespace NivenRingworld
     {
         internal static bool Applies(Vessel v)
         {return StockIntegration.Applies(v)&&RingworldFlight.Instance.Settings.Atmosphere;}
+        internal static bool ContainsOxygen(Vessel v)
+        {return Applies(v)&&Sample(v).Density>0;}
         internal static AirSample Sample(Vessel v)
         {
             var f=RingworldFlight.Instance;

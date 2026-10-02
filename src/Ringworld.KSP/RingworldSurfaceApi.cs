@@ -3,7 +3,7 @@ namespace NivenRingworld
     /// <summary>Read-only integration point for flight instruments and other mods.</summary>
     public static class RingworldSurfaceApi
     {
-        public const int Version=5;
+        public const int Version=6;
 
         /// <summary>Sample the loaded ring at a Unity world position. Context disambiguates
         /// the current rotating frame; unavailable for packed vessels or other rings.
@@ -23,7 +23,9 @@ namespace NivenRingworld
                 EffectiveGravity=ConvertVector.Ksp(f.Acceleration(p,new Ringworld.Core.DVec())),
                 SurfaceUp=ConvertVector.Ksp(s.Geometry.Up(p)),
                 AirDensity=s.Atmosphere?air.Density:0,PressureKPa=s.Atmosphere?air.PressureKPa:0,
-                TemperatureKelvin=air.Temperature,WaterDepth=terrain.Wet?System.Math.Max(0,terrain.WaterHeight-c.Altitude):0,
+                TemperatureKelvin=air.Temperature,SpeedOfSound=air.SoundSpeed,AtmosphereHeight=s.Atmosphere?s.Geometry.P.AtmosphereHeight:0,
+                OverWater=terrain.Wet,WaterSurfaceAltitude=terrain.Wet?terrain.WaterHeight:double.NaN,
+                SurfaceRelativeVelocity=ConvertVector.Ksp(f.Velocity(context)),WaterDepth=terrain.Wet?System.Math.Max(0,terrain.WaterHeight-c.Altitude):0,
                 // Fresh-water reference density; visual waves do not change hydrostatics.
                 WaterDensity=terrain.Wet&&c.Altitude<terrain.WaterHeight?1000:0
             };
@@ -91,7 +93,15 @@ namespace NivenRingworld
     {
         public string RingId,Biome;
         public double Along,Across,Altitude,HeightAboveTerrain,AirDensity,PressureKPa,TemperatureKelvin,WaterDepth,WaterDensity;
-        public Vector3d EffectiveGravity,SurfaceUp;
+        public Vector3d EffectiveGravity,SurfaceUp,SurfaceRelativeVelocity;
+        public bool OverWater;
+        public double WaterSurfaceAltitude,SpeedOfSound,AtmosphereHeight;
+        public double TerrainElevation {get{return Altitude-HeightAboveTerrain;}}
+        public bool HasAtmosphere {get{return AirDensity>0;}}
+        public double EffectiveGravityMagnitude {get{return EffectiveGravity.magnitude;}}
+        public double Mach {get{return HasAtmosphere&&SpeedOfSound>0?SurfaceRelativeVelocity.magnitude/SpeedOfSound:0;}}
+        public double DynamicPressureKPa {get{return .0005*AirDensity*SurfaceRelativeVelocity.sqrMagnitude;}}
+        public bool ContainsOxygen {get{return AirDensity>0&&WaterDepth<=0;}}
         public Vector3d AirBuoyancyPerCubicMetre {get{return -EffectiveGravity*AirDensity;}}
         public Vector3d WaterBuoyancyPerCubicMetre {get{return -EffectiveGravity*WaterDensity;}}
     }
@@ -100,6 +110,7 @@ namespace NivenRingworld
     {
         public string RingId {get;internal set;}
         public bool HasAtmosphere {get;internal set;}
+        public bool ContainsOxygen {get{return HasAtmosphere&&Density>0;}}
         public double Density {get;internal set;}
         public double PressureKPa {get;internal set;}
         public double TemperatureKelvin {get;internal set;}

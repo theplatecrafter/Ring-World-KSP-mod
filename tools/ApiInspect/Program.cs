@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Reflection.Metadata.Ecma335;
 
 using var file=File.OpenRead(args[0]);using var pe=new PEReader(file);var metadata=pe.GetMetadataReader();
+if(args.Length>1&&args[1]=="--environment-reads"){EnvironmentAudit.Run(pe,metadata);return;}
 if(args.Length>2&&args[2]=="--field-users")
 {
     foreach(var fieldHandle in metadata.FieldDefinitions)

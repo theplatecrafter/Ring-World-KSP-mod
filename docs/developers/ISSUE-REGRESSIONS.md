@@ -18,3 +18,11 @@ Development tracking for v1.1.5. A source change or isolated test is not equival
 Water rendering tests cover both sides of the surface: depth-based transmission preserves nearby submerged objects over deep seabeds; optional shafts contribute through the surface as well as beneath it. These checks do not certify reference-image parity or desktop performance. Full scenes use Slow on the development laptop.
 
 Validation logs are kept under `artifacts/validation` and the local KSP instance. Do not distribute decompiled KSP source used for API inspection.
+
+## Stock intake and terrain handoff ? October 2, 2026
+
+`RingworldSmoke-20261002-024537.log` and `RingworldSmoke-20261002-025548.log` passed the installed-issues route with new stock/streaming checks. A stock airScoop module configuration on the test vessel produced IntakeAir using the real patched ModuleResourceIntake.FixedUpdate. The second run also compared intake airspeed with ring-relative velocity, checked local gravity/validity helpers, and invoked the patched stock engine dry-nozzle method. The host body's atmosphere/oxygen flags were unchanged. This is module-level validation, not a complete flight of every stock spaceplane.
+
+The LOD test generated a complete layout, crossed several tile boundaries with a moving observer, held near-ready false, and verified the previous visible layout stayed resident until the complete replacement could be published. All 110,323 core checks passed and the normal build was restored to the shared development instance. Subjective in-flight transition smoothness still needs review; the handoff is atomic, not an alpha fade.
+
+See [Environment compatibility](ENVIRONMENT-COMPATIBILITY.md) for the complete audit scope and remaining gaps.

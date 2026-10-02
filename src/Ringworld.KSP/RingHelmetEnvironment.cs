@@ -13,7 +13,7 @@ namespace NivenRingworld
         internal static bool Atmosphere(CelestialBody body,KerbalEVA eva)
         {return StockIntegration.Applies(eva.vessel)?RingAir.Applies(eva.vessel)&&RingAir.Sample(eva.vessel).Density>0:body.atmosphere;}
         internal static bool Oxygen(CelestialBody body,KerbalEVA eva)
-        {return StockIntegration.Applies(eva.vessel)?RingAir.Applies(eva.vessel):body.atmosphereContainsOxygen;}
+        {return StockIntegration.Applies(eva.vessel)?RingAir.ContainsOxygen(eva.vessel):body.atmosphereContainsOxygen;}
         internal static double Depth(CelestialBody body,KerbalEVA eva)
         {return StockIntegration.Applies(eva.vessel)?double.PositiveInfinity:body.atmosphereDepth;}
         internal static double Temperature(CelestialBody body,double altitude,KerbalEVA eva)

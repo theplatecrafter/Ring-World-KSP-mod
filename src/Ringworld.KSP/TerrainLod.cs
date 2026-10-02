@@ -17,6 +17,8 @@ namespace NivenRingworld
         private AssetBundle visualBundle;private bool nightShader;
         private readonly Settings settings;private readonly Material material,farMaterial,waterMaterial,forestMaterial;
         private readonly Dictionary<string,Patch> patches=new Dictionary<string,Patch>();
+        private readonly Dictionary<string,Patch> staged=new Dictionary<string,Patch>();
+        private bool building;
         private readonly Queue<Patch> canopyPending=new Queue<Patch>();
         internal int CanopyPending {get{return canopyPending.Count;}}
         private HashSet<string> wanted=new HashSet<string>();
@@ -25,19 +27,20 @@ namespace NivenRingworld
         private readonly Dictionary<Tuple<double,double,double>,Color> edgeColours=new Dictionary<Tuple<double,double,double>,Color>();
         private long lastX=long.MinValue,lastY;private double plannedAlong;
         internal int Count {get{return patches.Count;}}
-        internal int Pending {get{return pending.Count;}}
+        internal int Pending {get{return pending.Count+(building?1:0);}}
         internal int BuiltScaledCount {get{int count=0;foreach(var p in patches.Values)if(p.Scaled)count++;return count;}}
         internal int ScaledCount {get{int count=0;foreach(var p in patches.Values)if(p.Scaled&&p.Root.activeSelf)count++;return count;}}
         internal TerrainLod(Settings s,Material m,Material water,Material forest){settings=s;material=m;waterMaterial=water;forestMaterial=forest;farMaterial=new Material(m);farMaterial.color=Color.black;farMaterial.EnableKeyword("_EMISSION");farMaterial.SetColor("_EmissionColor",Color.white);farMaterial.SetFloat("_Glossiness",0);
             visualBundle=RingVisualAssets.Acquire();var shader=visualBundle!=null?visualBundle.LoadAsset<Shader>("Assets/Shaders/TerrainNight.shader"):null;
             if(shader!=null&&shader.isSupported){farMaterial.shader=shader;farMaterial.renderQueue=2010;nightShader=true;}
         }
-        internal void Update(double along,double across)
+        internal bool NeedsNearTile(long x,long y){return Math.Abs(x-lastX)<=settings.TileRadius&&Math.Abs(y-lastY)<=settings.TileRadius;}
+        internal void Update(double along,double across,bool nearReady=true)
         {
             long x=(long)Math.Floor(along/settings.TileSize),y=(long)Math.Floor(across/settings.TileSize);
-            if(x!=lastX||y!=lastY)
+            if(!building&&(x!=lastX||y!=lastY))
             {
-                lastX=x;lastY=y;plannedAlong=along;wanted.Clear();pending.Clear();layout.Clear();
+                building=true;lastX=x;lastY=y;plannedAlong=along;wanted.Clear();pending.Clear();layout.Clear();
                 foreach(var b in TerrainLodPlan.Create(along,across,settings.TileSize,settings.TileRadius,Math.Min(settings.LodRange,settings.Geometry.P.Circumference/2+settings.Geometry.P.Width),settings.Geometry.P.Width/2,settings.Geometry.P.Circumference/2,Math.Sqrt(8*settings.Geometry.P.Radius*250)*settings.LodResolution))
                 {
                     if(b.Y>=settings.Geometry.P.Width/2||b.Y+b.Size<=-settings.Geometry.P.Width/2)continue;
@@ -48,20 +51,24 @@ namespace NivenRingworld
                 foreach(var b in layout)
                 {
                     Patch old;if(!patches.TryGetValue(b.Key,out old)||old.BoundaryKey==BoundaryKey(b))continue;
-                    Destroy(old);patches.Remove(b.Key);pending.Add(b);
+                    pending.Add(b);
                 }
                 pending.Sort((a,b)=>a.DistanceSquared(along,across).CompareTo(b.DistanceSquared(along,across)));
             }
             // Publish completed blocks within the frame budget; the coarse hull fills pending areas.
             for(int i=0;i<settings.GenerationBudget&&pending.Count>0;i++)
             {
-                var b=pending[0];pending.RemoveAt(0);patches.Add(b.Key,Build(b));
+                var b=pending[0];var replacement=Build(b);replacement.Root.SetActive(false);staged.Add(b.Key,replacement);pending.RemoveAt(0);
             }
-            // Retire obsolete blocks immediately: showing old parents over new children z-fights.
+            // Publish a complete generation atomically. Retain the visible layout
+            // while its replacements build; never expose the coarse hull through holes.
+            if(building&&pending.Count==0&&nearReady)
             {
-                foreach(var kv in patches)kv.Value.Root.SetActive(wanted.Contains(kv.Key));
-                var remove=new List<string>();foreach(var kv in patches)if(!wanted.Contains(kv.Key))remove.Add(kv.Key);
-                foreach(var key in remove){Destroy(patches[key]);patches.Remove(key);}
+                var remove=new List<string>();
+                foreach(var kv in patches)if(!wanted.Contains(kv.Key)||staged.ContainsKey(kv.Key))remove.Add(kv.Key);
+                foreach(var key in remove){patches[key].Root.SetActive(false);Destroy(patches[key]);patches.Remove(key);}
+                foreach(var kv in staged){patches.Add(kv.Key,kv.Value);kv.Value.Root.SetActive(true);}
+                staged.Clear();building=false;
             }
             // Yield between canopy rows; never spend a whole dense forest block
             // sampling terrain in one frame. Mesh publication stays on Unity's thread.
@@ -206,7 +213,7 @@ namespace NivenRingworld
             }
         }
         private static void Destroy(Patch p){p.Retired=true;if(p.CanopyWork!=null){p.CanopyWork.Dispose();p.CanopyWork=null;}UnityEngine.Object.Destroy(p.Root);UnityEngine.Object.Destroy(p.Mesh);if(p.CanopyMesh!=null)UnityEngine.Object.Destroy(p.CanopyMesh);if(p.WaterMesh!=null)UnityEngine.Object.Destroy(p.WaterMesh);UnityEngine.Object.Destroy(p.Texture);}
-        public void Dispose(){foreach(var p in patches.Values)Destroy(p);patches.Clear();canopyPending.Clear();UnityEngine.Object.Destroy(farMaterial);if(visualBundle!=null)RingVisualAssets.Release();}
+        public void Dispose(){foreach(var p in patches.Values)Destroy(p);patches.Clear();foreach(var p in staged.Values)Destroy(p);staged.Clear();canopyPending.Clear();UnityEngine.Object.Destroy(farMaterial);if(visualBundle!=null)RingVisualAssets.Release();}
         internal void Light(float light){if(!nightShader)farMaterial.SetColor("_EmissionColor",new Color(light,light,light));}
     }
 }

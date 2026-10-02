@@ -31,6 +31,7 @@ namespace NivenRingworld
    Debug.Log("[RingworldSmoke] RESTOCK actual Surveyor prefab/model/materials passed: "+model);
    f.arrivalHeight=100;f.Visit();while(!f.Ready)yield return null;
    yield return new WaitForSeconds(2);
+   yield return StockAirStreamingSmoke.Run(f);
    var g=f.Settings.Geometry;var c=g.Coordinates(f.Position(FlightGlobals.ActiveVessel));
    DVec water=new DVec();bool found=false;
    for(int i=0;i<40000&&!found;i++)
