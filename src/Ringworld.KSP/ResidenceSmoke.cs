@@ -35,6 +35,23 @@ namespace NivenRingworld
             Debug.Log("[RingworldSmoke] STOCK LANDED SCIENCE "+subject.id);
             foreach(var dialog in UnityEngine.Object.FindObjectsOfType<KSP.UI.Screens.Flight.Dialogs.ExperimentsResultDialog>())UnityEngine.Object.Destroy(dialog.gameObject);
             yield return GroundScienceSmoke.Run(f,fail);
+            // Test per-vessel save permission against an unsafe neighbour. Deployed
+            // parts are physically anchored, so use the throttle guard rather than
+            // injecting a velocity that their rigidbody constraints can discard.
+            float saveDeadline=Time.realtimeSinceStartup+30;
+            while(FlightGlobals.ClearToSave(false)!=ClearToSaveStatus.CLEAR&&Time.realtimeSinceStartup<saveDeadline)yield return new WaitForFixedUpdate();
+            var neighbour=FlightGlobals.FindVessel(GroundScienceSmoke.Ids[0]);
+            float previousThrottle=neighbour.ctrlState.mainThrottle;
+            bool warpBlocked,saveAllowed;
+            try
+            {
+                neighbour.ctrlState.mainThrottle=1;
+                warpBlocked=!f.surfaceWarp.CanAdvance(f);
+                saveAllowed=FlightGlobals.ClearToSave(false)==ClearToSaveStatus.CLEAR;
+            }
+            finally {neighbour.ctrlState.mainThrottle=previousThrottle;}
+            if(!warpBlocked||!saveAllowed){fail("Unsafe neighbour save isolation failed: warpBlocked="+warpBlocked+" saveAllowed="+saveAllowed);yield break;}
+            Debug.Log("[RingworldSmoke] RESIDENCE unsafe neighbour blocks warp but permits settled active vessel save");
             f.Capture();var id=v.id;var position=f.Position(v);var folder=HighLogic.SaveFolder;
             GamePersistence.SaveGame(HighLogic.CurrentGame.Updated(),"persistent",folder,SaveMode.OVERWRITE);
             HighLogic.LoadScene(GameScenes.SPACECENTER);while(HighLogic.LoadedScene!=GameScenes.SPACECENTER)yield return null;

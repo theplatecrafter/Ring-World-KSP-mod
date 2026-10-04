@@ -16,6 +16,13 @@ No dependencies or extensions are bundled. Extract each ZIP into the **KSP insta
 
 ## Release-v1.1.5
 
+### Development follow-up: crash survivors and Tracking Station
+
+- A grounded, settled active vessel can be saved even while nearby crash debris is still moving. Surface time warp retains its checks for all nearby vessels.
+- Ring encounters no longer automatically open Flight from the Tracking Station. Approaching craft still stop unsafe warp; select Fly to control them. Incidental debris no longer triggers the station's encounter warp guard.
+- These changes do not add unloaded atmospheric or collision simulation for debris.
+
+
 ### Development follow-up: stock intakes and terrain streaming
 
 - Stock air intakes use local ring oxygen and airflow rather than the host star's oxygen flag. Stock pressure thresholds, intake alignment, shielding and resource consumption remain in effect.

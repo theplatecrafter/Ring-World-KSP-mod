@@ -35,28 +35,38 @@ namespace NivenRingworld
                 if(v==null)continue;
                 if(Anchored(v)){found=true;continue;}
                 if(v.packed)continue;
-                if(!f.Owns(v)){Status="Warp blocked by a nearby craft outside the ring frame.";return false;}
-                if(v.parts==null||v.parts.Count==0){Status="Warp waiting for vessel initialization.";return false;}
-                found=true;var c=f.Settings.Geometry.Coordinates(f.Position(v));var t=f.Settings.Terrain.Sample(c.Along,c.Across);
-                bool contact=false;foreach(var part in v.parts)if(part!=null&&(part.GroundContact||part.PermanentGroundContact))contact=true;
-                double speed=f.Velocity(v).Length;
-                if(!RingParameters.Finite(speed)){Status="Warp blocked: invalid vessel velocity.";return false;}
-                if(!contact){Status="Warp blocked: no solid ground contact ("+v.vesselName+").";return false;}
-                if(t.Wet){Status="Warp blocked: vessel is on water.";return false;}
-                if(speed>.25){Status="Warp blocked: still moving at "+speed.ToString("F2")+" m/s (limit 0.25).";return false;}
-                if(v.ctrlState.mainThrottle>.001f){Status="Warp blocked: throttle is not zero.";return false;}
-                bool chatter=false;
-                foreach(var part in v.parts)if(part!=null&&part.rb!=null)
-                {
-                    double angular=part.rb.angularVelocity.magnitude;
-                    if(!RingParameters.Finite(angular)||angular>.12||(part==v.rootPart&&angular>.05))
-                    {Status="Warp blocked: "+(part.partInfo==null?part.name:part.partInfo.title)+" is still rotating.";return false;}
-                    if(angular>.05)chatter=true;
-                }
-                if(chatter&&!ObserveRest(f,v))
-                {Status="Warp waiting for one second of bounded joint motion (3 cm / 0.5 degrees).";return false;}
+                found=true;if(!CanRest(f,v))return false;
             }
             if(found)Status="Ready for stock ring-surface warp.";return found;
+        }
+        // Saving one resident does not advance physics for its airborne neighbours.
+        internal bool CanSave(RingworldFlight f,Vessel v)
+        {
+            return v!=null&&f.Owns(v)&&(Anchored(v)||(f.Ready&&!v.packed&&CanRest(f,v)));
+        }
+        private bool CanRest(RingworldFlight f,Vessel v)
+        {
+            if(!f.Owns(v)){Status="Warp blocked by a nearby craft outside the ring frame.";return false;}
+            if(v.parts==null||v.parts.Count==0){Status="Warp waiting for vessel initialization.";return false;}
+            var c=f.Settings.Geometry.Coordinates(f.Position(v));var t=f.Settings.Terrain.Sample(c.Along,c.Across);
+            bool contact=false;foreach(var part in v.parts)if(part!=null&&(part.GroundContact||part.PermanentGroundContact))contact=true;
+            double speed=f.Velocity(v).Length;
+            if(!RingParameters.Finite(speed)){Status="Warp blocked: invalid vessel velocity.";return false;}
+            if(!contact){Status="Warp blocked: no solid ground contact ("+v.vesselName+").";return false;}
+            if(t.Wet){Status="Warp blocked: vessel is on water.";return false;}
+            if(speed>.25){Status="Warp blocked: still moving at "+speed.ToString("F2")+" m/s (limit 0.25).";return false;}
+            if(v.ctrlState.mainThrottle>.001f){Status="Warp blocked: throttle is not zero.";return false;}
+            bool chatter=false;
+            foreach(var part in v.parts)if(part!=null&&part.rb!=null)
+            {
+                double angular=part.rb.angularVelocity.magnitude;
+                if(!RingParameters.Finite(angular)||angular>.12||(part==v.rootPart&&angular>.05))
+                {Status="Warp blocked: "+(part.partInfo==null?part.name:part.partInfo.title)+" is still rotating.";return false;}
+                if(angular>.05)chatter=true;
+            }
+            if(chatter&&!ObserveRest(f,v))
+            {Status="Warp waiting for one second of bounded joint motion (3 cm / 0.5 degrees).";return false;}
+            return true;
         }
         private bool ObserveRest(RingworldFlight f,Vessel v)
         {

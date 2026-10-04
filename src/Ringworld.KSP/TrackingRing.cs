@@ -12,7 +12,7 @@ namespace NivenRingworld
         internal static Settings Settings;
         internal static CelestialBody Star;
         internal static RingTrajectory Trajectory;
-        private bool initialized,opening;
+        private bool initialized;
         private float nextCheck;
         public void Start()
         {
@@ -24,7 +24,7 @@ namespace NivenRingworld
         public void Update()
         {
             var scenario=RingworldScenario.Instance;
-            if(scenario==null||Star==null||opening)return;
+            if(scenario==null||Star==null)return;
             if(!initialized)
             {
                 Settings.Apply(scenario.GetOptions());
@@ -44,21 +44,20 @@ namespace NivenRingworld
             double horizon=Math.Max(10,Math.Min(72000,TimeWarp.CurrentRate*2));
             foreach(var v in FlightGlobals.Vessels)
             {
-                if(v==null||v.Landed||v.Splashed||v.orbit==null)continue;
+                if(!GuardsEncounter(v))continue;
                 double eta=VesselEncounter(v,now,horizon);
                 if(double.IsInfinity(eta))continue;
-                if(TimeWarp.CurrentRateIndex!=0)TimeWarp.SetRate(0,true);
-                ScreenMessages.PostScreenMessage("Ringworld encounter: time warp stopped for "+v.vesselName+". Atmospheric entry requires Flight.",3,ScreenMessageStyle.UPPER_CENTER);
-                if(eta<=10)
-                {
-                    // Enter before the capture shell, so flight performs the normal
-                    // velocity-preserving handoff and real part/aerodynamic physics.
-                    var game=HighLogic.CurrentGame.Updated();
-                    GamePersistence.SaveGame(game,"persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
-                    int index=game.flightState.protoVessels.FindIndex(p=>p.vesselID==v.id);
-                    if(index>=0){opening=true;FlightDriver.StartAndFocusVessel(game,index);return;}
-                }
+                if(TimeWarp.CurrentRateIndex==0)continue;
+                TimeWarp.SetRate(0,true);
+                ScreenMessages.PostScreenMessage("Ringworld encounter: time warp stopped for "+v.vesselName+". Select Fly to simulate atmospheric entry.",3,ScreenMessageStyle.UPPER_CENTER);
+                // Scene changes belong to the player's Fly action, never an encounter.
+                break;
             }
+        }
+        internal static bool GuardsEncounter(Vessel v)
+        {
+            // Uncontrolled crash fragments must not lock the entire tracking station.
+            return v!=null&&v.vesselType!=VesselType.Debris&&!v.Landed&&!v.Splashed&&v.orbit!=null;
         }
         private static double VesselEncounter(Vessel vessel,double now,double horizon)
         {
@@ -92,7 +91,7 @@ namespace NivenRingworld
             if(Settings==null||Star==null)return false;
             double now=Planetarium.GetUniversalTime(),horizon=Math.Max(10,Math.Min(72000,rate*2));
             foreach(var v in FlightGlobals.Vessels)
-                if(v!=null&&!v.Landed&&!v.Splashed&&v.orbit!=null&&
+                if(GuardsEncounter(v)&&
                    !double.IsInfinity(VesselEncounter(v,now,horizon)))return false;
             return true;
         }

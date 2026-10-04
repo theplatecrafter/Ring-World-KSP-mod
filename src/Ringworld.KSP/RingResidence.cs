@@ -99,7 +99,7 @@ namespace NivenRingworld
             // fall through to its CLEAR result for an unsupported ring resident.
             if(!v.Landed){__result=ClearToSaveStatus.NOT_IN_ATMOSPHERE;return false;}
             if(v.isEVA&&v.evaController!=null&&v.evaController.OnALadder){__result=ClearToSaveStatus.NOT_WHILE_ON_A_LADDER;return false;}
-            if(!f.surfaceWarp.CanAdvance(f,true)){__result=ClearToSaveStatus.NOT_WHILE_MOVING_OVER_SURFACE;return false;}
+            if(!f.surfaceWarp.CanSave(f,v)){__result=ClearToSaveStatus.NOT_WHILE_MOVING_OVER_SURFACE;return false;}
             f.Capture();__result=ClearToSaveStatus.CLEAR;return false;
         }
     }

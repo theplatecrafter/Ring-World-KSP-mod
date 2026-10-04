@@ -26,3 +26,17 @@ Validation logs are kept under `artifacts/validation` and the local KSP instance
 The LOD test generated a complete layout, crossed several tile boundaries with a moving observer, held near-ready false, and verified the previous visible layout stayed resident until the complete replacement could be published. All 110,323 core checks passed and the normal build was restored to the shared development instance. Subjective in-flight transition smoothness still needs review; the handoff is atomic, not an alpha fade.
 
 See [Environment compatibility](ENVIRONMENT-COMPATIBILITY.md) for the complete audit scope and remaining gaps.
+
+## Crash survivor save and unsolicited Flight regression
+
+The Tracking Station encounter monitor previously called `FlightDriver.StartAndFocusVessel` for any incoming object, including debris already inside the arrival region. It now only stops unsafe warp for non-debris craft and leaves scene changes to the player. This also removes the repeated encounter-message loop at normal speed.
+
+The save permission patch previously called the all-vessel surface-warp check. Saving now checks only the active resident's contact, velocity, throttle and rotation. Time warp still checks every nearby loaded craft, so the fix does not freeze airborne fragments into a surface anchor.
+
+`TrackingSmoke` checks station persistence, debris exclusion, unsafe warp rejection and explicit Fly. `ResidenceSmoke` checks that an unsafe neighbour (nonzero throttle) blocks warp without blocking a settled resident's save, followed by a Space Center save/reload round trip. Neither fixture reproduces every possible plane-breakup or unloaded debris trajectory; these remain separate manual checks.
+
+Tracking regression passed in `RingworldSmoke-20261002-130933.log`: unsafe warp was rejected, the station remained open during the observation interval, and an explicit Fly returned the craft at 205,599 m altitude. The test also rejected airborne save permission before and after the scene round trip.
+
+The first two residence test attempts did not exercise the intended unsafe-neighbour state: deployed equipment discarded the injected rigidbody velocity (measured neighbour speed remained zero). The fixture now uses its nonzero-throttle guard, restoring the value before any physics tick. Those attempts are not counted as passing regressions.
+
+The corrected residence regression passed in `RingworldSmoke-20261002-132932.log`: the unsafe neighbour blocked warp while the active resident remained saveable. The Space Center round trip restored the vessel and all four deployed science units, with a position error of 0.0000587 m. This verifies the permission separation and persistence; a natural stock-plane crash with freely moving debris remains a manual reproduction target.
