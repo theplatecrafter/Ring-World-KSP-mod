@@ -1,6 +1,6 @@
 # Optional Ringworld extensions
 
-Extensions add optional rendering features designed for the ring's cylindrical surface. They are separate downloads for base v1.1.5. Install [Ringworld Clouds](https://github.com/theplatecrafter/Ringworld-Clouds-KSP) for cloud volumes and [Ringworld Scattering](https://github.com/theplatecrafter/Ringworld-Scattering-KSP) for enhanced water and distant atmosphere. Both require the base; neither is required by it. Their first releases target base 1.1.5. CKAN availability depends on separate indexing.
+Extensions add optional rendering features designed for the ring's cylindrical surface. They are separate downloads compatible with base v1.1.6. Install [Ringworld Clouds](https://github.com/theplatecrafter/Ringworld-Clouds-KSP) for cloud volumes and [Ringworld Scattering](https://github.com/theplatecrafter/Ringworld-Scattering-KSP) for enhanced water and distant atmosphere. Both require the base; neither is required by it. Their first releases target base 1.1.5. CKAN availability depends on separate indexing.
 
 Installed extensions start enabled unless this save already contains an explicit disabled choice. Expand a section in **Extensions** to edit its settings. This tab is available in Sandbox, Science and Career. Clouds, Scattering and Cyla have separate sections. Quality presets still control detail: Slow and below use lightweight cloud layers even with Clouds installed. Disabling an extension is retained when you save the game.
 
@@ -55,13 +55,13 @@ This is original Ringworld code inspired by EVE's public feature descriptions. I
 
 ## Organization for contributors
 
-The two extensions have independent repositories, DLLs, shader bundles and releases. The base owns geometry, meshes, physics, weather and saved settings. It discovers optional rendering providers at runtime without referencing their DLLs. The initial provider interface is version paired: extensions 1.0.0 require base 1.1.5. General gameplay adapters should use the public surface API instead of this internal rendering interface.
+The two extensions have independent repositories, DLLs, shader bundles and releases. The base owns geometry, meshes, physics, weather and saved settings. It discovers optional rendering providers at runtime without referencing their DLLs. Extensions 1.0.0 were built against base 1.1.5; base 1.1.6 retains that compatible assembly identity. Minimum-version CKAN metadata updates are pending review/indexing. General gameplay adapters should use the public surface API instead of this internal rendering interface.
 
 See each extension's developer guide for build instructions. The shared local layout is documented in [Workspace](../developers/WORKSPACE.md). Removing an extension retains a functional base renderer and does not remove the ring or its vessels.
 
 ## Ringworld Scattering: full-ring atmosphere and water
 
-Version 1.1.5 groups distant atmosphere and enhanced water under **Extensions -> Ringworld Scattering**. They have independent saved switches. This is Ringworld's own rendering module, not a port of the external Scatterer mod. Ringworld Scattering is a separate optional package; CKAN indexing is handled separately.
+Version 1.1.6 groups distant atmosphere and enhanced water under **Extensions -> Ringworld Scattering**. They have independent saved switches. This is Ringworld's own rendering module, not a port of the external Scatterer mod. Ringworld Scattering is a separate optional package; CKAN indexing is handled separately.
 
 **Full-ring atmosphere** adds a lightweight blue optical column over the entire inner ribbon in map, Tracking Station and distant flight views. It also remains visible along the distant ring while landed. It has no terrain-render-distance cutoff. The nearby contribution fades out between 250 and 600 km from the flight camera so Cyla or Original handles the local sky. Map cameras show the full layer. Shadow-panel night regions suppress the lit scattering, and the opaque hull blocks exterior views through the floor.
 

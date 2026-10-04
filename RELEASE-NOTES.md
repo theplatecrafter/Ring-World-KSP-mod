@@ -2,28 +2,31 @@
 
 Consolidated release history, newest first. Historical requirements apply only to their own version. This is the release publisher's single source for release descriptions.
 
-## Current requirements ? v1.1.5
+## Current requirements ? v1.1.6
 
 | Component | Requirement | Version |
 | --- | --- | --- |
 | Kerbal Space Program | Required | 1.12.5 |
 | Harmony 2 / HarmonyKSP | Required, installed separately | 2.2.1.0 tested; CKAN minimum 2.2.1.0 |
 | Cyla | Optional local atmosphere | 1.1.0.0 release (Cyla-1.1.0.zip) |
-| Ringworld Clouds | Optional volumetric clouds | 1.0.0, paired with base 1.1.5 |
-| Ringworld Scattering | Optional enhanced water and distant atmosphere | 1.0.0, paired with base 1.1.5 |
+| Ringworld Clouds | Optional volumetric clouds | 1.0.0, compatible with base 1.1.6 |
+| Ringworld Scattering | Optional enhanced water and distant atmosphere | 1.0.0, compatible with base 1.1.6 |
 
 No dependencies or extensions are bundled. Extract each ZIP into the **KSP installation root**, merging GameData. The base works without either extension and uses Original atmosphere without Cyla. Optional metadata is supplied for CKAN submission; publication alone does not update the central index.
 
-## Release-v1.1.5
+## Release-v1.1.6
 
-### Development follow-up: crash survivors and Tracking Station
+KSP 1.12.5; Harmony 2 >= 2.2.1.0 is required separately. Optional: Cyla 1.1.0.0, Ringworld Clouds 1.0.0 and Ringworld Scattering 1.0.0. No dependencies or extensions are bundled. Extract the ZIP into the KSP root, merging GameData.
+
+
+### Crash survivors and Tracking Station
 
 - A grounded, settled active vessel can be saved even while nearby crash debris is still moving. Surface time warp retains its checks for all nearby vessels.
 - Ring encounters no longer automatically open Flight from the Tracking Station. Approaching craft still stop unsafe warp; select Fly to control them. Incidental debris no longer triggers the station's encounter warp guard.
 - These changes do not add unloaded atmospheric or collision simulation for debris.
 
 
-### Development follow-up: stock intakes and terrain streaming
+### Stock intakes and terrain streaming
 
 - Stock air intakes use local ring oxygen and airflow rather than the host star's oxygen flag. Stock pressure thresholds, intake alignment, shielding and resource consumption remain in effect.
 - Terrain keeps the previous complete LOD layout visible while replacement meshes build. Nearby terrain is retained until the replacement layout is ready.
@@ -37,6 +40,14 @@ No dependencies or extensions are bundled. Extract each ZIP into the **KSP insta
 - Dedicated Extensions tab with collapsible Clouds, Scattering and Cyla controls, available in all game modes.
 - Installed Ringworld extensions default to enabled; existing saved disabled choices are retained. Enable switches apply immediately. Quality presets continue to control cost, including layers-only clouds on Slow and lower.
 - Normal Settings no longer overwrites extension-specific edits.
+
+### Validation and compatibility
+
+The changed stock intake/environment, terrain publication, Tracking Station and resident save/reload paths passed their targeted in-game regressions. The resident and four deployed science units survived the Space Center round trip. All 110,323 core checks passed. Other recorded regression results are retained from earlier builds; this is not a claim that every suite was rerun for 1.1.6.
+
+The compatible rendering assembly identity is retained for extension 1.0.0 binaries. NetKAN changes to accept base 1.1.5 or newer are submitted separately; CKAN installation depends on those changes being merged and indexed. The exact reported plane breakup, freely moving debris physics and arbitrary third-party autopilots remain unverified. Unloaded atmospheric/collision simulation is not added.
+
+## Release-v1.1.5
 
 ### Dependencies and optional integrations
 
