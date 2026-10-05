@@ -14,6 +14,20 @@ Consolidated release history, newest first. Historical requirements apply only t
 
 No dependencies or extensions are bundled. Extract each ZIP into the **KSP installation root**, merging GameData. The base works without either extension and uses Original atmosphere without Cyla. Optional metadata is supplied for CKAN submission; publication alone does not update the central index.
 
+## Unreleased development
+
+- Sandbox ring management adds per-ring artificial gravity, reverse rotation and optional day/night panels. Changes require an unoccupied ring. Spin speed follows gravity and radius; positive gravity below 1 m/s² is supported.
+- Disabling panels removes their meshes and their simulated night masks from local terrain, distant terrain and clouds. The matching development build of Ringworld Scattering also removes the panel mask from its distant atmosphere.
+- Terrain/cloud longitude stays consistent when rotation is reversed.
+- Sandbox ring management adds per-ring X/Y/Z inclination. Tilt is applied to the flight frame, terrain, scenery, navigation, walls, atmosphere and distant ring rendering. Water orientation follows the ring in the matching development Scattering build.
+
+- Rings can follow an existing planet, moon, star or orbiting asteroid/comet, retaining its identity across saves and orbital reference changes. No body cloning is included.
+- Anchor position, velocity and acceleration feed flight transitions, landed persistence, time warp and encounter prediction. Compact-ring transfers use a safe temporary orbit outside the reference body.
+- Physical sunlight visibility accounts for celestial bodies, ring hulls, rim walls and enabled panels. Off-axis lighting reaches terrain, clouds, water, atmosphere and stock solar tracking in the matching development builds.
+- Small planet rings may occupy another ring's empty central region. Missing asteroid anchors retain the last recorded center and show an editor warning.
+
+These changes are not included in the published v1.1.6 ZIP. Use the matching development Ringworld Scattering build for inclined water and distant-atmosphere eclipses. Stock planetary terrain does not receive ring-shadow shaders; lighting uses one associated star.
+
 ## Release-v1.1.6
 
 KSP 1.12.5; Harmony 2 >= 2.2.1.0 is required separately. Optional: Cyla 1.1.0.0, Ringworld Clouds 1.0.0 and Ringworld Scattering 1.0.0. No dependencies or extensions are bundled. Extract the ZIP into the KSP root, merging GameData.

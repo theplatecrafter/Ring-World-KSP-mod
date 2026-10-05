@@ -61,7 +61,7 @@ namespace NivenRingworld
             {
                 var f=RingworldFlight.Instance;var star=f!=null&&f.Star!=null?f.Center:renderStar;
                 double phase=settings.Geometry.OrientationRadians-cloudPhase;
-                clouds.transform.position=(Vector3)(star+ConvertVector.Ksp(RingGeometry.Rotate(cloudAnchor,phase)));
+                clouds.transform.position=(Vector3)(star+ConvertVector.Ksp(settings.Geometry.RotateAroundAxis(cloudAnchor,phase)));
             }
         }
         internal void Update(bool enabled,Vector3d star,bool suppressSky=false)
@@ -76,7 +76,7 @@ namespace NivenRingworld
             sky.transform.position=camera.transform.position;
             sky.transform.localScale=Vector3.one*1000;
             double time=Planetarium.GetUniversalTime();
-            float sunlight=(float)settings.Geometry.Daylight(c.Along,time);skyMaterial.color=new Color(sunlight,sunlight,sunlight,1);
+            float sunlight=(float)settings.Geometry.Daylight(c.Along,time,c.Across,c.Altitude);skyMaterial.color=new Color(sunlight,sunlight,sunlight,1);
             if(Time.realtimeSinceStartup>=nextSky)
             {
                 nextSky=Time.realtimeSinceStartup+.2f;
@@ -103,11 +103,11 @@ namespace NivenRingworld
             var localWeather=RingCloudField.Apply(cloudMaterial,settings,cloudAlong,cloudAcross,0,time);
             // Keep mesh-coordinate drift anchored, but share the observer's weather with the global handoff.
             cloudMaterial.SetFloat("_CloudAmount",(float)settings.Weather(c.Along,c.Across,time).Cloud);
-            cloudMaterial.SetFloat("_Extent",180000);cloudMaterial.SetFloat("_Daylight",(float)settings.Geometry.Daylight(c.Along,time));
+            cloudMaterial.SetFloat("_Extent",180000);cloudMaterial.SetFloat("_Daylight",(float)settings.Geometry.Daylight(c.Along,time,c.Across,c.Altitude));
             cloudMaterial.SetVector("_CloudHandoff",RingCloudField.Handoff(settings,false));
             double phase=settings.Geometry.OrientationRadians-cloudPhase;
-            clouds.transform.rotation=Quaternion.AngleAxis((float)(phase*180/Math.PI),Vector3.up);
-            clouds.transform.position=(Vector3)(star+ConvertVector.Ksp(RingGeometry.Rotate(cloudAnchor,phase)));
+            clouds.transform.rotation=settings.AxisRotation(phase);
+            clouds.transform.position=(Vector3)(star+ConvertVector.Ksp(settings.Geometry.RotateAroundAxis(cloudAnchor,phase)));
         }
         private void BuildClouds(RingPoint observer,double time)
         {

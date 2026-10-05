@@ -75,7 +75,7 @@ namespace NivenRingworld
             double spacing=24/Math.Sqrt(Math.Max(.2,density));while(block.Size/spacing>side)spacing*=2;
             // A relocation can change the live orientation while this iterator is
             // paused. Build every row in the patch's original coordinate frame.
-            var geometry=new RingGeometry(s.Geometry.P){OrientationRadians=phase};
+            var geometry=new RingGeometry(s.Geometry.P){OrientationRadians=phase,Basis=s.Geometry.Basis};
             var patch=new List<Tree>();
             for(long y=(long)Math.Ceiling(block.Y/spacing);y*spacing<block.Y+block.Size;y++)
             {

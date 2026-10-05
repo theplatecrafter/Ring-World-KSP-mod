@@ -26,7 +26,7 @@ namespace NivenRingworld
             var climate=Ecology.Sample(settings.Terrain,p.Along,p.Across);bool dust=climate.Desert>.35;double strength=dust?climate.Desert:climate.Forest*.4;
             var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var indices=new List<int>();double time=Planetarium.GetUniversalTime();
             root.transform.position=(Vector3)(star+ConvertVector.Ksp(observer));
-            float light=(float)(.15+.85*g.Daylight(p.Along,time));
+            float light=(float)(.15+.85*g.Daylight(p.Along,time,p.Across,p.Altitude));
             for(int i=0;i<48*strength;i++)
             {
                 double a=p.Along+RingGeometry.Wrap(i*17.37+time*(dust?6:1),80)-40,b=p.Across+RingGeometry.Wrap(i*31.13,80)-40;

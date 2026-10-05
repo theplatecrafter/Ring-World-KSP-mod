@@ -90,7 +90,7 @@ namespace NivenRingworld
             sunlight.shadows=QualitySettings.shadows==ShadowQuality.Disable?LightShadows.None:QualitySettings.shadows==ShadowQuality.HardOnly?LightShadows.Hard:LightShadows.Soft;
             RingPoint p=settings.Geometry.Coordinates(observer);
             Extensions.RingworldWater.Update(settings,waterMaterial,simpleWaterShader,observer,star);
-            sunlight.transform.rotation=Quaternion.LookRotation(-ConvertVector.Unity(settings.Geometry.Up(observer)),Vector3.up);
+            sunlight.transform.rotation=Quaternion.LookRotation(-ConvertVector.Unity(RingLighting.Direction(settings,observer,Planetarium.GetUniversalTime())),ConvertVector.Unity(settings.Geometry.Axis));
             long cx=(long)Math.Floor(p.Along/settings.TileSize),cy=(long)Math.Floor(p.Across/settings.TileSize);
             int radius=settings.TileRadius;
             var wanted=new HashSet<string>();
@@ -161,8 +161,8 @@ namespace NivenRingworld
         private void Place(GameObject obj,DVec anchor,double phase,Quaternion rotation,Vector3d star)
         {
             double delta=settings.Geometry.OrientationRadians-phase;
-            obj.transform.position=(Vector3)(star+ConvertVector.Ksp(RingGeometry.Rotate(anchor,delta)));
-            obj.transform.rotation=Quaternion.AngleAxis((float)(delta*180/Math.PI),Vector3.up)*rotation;
+            obj.transform.position=(Vector3)(star+ConvertVector.Ksp(settings.Geometry.RotateAroundAxis(anchor,delta)));
+            obj.transform.rotation=settings.AxisRotation(delta)*rotation;
         }
         internal void Light(double daylight)
         {

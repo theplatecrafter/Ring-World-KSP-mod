@@ -49,7 +49,7 @@ namespace NivenRingworld
                 Density=atmosphere?air.Density:0,PressureKPa=atmosphere?air.PressureKPa:0,
                 TemperatureKelvin=air.Temperature,SpeedOfSound=atmosphere?air.SoundSpeed:0,
                 Mach=atmosphere?surface.SurfaceRelativeVelocity.magnitude/air.SoundSpeed:0,
-                Daylight=s.Geometry.Daylight(surface.Along,Planetarium.GetUniversalTime()),
+                Daylight=s.Geometry.Daylight(surface.Along,Planetarium.GetUniversalTime(),surface.Across,surface.Altitude),
                 CloudCover=atmosphere?weather.Cloud:0,Rain=atmosphere&&s.RainEnabled?weather.Rain:0,
                 Storm=atmosphere?weather.Storm:0
             };
@@ -80,7 +80,7 @@ namespace NivenRingworld
                 StationaryFrameAcceleration=ConvertVector.Ksp(flight.Acceleration(position,new Ringworld.Core.DVec())),
                 SurfaceUp=ConvertVector.Ksp(geometry.Up(position)),
                 FrameEpoch=flight.FrameEpoch,
-                TangentialSpeed=geometry.P.Omega*geometry.P.Radius,
+                TangentialSpeed=System.Math.Abs(geometry.P.Omega)*geometry.P.Radius,
                 Biome=terrain.Biome.ToString()
             };
             return true;

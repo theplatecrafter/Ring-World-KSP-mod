@@ -34,6 +34,7 @@ namespace NivenRingworld
             surface.RebuildLod();
         }
         internal double FrameEpoch;
+        internal DVec FrameAnchorPosition;
         private double arrivalCooldown;
         private Rect window=new Rect(30,80,370,570);
         private Vector2 scroll;
@@ -107,14 +108,18 @@ namespace NivenRingworld
             // Rails anchors are stationary in the rotating atmosphere, including
             // the packing tick after rigidbodies have become kinematic.
             if(surfaceWarp.Anchored(v))return new DVec();
-            if(v.packed)return ConvertVector.Core(v.obt_velocity);
+            if(v.packed)return RingAnchorEphemeris.VesselRelative(v,Star,Planetarium.GetUniversalTime()).Velocity-Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity;
             double mass=0;DVec velocity=new DVec();var seen=new HashSet<Rigidbody>();
             foreach(var part in v.parts)
             {
                 var rb=part.rb;if(rb==null||rb.isKinematic||!seen.Add(rb))continue;
                 velocity+=ConvertVector.Core(rb.velocity)*rb.mass;mass+=rb.mass;
             }
-            return mass>0?velocity/mass+ConvertVector.Core(Krakensbane.GetFrameVelocity()):ConvertVector.Core(v.obt_velocity);
+            var result=mass>0?velocity/mass+ConvertVector.Core(Krakensbane.GetFrameVelocity()):ConvertVector.Core(v.obt_velocity);
+            if(FrameInUse)return result;
+            RingAnchorState reference;string error;
+            if(!RingAnchorEphemeris.TryRelative(RingAnchorEphemeris.Id(v.mainBody),Star,Planetarium.GetUniversalTime(),out reference,out error))return result;
+            return result+reference.Velocity-Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity;
         }
         public void Start()
         {
@@ -189,7 +194,7 @@ namespace NivenRingworld
             if(visuals!=null&&visuals.PhotoActive)photoTerrainUpdated=true;
             groundDetails.Update(Position(v),Center);groundWeather.Update(Position(v),Center);
             var coord=Settings.Geometry.Coordinates(Position(v));
-            surface.Light(Settings.Geometry.Daylight(coord.Along,Planetarium.GetUniversalTime()));
+            surface.Light(Settings.Geometry.Daylight(coord.Along,Planetarium.GetUniversalTime(),coord.Across,coord.Altitude));
             if(Time.realtimeSinceStartup>nextCapture){Capture();nextCapture=Time.realtimeSinceStartup+1;}
         }
         private void OnCrewOnEva(GameEvents.FromToAction<Part,Part> ev)
@@ -199,7 +204,7 @@ namespace NivenRingworld
         }
         private void RegisterParticipant(Vessel v)
         {
-            if(v==null||State==null)return;
+            if(v==null||State==null||Settings.IsAnchor(v))return;
             string id=v.id.ToString();if(State.Vessels.ContainsKey(id))return;
             State.Vessels[id]=new VesselRecord{Id=id,RingId=Settings.RingId,Position=RootPosition(v),Velocity=Velocity(v),Rotation=v.transform.rotation,Restored=true,Epoch=FrameEpoch};
             Debug.Log("[NivenRingworld] Inherited rotating frame: "+v.vesselName);
@@ -223,12 +228,12 @@ namespace NivenRingworld
             foreach(var v in FlightGlobals.VesselsLoaded)
             {
                 VesselRecord r;if(v==active||v==null||v.packed||!State.Vessels.TryGetValue(v.id.ToString(),out r)||r.RingId!=Settings.RingId||r.Restored)continue;
-                double angle=Settings.Geometry.P.Omega*(FrameEpoch-r.Epoch);var target=RingGeometry.Rotate(r.Position,angle);
+                double angle=Settings.Geometry.P.Omega*(FrameEpoch-r.Epoch);var target=Settings.Geometry.RotateAroundAxis(r.Position,angle);
                 if((target-RootPosition(active)).Length>2200)continue;
                 v.SetPosition(Center+ConvertVector.Ksp(target),true);
-                v.SetRotation(Quaternion.AngleAxis((float)(angle*180/Math.PI),Vector3.up)*r.Rotation,false);
+                v.SetRotation(Settings.AxisRotation(angle)*r.Rotation,false);
                 RingCollisionFrame.Reset(v);
-                v.SetWorldVelocity(ConvertVector.Ksp(RingGeometry.Rotate(r.Velocity,angle)));
+                v.SetWorldVelocity(ConvertVector.Ksp(Settings.Geometry.RotateAroundAxis(r.Velocity,angle)));
                 r.Position=target;r.Rotation=v.transform.rotation;r.Epoch=FrameEpoch;r.Restored=true;v.IgnoreGForces(5);v.IgnoreSpeed(5);
             }
         }
@@ -242,7 +247,7 @@ namespace NivenRingworld
                 foreach(var vessel in FlightGlobals.VesselsLoaded)
                 {
                     if(vessel==null||vessel.packed||vessel.mainBody!=Star)continue;
-                    var pull=RibbonGravity.Acceleration(Position(vessel),Settings.Geometry.P,Settings.Geometry.P.SurfaceDensity);
+                    var pull=Settings.Geometry.RibbonAcceleration(Position(vessel));
                     var seen=new HashSet<Rigidbody>();
                     foreach(var part in vessel.parts)if(part.rb!=null&&!part.rb.isKinematic&&seen.Add(part.rb))part.rb.AddForce(ConvertVector.Unity(pull),ForceMode.Acceleration);
                 }
@@ -268,7 +273,7 @@ namespace NivenRingworld
                 }
                 if(State.Vessels[id].RingId!=Settings.RingId||!State.Vessels[id].Restored)continue;
                 DVec vesselPos=Position(v);
-                var ribbonPull=RibbonGravity.Acceleration(vesselPos,Settings.Geometry.P,Settings.Geometry.P.SurfaceDensity);
+                var ribbonPull=Settings.Geometry.RibbonAcceleration(vesselPos);
                 foreach(var part in v.parts)
                 {
                     Rigidbody rb=part.rb;
@@ -390,13 +395,14 @@ namespace NivenRingworld
             string id=v.id.ToString();
             State.Vessels[id]=new VesselRecord{Id=id,RingId=Settings.RingId,Position=position,Velocity=velocity,Rotation=rotation,Epoch=FrameEpoch};
             // Use KSP's own orbit placement to handle SOI bookkeeping first.
-            FlightGlobals.fetch.SetShipOrbit(Star.flightGlobalsIndex,0,Settings.Geometry.P.Radius,0,0,0,0,Planetarium.GetUniversalTime());
+            double stagingRadius=Math.Max(Star.Radius+100000000,(Settings.AnchorAt(Planetarium.GetUniversalTime()).Position+position).Length);
+            FlightGlobals.fetch.SetShipOrbit(Star.flightGlobalsIndex,0,stagingRadius,0,0,0,0,Planetarium.GetUniversalTime());
             yield return null;
             double deadline=Time.realtimeSinceStartup+45;
             while((v.packed||v.mainBody!=Star)&&Time.realtimeSinceStartup<deadline)yield return null;
             if(v.packed||v.mainBody!=Star)
             {
-                status="KSP did not finish switching to the Sun. Retry when unpacked.";transferring=false;yield break;
+                status="KSP did not finish switching the orbital reference. Retry when unpacked.";transferring=false;yield break;
             }
             v.Landed=false;v.Splashed=false;v.landedAt="";
             // Shift first: putting a float Transform billions of metres away loses hundreds of metres.
@@ -426,17 +432,17 @@ namespace NivenRingworld
         }
         private void SetFrameEpoch(double epoch)
         {
-            FrameEpoch=epoch;Settings.Geometry.OrientationRadians=Settings.Geometry.P.Omega*epoch;
+            FrameEpoch=epoch;FrameAnchorPosition=Settings.AnchorAt(Planetarium.GetUniversalTime()).Position;Settings.Geometry.OrientationRadians=Settings.Geometry.P.Omega*epoch;
         }
         private void PrepareArrival()
         {
             var v=FlightGlobals.ActiveVessel;
-            if(v==null||State==null||v.mainBody!=Star){InputLockManager.RemoveControlLock(WarpLock);return;}
+            if(v==null||State==null||Settings.IsAnchor(v)){InputLockManager.RemoveControlLock(WarpLock);return;}
             var g=Settings.Geometry;var pos=Position(v);
             var coord=g.Coordinates(pos);
             if(coord.Altitude>-1000&&coord.Altitude<600000&&Math.Abs(coord.Across)<g.P.Width/2+500000)
             {
-                surface.Update(pos,Center);surface.Light(g.Daylight(coord.Along,Planetarium.GetUniversalTime()));
+                surface.Update(pos,Center);surface.Light(g.Daylight(coord.Along,Planetarium.GetUniversalTime(),coord.Across,coord.Altitude));
             }
             // Drop warp before the boundary, including high speed radial approaches.
             double lead=Math.Max(10,TimeWarp.CurrentRate*Time.fixedDeltaTime*4);
@@ -452,7 +458,7 @@ namespace NivenRingworld
         internal void TryArrival()
         {
             var v=FlightGlobals.ActiveVessel;
-            if(FrameInUse||Active||transferring||State==null||v==null||v.packed||v.mainBody!=Star||Planetarium.GetUniversalTime()<arrivalCooldown)return;
+            if(FrameInUse||Active||transferring||State==null||v==null||v.packed||Settings.IsAnchor(v)||Planetarium.GetUniversalTime()<arrivalCooldown)return;
             if(!Settings.Geometry.InArrivalRegion(Position(v),false))return;
             SetFrameEpoch(Planetarium.GetUniversalTime());
             State.Expedition=true;
@@ -468,39 +474,39 @@ namespace NivenRingworld
         {
             var g=Settings.Geometry;double elapsed=leaving?Planetarium.GetUniversalTime()-FrameEpoch:0;
             double angle=g.P.Omega*elapsed;
-            Quaternion q=Quaternion.AngleAxis((float)(angle*180/Math.PI),Vector3.up);
+            Quaternion q=Settings.AxisRotation(angle);
             RingCameraBlend.Begin(q);
             var snapshots=new List<FrameVessel>();
             foreach(var v in FlightGlobals.VesselsLoaded)
             {
-                if(v==null||v.packed||v.mainBody!=Star)continue;
+                if(v==null||v.packed||Settings.IsAnchor(v))continue;
                 if(leaving&&(!State.Vessels.ContainsKey(v.id.ToString())||State.Vessels[v.id.ToString()].RingId!=Settings.RingId))continue;
                 snapshots.Add(new FrameVessel(v,this,leaving,elapsed,q));
             }
             Krakensbane.ResetVelocityFrame(true);
             var active=FlightGlobals.ActiveVessel;
             foreach(var s in snapshots)if(s.Vessel==active)
-                FloatingOrigin.SetOffset(Center+ConvertVector.Ksp(s.Position));
+                FloatingOrigin.SetOffset((leaving?Settings.InertialCenter:Center)+ConvertVector.Ksp(s.Position));
             foreach(var s in snapshots)
             {
                 var v=s.Vessel;
-                v.SetRotation(s.Rotation,false);v.SetPosition(Center+ConvertVector.Ksp(s.Position),true);
+                v.SetRotation(s.Rotation,false);v.SetPosition((leaving?Settings.InertialCenter:Center)+ConvertVector.Ksp(s.Position),true);
                 v.SetWorldVelocity(ConvertVector.Ksp(s.Velocity));
                 foreach(var body in s.Bodies)
                 {
-                    body.Body.position=(Vector3)(Center+ConvertVector.Ksp(s.Position))+body.Offset;
+                    body.Body.position=(Vector3)((leaving?Settings.InertialCenter:Center)+ConvertVector.Ksp(s.Position))+body.Offset;
                     body.Body.rotation=body.Rotation;body.Body.velocity=body.Velocity;body.Body.angularVelocity=body.Angular;
                 }
                 v.ResetGroundContact();v.KillPermanentGroundContact();v.Landed=false;
                 RingCollisionFrame.Reset(v);
                 if(leaving)
                 {
-                    v.orbit.UpdateFromStateVectors(ConvertVector.Orbit(ConvertVector.Ksp(g.ToInertialPosition(s.OriginalCOM,elapsed)+Settings.CenterOffset)),ConvertVector.Orbit(ConvertVector.Ksp(s.Velocity)),Star,Planetarium.GetUniversalTime());
+                    v.orbit.UpdateFromStateVectors(ConvertVector.Orbit(ConvertVector.Ksp(g.ToInertialPosition(s.OriginalCOM,elapsed)+Settings.AnchorAt(Planetarium.GetUniversalTime()).Position)),ConvertVector.Orbit(ConvertVector.Ksp(s.Velocity)),Star,Planetarium.GetUniversalTime());
                     v.AttachPatchedConicsSolver();State.Vessels.Remove(v.id.ToString());
                 }
                 else
                 {
-                    v.DetachPatchedConicsSolver();string id=v.id.ToString();
+                    v.DetachPatchedConicsSolver();v.orbitDriver.referenceBody=Star;string id=v.id.ToString();
                     State.Vessels[id]=new VesselRecord{Id=id,RingId=Settings.RingId,Position=s.Position,Velocity=s.Velocity,Rotation=s.Rotation,Restored=true,Epoch=FrameEpoch};
                 }
             }
@@ -518,7 +524,7 @@ namespace NivenRingworld
             {
                 Vessel=v;var g=f.Settings.Geometry;OriginalCOM=f.Position(v);
                 var root=f.RootPosition(v);Position=leaving?g.ToInertialPosition(root,elapsed):root;
-                Velocity=leaving?g.ToInertialVelocity(OriginalCOM,f.Velocity(v),elapsed):g.RotatingVelocity(OriginalCOM,f.Velocity(v));
+                Velocity=leaving?g.ToInertialVelocity(OriginalCOM,f.Velocity(v),elapsed)+f.Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity:g.RotatingVelocity(OriginalCOM,f.Velocity(v));
                 Rotation=leaving?q*v.transform.rotation:v.transform.rotation;
                 var seen=new HashSet<Rigidbody>();
                 foreach(var part in v.parts)
@@ -526,10 +532,11 @@ namespace NivenRingworld
                     var rb=part.rb;if(rb==null||rb.isKinematic||!seen.Add(rb))continue;
                     var p=root+ConvertVector.Core(rb.worldCenterOfMass-v.transform.position);
                     var velocity=ConvertVector.Core((Vector3d)rb.velocity+Krakensbane.GetFrameVelocity());
+                    if(!leaving){RingAnchorState reference;string error;if(RingAnchorEphemeris.TryRelative(RingAnchorEphemeris.Id(v.mainBody),f.Star,Planetarium.GetUniversalTime(),out reference,out error))velocity+=reference.Velocity;}
                     var offset=rb.position-v.transform.position;
                     Bodies.Add(new FrameBody{Body=rb,Offset=leaving?q*offset:offset,Rotation=leaving?q*rb.rotation:rb.rotation,
-                        Velocity=ConvertVector.Unity(leaving?g.ToInertialVelocity(p,velocity,elapsed):g.RotatingVelocity(p,velocity)),
-                        Angular=leaving?q*(rb.angularVelocity+Vector3.up*(float)g.P.Omega):rb.angularVelocity-Vector3.up*(float)g.P.Omega});
+                        Velocity=ConvertVector.Unity(leaving?g.ToInertialVelocity(p,velocity,elapsed)+f.Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity:g.RotatingVelocity(p,velocity-f.Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity)),
+                        Angular=leaving?q*(rb.angularVelocity+ConvertVector.Unity(g.Axis)*(float)g.P.Omega):rb.angularVelocity-ConvertVector.Unity(g.Axis)*(float)g.P.Omega});
                 }
             }
         }
@@ -572,7 +579,7 @@ namespace NivenRingworld
             if(panelTab==(SandboxControls?2:1)){settingsPanel.Draw(this,true);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
             if(SandboxControls&&panelTab==1){settingsPanel.Draw(this);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
             GUILayout.Label(Settings.RingName.ToUpperInvariant());
-            GUILayout.Label("Tangential speed: "+(Settings.Geometry.P.Omega*Settings.Geometry.P.Radius/1000).ToString("N2")+" km/s");
+            GUILayout.Label("Tangential speed: "+(Math.Abs(Settings.Geometry.P.Omega)*Settings.Geometry.P.Radius/1000).ToString("N2")+" km/s");
             GUILayout.Label("Radius "+(Settings.Geometry.P.Radius/1000).ToString("N0")+" km   |   Width "+(Settings.Geometry.P.Width/1000).ToString("N0")+" km");
             var v=FlightGlobals.ActiveVessel;
             if(Active&&v!=null&&v.mainBody==Star)
@@ -582,7 +589,7 @@ namespace NivenRingworld
                 GUILayout.Label("Surface-relative speed: "+Velocity(v).Length.ToString("N1")+" m/s   |   g: "+Acceleration(Position(v),new DVec()).Length.ToString("F3"));
                 GUILayout.Label("Spinward: "+(p.Along/1000).ToString("N1")+" km\nAcross: "+(p.Across/1000).ToString("N1")+" km"+(SandboxControls?"   |   Tiles: "+surface.TileCount+" | LOD: "+surface.LodCount+" (queued "+(surface.LodPending+surface.CanopyPending+surface.SceneryPending)+")":""));
                 GUILayout.Label("Air: "+v.atmDensity.ToString("F4")+" kg/m³  |  "+v.staticPressurekPa.ToString("F2")+" kPa  |  Mach "+v.mach.ToString("F2"));
-                GUILayout.Label("Local light: "+(100*Settings.Geometry.Daylight(p.Along,Planetarium.GetUniversalTime())).ToString("F0")+"%");
+                GUILayout.Label("Local light: "+(100*Settings.Geometry.Daylight(p.Along,Planetarium.GetUniversalTime(),p.Across,p.Altitude)).ToString("F0")+"%");
             }
             if(Active)surfaceWarp.Draw(this);
             if(visuals!=null)

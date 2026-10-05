@@ -27,7 +27,7 @@ namespace NivenRingworld
         {
             var v=FlightGlobals.ActiveVessel;if(!FlightGlobals.ready||!StockIntegration.Applies(v))return;
             var f=RingworldFlight.Instance;
-            var frame=Quaternion.LookRotation(Vector3.up,ConvertVector.Unity(f.Settings.Geometry.Up(f.Position(v))));
+            var frame=Quaternion.LookRotation(ConvertVector.Unity(f.Settings.Geometry.Axis),ConvertVector.Unity(f.Settings.Geometry.Up(f.Position(v))));
             var relative=__instance.attitudeGymbal*frame;
             SetRelative(__instance,relative);__instance.navBall.rotation=relative;
             __instance.headingText.text=KSPUtil.LocalizeNumber(Quaternion.Inverse(relative).eulerAngles.y,"000")+"°";

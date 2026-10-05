@@ -11,6 +11,8 @@ Shader "NivenRingworld/DistantSurface"
             #pragma fragment frag
             #pragma target 5.0
             #include "UnityCG.cginc"
+#include "RingEclipse.cginc"
+            float _PanelsDisabled;
             float _CircumferenceKm, _WidthKm, _DayPhase, _CloudAmount, _CloudDrift;
             float _SeedLow, _SeedHigh, _Generation, _Detail;
             struct appdata { float4 vertex:POSITION; float2 uv:TEXCOORD0; };
@@ -38,7 +40,7 @@ Shader "NivenRingworld/DistantSurface"
                 if(_Detail<-.5)return float4(.012,.015,.019,1);
                 float2 uv=i.uv;
                 float phase=frac(20*uv.x-_DayPhase),edge=min(phase,1-phase);
-                float light=saturate((edge-.138307)/.02);
+                float light=ringEclipse(i.uv);
                 // Even the lowest budget keeps continents and oceans. The detail
                 // switch controls climate sampling cost, never whole-ring visibility.
                 if(_Detail<.5)

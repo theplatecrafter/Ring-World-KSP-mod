@@ -94,21 +94,21 @@ namespace NivenRingworld
             var currentWeather=RingCloudField.Apply(material,Settings,c.Along,c.Across,c.Altitude,time);
             clouds.Update(Settings,currentWeather,time);
             var surface=Settings.Terrain.Sample(c.Along,c.Across);
-            string localWeather=RingWeather.SurfaceKind(currentWeather,surface.Biome,Math.Abs(c.Across)/(g.P.Width*.5),g.Daylight(c.Along,time));
+            string localWeather=RingWeather.SurfaceKind(currentWeather,surface.Biome,Math.Abs(c.Across)/(g.P.Width*.5),g.Daylight(c.Along,time,c.Across,c.Altitude));
             material.SetVector("_SurfaceWeather",new Vector4(localWeather=="Rim-shadow fog"?(float)currentWeather.Cloud:0,localWeather=="Blowing dust"?(float)currentWeather.Storm:0,(float)surface.Height,surface.Biome==Biome.Snow?1:0));
 
             material.SetVector("_CloudHandoff",RingCloudField.Handoff(Settings,true));
-            DVec up=g.Up(observer),along=g.SpinVelocity(observer).Unit,across=DVec.Cross(up,along).Unit;
+            DVec up=g.Up(observer),along=g.AlongDirection(observer),across=DVec.Cross(up,along).Unit;
             Func<Vector3,Vector3> local=v=>new Vector3((float)DVec.Dot(ConvertVector.Core(v),along),(float)DVec.Dot(ConvertVector.Core(v),across),(float)DVec.Dot(ConvertVector.Core(v),up));
             // Geometry's positive Across is world +Y. Correct the tangent handedness explicitly.
-            across=new DVec(0,1,0);
+            across=g.Axis;
             material.SetVector("_RayRight",local(cameraComponent.transform.right)/cameraComponent.projectionMatrix.m00);
             material.SetVector("_RayUp",local(cameraComponent.transform.up)/cameraComponent.projectionMatrix.m11);
             material.SetVector("_RayForward",local(cameraComponent.transform.forward));
-            material.SetVector("_Sun",local(ConvertVector.Unity((-observer).Unit)));
+            material.SetVector("_Sun",local(ConvertVector.Unity(RingLighting.Direction(Settings,observer,time))));
             material.SetVector("_Habitat",new Vector4((float)c.Altitude,(float)g.P.Radius,(float)c.Across,(float)(g.P.Width/2)));
             material.SetVector("_WeatherMap",new Vector4(0,0,(float)extent,(float)currentWeather.Cloud));
-            material.SetVector("_Look",new Vector4(CylaActive?0:(float)Settings.Haze,(float)g.Daylight(c.Along,time),(float)Settings.CloudShadow,(float)Settings.AtmosphereExposure));
+            material.SetVector("_Look",new Vector4(CylaActive?0:(float)Settings.Haze,(float)g.Daylight(c.Along,time,c.Across,c.Altitude),(float)Settings.CloudShadow,(float)Settings.AtmosphereExposure));
             material.SetVector("_Quality",new Vector4(Settings.VisualQuality==0?Math.Min(32,Settings.CloudSteps):Settings.CloudSteps,CylaActive?(currentWeather.Rain>.01||localWeather=="Rim-shadow fog"?16:0):Settings.AtmosphereSteps,Settings.VisualQuality==2?6:4,(float)Settings.RenderCloudRange));
             if(!PhotoActive)Status=(Settings.AtmosphereBackend==1?cyla.Status+" | ":"")+"Weather: "+(currentWeather.Storm>.1?"thunderstorm":currentWeather.Rain>.1?"rain":currentWeather.Cloud>.5?"cloudy":"fair")+" / Ringworld Clouds: "+(CloudRendering?Settings.CloudMode+" / "+Settings.CloudSteps+" view steps":"layers only")+" / "+Settings.AtmosphereSteps+" atmosphere steps.";
         }

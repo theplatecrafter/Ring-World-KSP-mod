@@ -54,9 +54,7 @@ namespace NivenRingworld
             fi.pseudoReynolds=air.Density*fi.spd;
             fi.pseudoReLerpTimeMult=1/(PhysicsGlobals.TurbulentConvectionEnd-PhysicsGlobals.TurbulentConvectionStart);
             fi.pseudoReDragMult=PhysicsGlobals.DragCurvePseudoReynolds.Evaluate((float)fi.pseudoReynolds);
-            var c=f.Settings.Geometry.Coordinates(f.Position(v));
-            fi.solarFluxMultiplier=f.Settings.Geometry.Daylight(c.Along,Planetarium.GetUniversalTime())*Math.Exp(-air.Density*.04);
-            v.solarFlux=fi.solarFlux*=fi.solarFluxMultiplier;
+            RingSolarFlux.Apply(fi,v,Math.Exp(-air.Density*.04));
             return false;
         }
     }

@@ -67,18 +67,18 @@ namespace NivenRingworld
                 var s=scenario.RingSettings(node.GetValue("ringId")??"primary");if(s.Body==null)continue;
                 var orbit=RingTrajectory.SolarPatch(vessel,s.Body);if(orbit==null)continue;
                 double offset=Math.Max(0,orbit.StartUT-now);if(offset>horizon)continue;
-                soonest=Math.Min(soonest,offset+Encounter(orbit,s.Geometry,now+offset,horizon-offset,s.CenterOffset));
+                soonest=Math.Min(soonest,offset+Encounter(orbit,s.Geometry,now+offset,horizon-offset,default(DVec),t=>s.AnchorAt(t).Position,s.Body));
             }
             return soonest;
         }
-        internal static double Encounter(Orbit orbit,RingGeometry geometry,double now,double horizon,DVec centerOffset=default(DVec))
+        internal static double Encounter(Orbit orbit,RingGeometry geometry,double now,double horizon,DVec centerOffset=default(DVec),Func<double,DVec> centerAt=null,CelestialBody reference=null)
         {
-            var previous=ConvertVector.Core(ConvertVector.Orbit(orbit.getRelativePositionAtUT(now)))-centerOffset;
+            var previous=RingAnchorEphemeris.OrbitRelative(orbit,reference??orbit.referenceBody,now).Position-(centerAt==null?centerOffset:centerAt(now));
             if(geometry.InArrivalRegion(previous,false))return 0;
             for(double elapsed=0;elapsed<horizon;)
             {
                 double dt=Math.Min(120,horizon-elapsed);
-                var next=ConvertVector.Core(ConvertVector.Orbit(orbit.getRelativePositionAtUT(now+elapsed+dt)))-centerOffset;
+                var next=RingAnchorEphemeris.OrbitRelative(orbit,reference??orbit.referenceBody,now+elapsed+dt).Position-(centerAt==null?centerOffset:centerAt(now+elapsed+dt));
                 // Chord intersection catches a thin ribbon crossed between samples.
                 double entry=geometry.TimeToArrival(previous,(next-previous)/dt,dt);
                 if(!double.IsInfinity(entry))return elapsed+entry;

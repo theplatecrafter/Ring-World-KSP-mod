@@ -41,6 +41,8 @@ namespace NivenRingworld
             if(root==null)return;
             root.SetActive(s.Atmosphere&&s.CloudAmount>0);if(!root.activeSelf)return;
             RingCloudField.Apply(material,s,0,0,0,time);
+            RingLighting.Apply(material,s,time);
+            material.SetFloat("_PanelsDisabled",s.Geometry.P.PanelsEnabled?0:1);
             material.SetFloat("_DayPhase",(float)RingGeometry.Wrap(time/s.Geometry.P.DaySeconds,1));
             material.SetVector("_Size",new Vector4((float)s.Geometry.P.Circumference,(float)s.Geometry.P.Width,0,0));
             uint seed=unchecked((uint)s.Geometry.P.Seed);material.SetFloat("_SeedLow",seed&65535);material.SetFloat("_SeedHigh",seed>>16);

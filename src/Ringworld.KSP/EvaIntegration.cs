@@ -64,7 +64,7 @@ namespace NivenRingworld
             var camera=FlightCamera.fetch;
             var forward=camera!=null?camera.mainCamera.transform.forward:__instance.transform.forward;
             __instance.fFwd=Vector3.ProjectOnPlane(forward,__instance.fUp).normalized;
-            if(__instance.fFwd.sqrMagnitude<.01f)__instance.fFwd=Vector3.up;
+            if(__instance.fFwd.sqrMagnitude<.01f)__instance.fFwd=ConvertVector.Unity(f.Settings.Geometry.Axis);
             __instance.fRgt=Vector3.Cross(__instance.fUp,__instance.fFwd);
             return false;
         }

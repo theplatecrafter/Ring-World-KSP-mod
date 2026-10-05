@@ -20,8 +20,11 @@ namespace NivenRingworld
         internal int PredictionCommits;
         internal static Orbit SolarPatch(Vessel v,CelestialBody star)
         {
-            var orbit=v==null?null:v.orbit;
-            for(int i=0;i<16&&orbit!=null;i++,orbit=orbit.nextPatch)if(orbit.referenceBody==star)return orbit;
+            if(v!=null&&v.orbit!=null&&star!=null)
+            {
+                RingAnchorState parent;string error;
+                if(RingAnchorEphemeris.TryRelative(RingAnchorEphemeris.Id(v.orbit.referenceBody),star,Planetarium.GetUniversalTime(),out parent,out error))return v.orbit;
+            }
             return null;
         }
         private static bool Tracking {get{return HighLogic.LoadedScene==GameScenes.TRACKSTATION;}}
@@ -30,15 +33,15 @@ namespace NivenRingworld
         private static CelestialBody CurrentStar {get{return Tracking?TrackingRing.Star:RingworldFlight.Instance==null?null:RingworldFlight.Instance.Star;}}
         internal string Status="Vacuum coast prediction";
         internal int PointCount {get{return line==null?0:line.positionCount;}}
-        internal static DVec InertialAcceleration(DVec p,Settings s,double mu)
-        {return s.StellarAcceleration(p,mu)+RibbonGravity.Acceleration(p,s.Geometry.P,s.Geometry.P.SurfaceDensity);}
+        internal static DVec InertialAcceleration(DVec p,Settings s,double mu,double time=double.NaN)
+        {return s.InertialGravity(p,double.IsNaN(time)?Planetarium.GetUniversalTime():time)+s.Geometry.RibbonAcceleration(p);}
         internal void PackedUpdate(RingworldFlight f)
         {
             var v=FlightGlobals.ActiveVessel;double now=Planetarium.GetUniversalTime();
             if(v==null||!v.packed||f.Active||v.mainBody!=f.Star){packedEpoch=double.NaN;return;}
             if(double.IsNaN(packedEpoch)||v.id!=vesselId||now<packedEpoch)
             {
-                packedState=new CoastState(ConvertVector.Core(ConvertVector.Orbit(v.orbit.getRelativePositionAtUT(now)))-f.Settings.CenterOffset,ConvertVector.Core(ConvertVector.Orbit(v.orbit.getOrbitalVelocityAtUT(now))));
+                packedState=new CoastState(ConvertVector.Core(ConvertVector.Orbit(v.orbit.getRelativePositionAtUT(now)))-f.Settings.AnchorAt(now).Position,ConvertVector.Core(ConvertVector.Orbit(v.orbit.getOrbitalVelocityAtUT(now)))-f.Settings.AnchorAt(now).Velocity);
                 vesselId=v.id;packedEpoch=now;return;
             }
             double remaining=now-packedEpoch;
@@ -50,14 +53,14 @@ namespace NivenRingworld
                 double dt=Math.Min(300,remaining);
                 var c=f.Settings.Geometry.Coordinates(packedState.Position);
                 double distance=Math.Max(100,Math.Abs(c.Altitude));
-                double radialSpeed=Math.Abs((packedState.Position.X*packedState.Velocity.X+packedState.Position.Z*packedState.Velocity.Z)/Math.Max(1,Math.Sqrt(packedState.Position.X*packedState.Position.X+packedState.Position.Z*packedState.Position.Z)));
-                dt=Math.Min(dt,Math.Max(.01,distance/(radialSpeed+Math.Abs(packedState.Velocity.Y)+1)*.1));
+                double radialSpeed=Math.Abs(DVec.Dot(f.Settings.Geometry.Up(packedState.Position),packedState.Velocity));
+                dt=Math.Min(dt,Math.Max(.01,distance/(radialSpeed+Math.Abs(DVec.Dot(f.Settings.Geometry.Axis,packedState.Velocity))+1)*.1));
                 dt=Math.Min(dt,Math.Max(.01,Math.Sqrt(distance/Math.Max(1,packedState.Velocity.Length*packedState.Velocity.Length/packedState.Position.Length))*.1));
-                packedState=NumericalFlight.Step(packedState,dt,(p,u)=>InertialAcceleration(p,f.Settings,f.Star.gravParameter));remaining-=dt;
+                packedState=NumericalFlight.Step(packedState,dt,(p,u)=>InertialAcceleration(p,f.Settings,f.Star.gravParameter,now-remaining+dt*.5));remaining-=dt;
                 if(f.Settings.Geometry.InArrivalRegion(packedState.Position,false))TimeWarp.SetRate(0,true);
             }
             packedEpoch=now;
-            v.orbit.UpdateFromStateVectors(ConvertVector.Orbit(ConvertVector.Ksp(packedState.Position+f.Settings.CenterOffset)),ConvertVector.Orbit(ConvertVector.Ksp(packedState.Velocity)),f.Star,now);
+            v.orbit.UpdateFromStateVectors(ConvertVector.Orbit(ConvertVector.Ksp(packedState.Position+f.Settings.AnchorAt(now).Position)),ConvertVector.Orbit(ConvertVector.Ksp(packedState.Velocity+f.Settings.AnchorAt(now).Velocity)),f.Star,now);
         }
         public void Update()
         {
@@ -142,13 +145,13 @@ namespace NivenRingworld
             {
                 var settings=CurrentSettings;var star=CurrentStar;var g=settings.Geometry;bool rotating=f!=null&&f.Owns(v);double start=Planetarium.GetUniversalTime();var patch=SolarPatch(v,star);if(patch==null)yield break;
                 double elapsed=rotating?start-f.FrameEpoch:0;
-                DVec position=f!=null?f.Position(v):ConvertVector.Core(ConvertVector.Orbit(patch.getRelativePositionAtUT(start)))-settings.CenterOffset,velocity=f!=null?f.Velocity(v):ConvertVector.Core(ConvertVector.Orbit(patch.getOrbitalVelocityAtUT(start)));
-                if(v.mainBody!=star){start=Math.Max(start,patch.StartUT);position=ConvertVector.Core(ConvertVector.Orbit(patch.getRelativePositionAtUT(start)))-settings.CenterOffset;velocity=ConvertVector.Core(ConvertVector.Orbit(patch.getOrbitalVelocityAtUT(start)));}
+                DVec position=f!=null?f.Position(v):RingAnchorEphemeris.OrbitRelative(patch,star,start).Position-settings.AnchorAt(start).Position,velocity=f!=null?f.Velocity(v):RingAnchorEphemeris.OrbitRelative(patch,star,start).Velocity-settings.AnchorAt(start).Velocity;
+                if(v.mainBody!=star){start=Math.Max(start,patch.StartUT);position=RingAnchorEphemeris.OrbitRelative(patch,star,start).Position-settings.AnchorAt(start).Position;velocity=RingAnchorEphemeris.OrbitRelative(patch,star,start).Velocity-settings.AnchorAt(start).Velocity;}
                 if(rotating){velocity=g.ToInertialVelocity(position,velocity,elapsed);position=g.ToInertialPosition(position,elapsed);}
                                 var state=new CoastState(position,velocity);var points=new List<Vector3>();double time=0;
                 var crossings=new List<int>();var times=new List<double>();var insidePoints=new List<bool>();var entries=new List<bool>();
                 bool wasInside=g.InArrivalRegion(position,rotating);bool entryFound=false;
-                string result="Numerical vacuum coast: Sun + uniform ribbon; no thrust or manoeuvres";
+                string result="Numerical vacuum coast: celestial gravity + uniform ribbon; no thrust or manoeuvres";
                 // At low rendering FPS a fixed 1.5 ms slice stretches short predictions
                 // over many wall-clock frames. Spend at most 10% of the last frame,
                 // capped at 8 ms, without changing numerical steps or encounter tests.
@@ -166,24 +169,24 @@ namespace NivenRingworld
                     }
                     if(Math.Abs(coord.Across)<g.P.Width/2&&coord.Altitude>=-1300&&coord.Altitude<g.P.AtmosphereHeight+1&&settings.Atmosphere)
                     {result=time==0?"In atmosphere: no reliable vacuum trajectory; aerodynamic prediction pending":"Coast ends at atmosphere entry (+"+time.ToString("F1")+" s)";break;}
-                    if((state.Position+settings.CenterOffset).Length<star.Radius){result="Coast ends at the Sun";break;}
+                    if((state.Position+settings.AnchorAt(start+time).Position).Length<star.Radius){result="Coast ends at the Sun";break;}
                     double materialAlong=RingGeometry.Wrap(coord.Along-(g.P.Omega*(start+time)-g.OrientationRadians)*g.P.Radius,g.P.Circumference);
                     if(Math.Abs(coord.Across)<g.P.Width/2&&coord.Altitude>=settings.UndersideAltitude&&coord.Altitude<=settings.Terrain.Sample(materialAlong,coord.Across).Height)
                     {result="Coast ends at terrain contact";break;}
                     if(Math.Abs(Math.Abs(coord.Across)-g.P.Width/2)<2&&coord.Altitude>=settings.UndersideAltitude&&coord.Altitude<=g.P.WallHeight)
                     {result="Coast ends at rim wall";break;}
                     // The map uses the same frozen rotating chart as the local scene.
-                    var display=rotating?RingGeometry.Rotate(state.Position,-g.P.Omega*(elapsed+time)):state.Position;
+                    var display=rotating?g.RotateAroundAxis(state.Position,-g.P.Omega*(elapsed+time)):state.Position+settings.AnchorAt(start+time).Position-settings.AnchorAt(Planetarium.GetUniversalTime()).Position;
                     points.Add((Vector3)ScaledSpace.LocalToScaledSpace(settings.Center+ConvertVector.Ksp(display)));insidePoints.Add(inside);
                     double gap=Math.Max(1,Math.Abs(coord.Altitude-g.P.AtmosphereHeight));
-                    double radial=Math.Abs((state.Position.X*state.Velocity.X+state.Position.Z*state.Velocity.Z)/Math.Max(1,Math.Sqrt(state.Position.X*state.Position.X+state.Position.Z*state.Position.Z)));
+                    double radial=Math.Abs(DVec.Dot(g.Up(state.Position),state.Velocity));
                     double dt=Math.Min(120,Math.Max(.01,Math.Min(gap/(radial+1)*.2,Math.Sqrt(gap/(state.Velocity.Length*state.Velocity.Length/state.Position.Length+1))*.2)));
-                    if(coord.Altitude<g.P.WallHeight&&Math.Abs(state.Velocity.Y)>1)dt=Math.Min(dt,Math.Max(.001,Math.Abs(Math.Abs(coord.Across)-g.P.Width/2)/Math.Abs(state.Velocity.Y)*.2));
+                    if(coord.Altitude<g.P.WallHeight&&Math.Abs(DVec.Dot(g.Axis,state.Velocity))>1)dt=Math.Min(dt,Math.Max(.001,Math.Abs(Math.Abs(coord.Across)-g.P.Width/2)/Math.Abs(DVec.Dot(g.Axis,state.Velocity))*.2));
                     // Resolve the same annular handoff boundary used by automatic arrival.
                     // The straight-line estimate also catches crossings between widely spaced coast samples.
                     if(!inside){double entry=g.TimeToArrival(state.Position,state.Velocity,dt);if(!double.IsInfinity(entry))dt=Math.Min(dt,Math.Max(.0001,entry+.0001));}
                     dt=Math.Min(dt,settings.PredictionSeconds-time);if(dt<=0)break;
-                    state=NumericalFlight.Step(state,dt,(p,u)=>InertialAcceleration(p,settings,star.gravParameter));time+=dt;
+                    state=NumericalFlight.Step(state,dt,(p,u)=>InertialAcceleration(p,settings,star.gravParameter,start+time+dt*.5));time+=dt;
                     if(slice.Elapsed.TotalMilliseconds>=sliceBudget){yield return null;slice.Restart();}
                 }
                 if(time<settings.PredictionSeconds&&points.Count>=4096)result="Coast truncated at numerical step budget";

@@ -143,7 +143,7 @@ namespace NivenRingworld
                 vertices.Add(ConvertVector.Unity(settings.Geometry.Position(a,c,h)-p.Anchor));
                 seabed[y*(n+1)+x]=ConvertVector.Unity(settings.Geometry.Position(a,c,s.Height)-p.Anchor);
                 wet[y*(n+1)+x]=s.Wet;waterUv[y*(n+1)+x]=new Vector2(s.Wet?(float)Math.Max(0,s.WaterHeight-s.Height):0,(float)(b.Size/n));
-                uv.Add(new Vector2((x+.5f)/(n+1),(y+.5f)/(n+1)));longitude.Add(new Vector2((float)(a/settings.Geometry.P.Circumference),0));colors[y*(n+1)+x]=FeatherColour(b,neighbours,a,c,TerrainTint.WithCanopy(s,appearance));
+                uv.Add(new Vector2((x+.5f)/(n+1),(y+.5f)/(n+1)));longitude.Add(new Vector2((float)(a/settings.Geometry.P.Circumference),(float)(c/settings.Geometry.P.Width+.5)));colors[y*(n+1)+x]=FeatherColour(b,neighbours,a,c,TerrainTint.WithCanopy(s,appearance));
                 if(x<n&&y<n&&rawAcross<settings.Geometry.P.Width/2&&rawAcross+b.Size/n>-settings.Geometry.P.Width/2){int i=y*(n+1)+x;triangles.AddRange(new[]{i,i+n+1,i+1,i+1,i+n+1,i+n+2});}
             }
             var f=RingworldFlight.Instance;
@@ -207,9 +207,9 @@ namespace NivenRingworld
             {
                 p.Root.SetActive(interior);
                 double delta=settings.Geometry.OrientationRadians-p.Phase;
-                var world=star+ConvertVector.Ksp(RingGeometry.Rotate(p.Anchor,delta));
+                var world=star+ConvertVector.Ksp(settings.Geometry.RotateAroundAxis(p.Anchor,delta));
                 p.Root.transform.position=p.Scaled?(Vector3)ScaledSpace.LocalToScaledSpace(world):(Vector3)world;
-                p.Root.transform.rotation=Quaternion.AngleAxis((float)(delta*180/Math.PI),Vector3.up);
+                p.Root.transform.rotation=settings.AxisRotation(delta);
             }
         }
         private static void Destroy(Patch p){p.Retired=true;if(p.CanopyWork!=null){p.CanopyWork.Dispose();p.CanopyWork=null;}UnityEngine.Object.Destroy(p.Root);UnityEngine.Object.Destroy(p.Mesh);if(p.CanopyMesh!=null)UnityEngine.Object.Destroy(p.CanopyMesh);if(p.WaterMesh!=null)UnityEngine.Object.Destroy(p.WaterMesh);UnityEngine.Object.Destroy(p.Texture);}

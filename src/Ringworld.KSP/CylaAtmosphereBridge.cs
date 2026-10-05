@@ -76,18 +76,18 @@ namespace NivenRingworld
             unit=ProbeUnits;
 #endif
             Vector3 renderCentre=ConvertVector.Unity(s.Geometry.Up(observer))*(float)(renderRadius-coord.Altitude);
-            renderCentre.y-=(float)coord.Across;
+            renderCentre-=ConvertVector.Unity(s.Geometry.Axis)*(float)coord.Across;
             material.SetFloat("outerRadius",(float)renderRadius*unit);
             material.SetFloat("innerRadius",(float)(renderRadius-thickness)*unit);
             material.SetFloat("transparentRadius",(float)(renderRadius-Math.Max(32,thickness*optics["TransparentDepth"]))*unit);
             material.SetFloat("height",(float)(s.Geometry.P.Width*optics["WidthScale"])*unit);
-            renderCentre+=ConvertVector.Unity(s.Geometry.SpinVelocity(observer).Unit)*(float)optics["OffsetAlong"]+Vector3.up*(float)optics["OffsetAcross"]+ConvertVector.Unity(s.Geometry.Up(observer))*(float)optics["OffsetUp"];
+            renderCentre+=ConvertVector.Unity(s.Geometry.AlongDirection(observer))*(float)optics["OffsetAlong"]+ConvertVector.Unity(s.Geometry.Axis)*(float)optics["OffsetAcross"]+ConvertVector.Unity(s.Geometry.Up(observer))*(float)optics["OffsetUp"];
             renderCentre*=unit;
             renderCentre+=camera.transform.position;
-            material.SetVector("centerPosition",renderCentre);material.SetVector("axis",Quaternion.AngleAxis((float)optics["Yaw"],ConvertVector.Unity(s.Geometry.Up(observer)))*Quaternion.AngleAxis((float)optics["Pitch"],ConvertVector.Unity(s.Geometry.SpinVelocity(observer).Unit))*Vector3.up);
+            material.SetVector("centerPosition",renderCentre);material.SetVector("axis",Quaternion.AngleAxis((float)optics["Yaw"],ConvertVector.Unity(s.Geometry.Up(observer)))*Quaternion.AngleAxis((float)optics["Pitch"],ConvertVector.Unity(s.Geometry.AlongDirection(observer)))*ConvertVector.Unity(s.Geometry.Axis));
             string[] modes={"TRANSPARENT_TOP_AND_SIDE","TRANSPARENT_FLOOR","UNLIT"};for(int i=0;i<modes.Length;i++){if(i==optics.LightingMode)material.EnableKeyword(modes[i]);else material.DisableKeyword(modes[i]);}
-                        material.SetVector("lightEmitterPosition",renderCentre);
-            float sunlight=(float)s.Geometry.Daylight(coord.Along,Planetarium.GetUniversalTime());
+                        material.SetVector("lightEmitterPosition",camera.transform.position+ConvertVector.Unity(RingLighting.Direction(s,observer,Planetarium.GetUniversalTime()))*(float)renderRadius*unit);
+            float sunlight=(float)s.Geometry.Daylight(coord.Along,Planetarium.GetUniversalTime(),coord.Across,coord.Altitude);
             material.SetVector("lightColor",new Vector4(sunlight,sunlight,sunlight,1)*(float)s.AtmosphereExposure);
             material.SetVector("rayleighScattering",optics.Scattering("Rayleigh")*(float)s.Haze/unit);
             material.SetVector("mieScattering",optics.Scattering("Mie")*(float)s.Haze/unit);

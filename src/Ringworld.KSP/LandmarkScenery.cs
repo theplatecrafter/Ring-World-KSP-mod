@@ -80,8 +80,8 @@ namespace NivenRingworld
                     built=true;
                 }
                 double delta=settings.Geometry.OrientationRadians-e.Phase;
-                e.Object.transform.position=star+ConvertVector.Ksp(RingGeometry.Rotate(e.Position,delta));
-                e.Object.transform.rotation=Quaternion.AngleAxis((float)(delta*180/Math.PI),Vector3.up)*e.Rotation;
+                e.Object.transform.position=star+ConvertVector.Ksp(settings.Geometry.RotateAroundAxis(e.Position,delta));
+                e.Object.transform.rotation=settings.AxisRotation(delta)*e.Rotation;
                 bool close=distance<e.Size.magnitude*.5+2500;
                 foreach(var c in e.Contacts)if(c.enabled!=close)c.enabled=close;
             }

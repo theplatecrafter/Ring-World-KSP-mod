@@ -13,6 +13,7 @@ static class Program
     static void Main(string[] args)
     {
         ResearchTests.Run(Check);
+        PlacementTests.Run(Check);
         var p=new RingParameters();var g=new RingGeometry(p);var t=new TerrainGenerator(g);
         foreach(double diameterKm in new[]{200000000.0,300000000.0,2000000000.0})
         {

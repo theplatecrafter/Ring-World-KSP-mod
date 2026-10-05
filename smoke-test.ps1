@@ -1,4 +1,4 @@
-param([switch]$SkipIssue3,[int]$TimeoutSeconds=900,[switch]$InstalledIssuesOnly,[switch]$IntegrationsOnly,[switch]$MapOnly,[switch]$TerrainOnly,[switch]$WarpOnly,[switch]$UnmatchedOnly,[switch]$PhotoOnly,[switch]$DistantOnly,[switch]$WeatherOnly,[switch]$SceneryOnly,[switch]$GlobalCloudsOnly,[switch]$ResidenceOnly,[switch]$GuidanceOnly,[switch]$StabilityOnly,[switch]$LandmarksOnly,[switch]$GearOnly,[switch]$CylaOnly,[switch]$CylaDiagnosticOnly,[switch]$CylaSaveProbe,[switch]$TrackingOnly,[switch]$ReentryOnly,[switch]$RenderOnly,[switch]$VisualOptionsOnly,[switch]$WallOnly,[switch]$ScienceOnly,[switch]$MultiRingOnly,[switch]$WithoutCyla)
+param([switch]$SkipIssue3,[int]$TimeoutSeconds=900,[switch]$InstalledIssuesOnly,[switch]$IntegrationsOnly,[switch]$MapOnly,[switch]$TerrainOnly,[switch]$WarpOnly,[switch]$UnmatchedOnly,[switch]$PhotoOnly,[switch]$DistantOnly,[switch]$WeatherOnly,[switch]$SceneryOnly,[switch]$GlobalCloudsOnly,[switch]$ResidenceOnly,[switch]$GuidanceOnly,[switch]$StabilityOnly,[switch]$LandmarksOnly,[switch]$GearOnly,[switch]$CylaOnly,[switch]$CylaDiagnosticOnly,[switch]$CylaSaveProbe,[switch]$TrackingOnly,[switch]$ReentryOnly,[switch]$RenderOnly,[switch]$VisualOptionsOnly,[switch]$WallOnly,[switch]$ScienceOnly,[switch]$MultiRingOnly,[switch]$WithoutCyla,[switch]$AsteroidAnchor)
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
 $gameRoot=Join-Path (Split-Path -Parent $taskRoot) 'template_instance'
@@ -23,6 +23,7 @@ try {
     if ($InstalledIssuesOnly) { $taskArguments += '-ringworld-installed-issues-only' }
     if ($IntegrationsOnly) { $taskArguments += '-ringworld-integrations-only' }
     if ($WithoutCyla) { $taskArguments += '-ringworld-no-cyla' }
+    if ($AsteroidAnchor) { $taskArguments += '-ringworld-asteroid-anchor' }
     if ($MultiRingOnly) { $taskArguments += '-ringworld-multi-ring-only' }
     if ($ScienceOnly) { $taskArguments += '-ringworld-science-only' }
     if ($WallOnly) { $taskArguments += '-ringworld-wall-only' }
@@ -59,6 +60,7 @@ try {
     $reportName='game-smoke.txt'
     if ($InstalledIssuesOnly) { $reportName='installed-issues-smoke.txt' }
     if ($IntegrationsOnly) { $reportName='integrations-smoke.txt' }
+    if ($AsteroidAnchor) { $taskArguments += '-ringworld-asteroid-anchor' }
     if ($MultiRingOnly) { $reportName='multi-ring-smoke.txt' }
     if ($ScienceOnly) { $reportName='science-smoke.txt' }
     if ($WallOnly) { $reportName='wall-smoke.txt' }

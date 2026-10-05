@@ -98,7 +98,11 @@ namespace NivenRingworld
             var flight=LocalFlight;
             double epoch=flight!=null&&flight.Active?flight.FrameEpoch:Planetarium.GetUniversalTime();
             renderEpoch=epoch;
-            root.transform.rotation=Quaternion.Euler(0,(float)(RingGeometry.Wrap(settings.Geometry.P.Omega*epoch,2*Math.PI)*180/Math.PI),0);
+            if(LocalFlight!=null){Shader.SetGlobalVector("_RingBasisX",ConvertVector.Unity(settings.Geometry.Basis.X));Shader.SetGlobalVector("_RingBasisY",ConvertVector.Unity(settings.Geometry.Basis.Y));Shader.SetGlobalVector("_RingBasisZ",ConvertVector.Unity(settings.Geometry.Basis.Z));}
+            root.transform.rotation=settings.BasisRotation*Quaternion.Euler(0,(float)(RingGeometry.Wrap(settings.Geometry.P.Omega*epoch,2*Math.PI)*180/Math.PI),0);
+            var sceneFlight=RingSceneFrame.Flight;
+            if(sceneFlight!=null&&LocalFlight==null)root.transform.rotation=sceneFlight.Settings.AxisRotation(-sceneFlight.Settings.Geometry.P.Omega*(Planetarium.GetUniversalTime()-sceneFlight.FrameEpoch))*root.transform.rotation;
+            squares.SetActive(settings.Geometry.P.PanelsEnabled);
             squares.transform.localRotation=Quaternion.Euler(0,(float)(RingGeometry.Wrap(Planetarium.GetUniversalTime()/(flight!=null&&flight.Settings!=null?flight.Settings.Geometry.P.DaySeconds:settings.Geometry.P.DaySeconds),20)*18),0);
         }
         private void UpdateDistantSurface(RingworldFlight flight)
@@ -125,9 +129,11 @@ namespace NivenRingworld
             uint seed=unchecked((uint)options.Geometry.P.Seed);
             farMaterial.SetFloat("_SeedLow",seed&65535);farMaterial.SetFloat("_SeedHigh",seed>>16);farMaterial.SetFloat("_Generation",options.GenerationVersion);
             double time=Planetarium.GetUniversalTime();
+            RingLighting.Apply(farMaterial,options,time,LocalFlight!=null);
             if(globalClouds!=null)globalClouds.Update(options,flight,star,time);
             if(scattering!=null)scattering.Update(options,time);
             float phase=(float)RingGeometry.Wrap(time/options.Geometry.P.DaySeconds,1);
+            farMaterial.SetFloat("_PanelsDisabled",options.Geometry.P.PanelsEnabled?0:1);wallMaterial.SetFloat("_PanelsDisabled",options.Geometry.P.PanelsEnabled?0:1);if(LocalFlight!=null)Shader.SetGlobalFloat("_RingPanelsDisabled",options.Geometry.P.PanelsEnabled?0:1);
             farMaterial.SetFloat("_DayPhase",phase);wallMaterial.SetFloat("_DayPhase",phase);if(LocalFlight!=null)Shader.SetGlobalFloat("_RingNightPhase",phase);
             farMaterial.SetFloat("_CloudAmount",(float)options.CloudAmount);
             farMaterial.SetFloat("_CloudDrift",options.DynamicWeather?(float)RingGeometry.Wrap(time*8/options.Geometry.P.Circumference,1):0);
@@ -144,9 +150,14 @@ namespace NivenRingworld
             else observer=ConvertVector.Core(ScaledSpace.ScaledToLocalSpace(camera.transform.position)-Center)*ScaledSpace.InverseScaleFactor;
             double angle=RingGeometry.Wrap(settings.Geometry.P.Omega*renderEpoch,2*Math.PI),c=Math.Cos(angle),sn=Math.Sin(angle);
             var source=mapGeometry?preciseMap:preciseFlight;
+            var axis=settings.Geometry.Axis;
             for(int i=0;i<source.Length;i++)
             {
-                var p=source[i];cameraVertices[i]=new Vector3((float)(c*p.X+sn*p.Z-observer.X),(float)(p.Y-observer.Y),(float)(-sn*p.X+c*p.Z-observer.Z));
+                var vertex=source[i];
+                // Rodrigues rotation: reuse sine/cosine for the entire camera upload.
+                var p=vertex*c+DVec.Cross(axis,vertex)*sn+axis*(DVec.Dot(axis,vertex)*(1-c));
+                if(LocalFlight==null)p=RingSceneFrame.Vector(p);
+                cameraVertices[i]=ConvertVector.Unity(p-observer);
             }
             ribbonObject.transform.position=camera.transform.position;ribbonObject.transform.rotation=Quaternion.identity;
             ring.vertices=cameraVertices;ring.RecalculateBounds();

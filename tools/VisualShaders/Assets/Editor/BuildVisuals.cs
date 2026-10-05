@@ -27,7 +27,7 @@ public static class BuildVisuals
         noise.SetPixels(pixels);noise.Apply(true,false);AssetDatabase.DeleteAsset("Assets/CloudNoise.asset");AssetDatabase.CreateAsset(noise,"Assets/CloudNoise.asset");
         AssetDatabase.SaveAssets();AssetDatabase.Refresh();
         string output=Path.GetFullPath(Path.Combine(Application.dataPath,"../../../GameData/NivenRingworld/Assets"));Directory.CreateDirectory(output);
-        var bundle=new AssetBundleBuild{assetBundleName="ringworldvisuals",assetNames=new[]{"Assets/Shaders/RingAtmosphere.shader","Assets/Shaders/Precipitation.shader","Assets/Shaders/DistantSurface.shader","Assets/Shaders/CloudDeck.shader","Assets/Shaders/GlobalClouds.shader","Assets/Shaders/CloudCoverageProbe.shader","Assets/Shaders/TerrainNight.shader","Assets/Shaders/TerrainTransition.shader","Assets/CloudNoise.asset"}};
+        var bundle=new AssetBundleBuild{assetBundleName="ringworldvisuals",assetNames=new[]{"Assets/Shaders/RingAtmosphere.shader","Assets/Shaders/Precipitation.shader","Assets/Shaders/DistantSurface.shader","Assets/Shaders/CloudDeck.shader","Assets/Shaders/GlobalClouds.shader","Assets/Shaders/CloudCoverageProbe.shader","Assets/Shaders/EclipseProbe.shader","Assets/Shaders/TerrainNight.shader","Assets/Shaders/TerrainTransition.shader","Assets/CloudNoise.asset"}};
         EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Standalone,BuildTarget.StandaloneWindows64);
         PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneWindows64,new[]{UnityEngine.Rendering.GraphicsDeviceType.Direct3D11});
         var built=BuildPipeline.BuildAssetBundles(output,new[]{bundle},BuildAssetBundleOptions.ForceRebuildAssetBundle|BuildAssetBundleOptions.ChunkBasedCompression,BuildTarget.StandaloneWindows64);

@@ -36,18 +36,18 @@ namespace NivenRingworld
             var observer=ConvertVector.Core((Vector3d)camera.transform.position-star);var c=s.Geometry.Coordinates(observer);double time=Planetarium.GetUniversalTime();
             var ground=s.Terrain.Sample(c.Along,c.Across);
             Current=s.Weather(c.Along,c.Across,time);Snow=ground.Biome==Biome.Snow;
-            Description=RingWeather.SurfaceKind(Current,ground.Biome,Math.Abs(c.Across)/(s.Geometry.P.Width*.5),s.Geometry.Daylight(c.Along,time));
+            Description=RingWeather.SurfaceKind(Current,ground.Biome,Math.Abs(c.Across)/(s.Geometry.P.Width*.5),s.Geometry.Daylight(c.Along,time,c.Across,c.Altitude));
             var flight=RingworldFlight.Instance;var visuals=flight==null?null:flight.visuals;
             manual=visuals!=null&&visuals.Rendering&&material.shader.name=="NivenRingworld/Precipitation";
             renderer.enabled=!manual;bolt.enabled=!manual;material.SetFloat("_Saved",0);boltMaterial.SetFloat("_Saved",0);
             bool inside=s.Atmosphere&&c.Altitude>=ground.Height&&c.Altitude<Math.Max(visuals==null?700:visuals.PrecipitationBase,ground.Height+100)&&Math.Abs(c.Across)<s.Geometry.P.Width/2;
             bool rain=inside&&s.RainEnabled&&Current.Rain>.001&&TimeWarp.CurrentRate<=10;root.SetActive(rain);
-            var up=ConvertVector.Unity(s.Geometry.Up(observer));var along=ConvertVector.Unity(s.Geometry.SpinVelocity(observer).Unit);var across=Vector3.up;var right=camera.transform.right;
+            var up=ConvertVector.Unity(s.Geometry.Up(observer));var along=ConvertVector.Unity(s.Geometry.AlongDirection(observer));var across=ConvertVector.Unity(s.Geometry.Axis);var right=camera.transform.right;
             if(rain)
             {
                 Drops=(int)((s.VisualQuality==0?48:s.VisualQuality==1?144:384)*s.RainDensity*Current.Rain);root.transform.position=camera.transform.position;
                 double drift=time*(Snow?1.6+Current.Storm*5:4+Current.Storm*8)+Math.Sin(time*.19)*2;
-                float lighting=(float)(.06+.94*s.Geometry.Daylight(c.Along,time));
+                float lighting=(float)(.06+.94*s.Geometry.Daylight(c.Along,time,c.Across,c.Altitude));
                 for(int i=0;i<384;i++)
                 {
                     double x=RingGeometry.Wrap(s.Terrain.Scatter(i,0,1259)*64-c.Along+drift,64)-32;

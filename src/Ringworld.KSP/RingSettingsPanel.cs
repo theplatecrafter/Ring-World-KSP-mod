@@ -71,7 +71,7 @@ namespace NivenRingworld
             diameter=Field("Ring diameter (km; minimum 2,000,000)",diameter);
             width=Field("Ribbon width (10,000 km to the ring radius)",width);
             wall=Field("Rim wall height (60 to 1,000 km)",wall);
-            gravity=Field("Spin acceleration (1 to 100 m/s2)",gravity);
+            gravity=Field("Spin acceleration (greater than 0, up to 100 m/s2)",gravity);
             density=Field("Assumed floor mass/area (0 to 100,000,000 kg/m2)",density);
             GUI.enabled=true;
             if(!worldUnlocked)GUILayout.Label("World generation is locked after the first expedition to preserve ground beneath saved vessels. Use a new save for another world.");
@@ -94,7 +94,7 @@ namespace NivenRingworld
             if(GUILayout.Button("Apply settings"))
             {
                 double r,h,f,d,a,c,di,wi,gr,wa,de,pr,wr,po,dd,ats,ex,ps,wp,wv,sc,cw,rd;int resolved;
-                if(!Number(weatherPeriod,1.0/6,double.MaxValue/3600,out wp)||!Number(weatherVariation,0,1,out wv)||!Number(stormChance,0,1,out sc)||!Number(cloudWind,0,100,out cw)||!Number(rainDensity,0,1,out rd)||!Number(airSteps,16,96,out ats)||!Number(exposure,.25,2,out ex)||!Number(photoSamples,1,64,out ps)||!Number(range,200,double.MaxValue/1000,out r)||!Number(height,.25,3,out h)||!Number(forest,0,2,out f)||!Number(day,1.0/60,double.MaxValue/3600,out d)||!Number(haze,0,2,out a)||!Number(cloud,0,100,out c)||!Number(diameter,2000000,double.MaxValue/500,out di)||!Number(width,10000,di/2,out wi)||!Number(wall,60,1000,out wa)||!Number(gravity,1,100,out gr)||!Number(density,0,100000000,out de)||!Number(prediction,1,1440,out pr)||!Number(warp,10,10000,out wr)||!Number(ponds,0,2,out po)||!Number(detailDistance,25,250,out dd))
+                if(!Number(weatherPeriod,1.0/6,double.MaxValue/3600,out wp)||!Number(weatherVariation,0,1,out wv)||!Number(stormChance,0,1,out sc)||!Number(cloudWind,0,100,out cw)||!Number(rainDensity,0,1,out rd)||!Number(airSteps,16,96,out ats)||!Number(exposure,.25,2,out ex)||!Number(photoSamples,1,64,out ps)||!Number(range,200,double.MaxValue/1000,out r)||!Number(height,.25,3,out h)||!Number(forest,0,2,out f)||!Number(day,1.0/60,double.MaxValue/3600,out d)||!Number(haze,0,2,out a)||!Number(cloud,0,100,out c)||!Number(diameter,2000,double.MaxValue/500,out di)||!Number(width,10,di/2,out wi)||!Number(wall,60,1000,out wa)||!Number(gravity,double.Epsilon,100,out gr)||!Number(density,0,100000000,out de)||!Number(prediction,1,1440,out pr)||!Number(warp,10,10000,out wr)||!Number(ponds,0,2,out po)||!Number(detailDistance,25,250,out dd))
                 {message="Enter finite numbers within the displayed ranges (use a decimal point).";return;}
                 if(string.IsNullOrWhiteSpace(seed))resolved=worldUnlocked?BitConverter.ToInt32(Guid.NewGuid().ToByteArray(),0):s.Geometry.P.Seed;
                 else if(!int.TryParse(seed,NumberStyles.Integer,CultureInfo.InvariantCulture,out resolved)){message="Seed must be a signed 32-bit integer or blank.";return;}

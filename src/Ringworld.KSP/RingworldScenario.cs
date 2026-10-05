@@ -89,7 +89,7 @@ namespace NivenRingworld
         {
             if(RingworldFlight.Instance!=null) RingworldFlight.Instance.Capture();
             node.AddNode(GetOptions().CreateCopy());node.AddValue("activeRing",ActiveRingId);
-            foreach(var ring in Rings){var copy=ring.CreateCopy();copy.name="RING";node.AddNode(copy);}
+            foreach(var ring in Rings){var copy=ring.CreateCopy();var settings=RingSettings(ring.GetValue("ringId")??"primary");if(settings!=null)settings.SaveAnchorFallback(copy);copy.name="RING";node.AddNode(copy);}
             base.OnSave(node);node.AddValue("formatVersion",5);node.AddValue("positionReference","vesselRoot");node.AddValue("expedition",Expedition);
             foreach(var r in Vessels.Values)
             {
@@ -101,6 +101,6 @@ namespace NivenRingworld
             foreach(string id in Discoveries) node.AddValue("discovery",id);
             Research.Save(node);
         }
-        public void OnDestroy() { if(Instance==this) Instance=null; }
+        public void OnDestroy() { if(Instance==this){Instance=null;RingLighting.Clear();} }
     }
 }

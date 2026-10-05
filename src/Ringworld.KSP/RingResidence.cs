@@ -30,7 +30,7 @@ namespace NivenRingworld
         internal static void UpdateBookkeeping(Vessel v,Settings settings,CelestialBody star,DVec position,DVec velocity,double epoch)
         {
             double now=Planetarium.GetUniversalTime(),elapsed=now-epoch;var g=settings.Geometry;
-            v.orbit.UpdateFromStateVectors(ConvertVector.Orbit(ConvertVector.Ksp(g.ToInertialPosition(position,elapsed)+settings.CenterOffset)),ConvertVector.Orbit(ConvertVector.Ksp(g.ToInertialVelocity(position,velocity,elapsed))),star,now);
+            v.orbit.UpdateFromStateVectors(ConvertVector.Orbit(ConvertVector.Ksp(g.ToInertialPosition(position,elapsed)+settings.AnchorAt(now).Position)),ConvertVector.Orbit(ConvertVector.Ksp(g.ToInertialVelocity(position,velocity,elapsed)+settings.AnchorAt(now).Velocity)),star,now);
         }
         internal static void HoldSaved(Vessel v,VesselRecord r)
         {
@@ -40,11 +40,12 @@ namespace NivenRingworld
             var star=settings.Body;
             double epoch=f!=null&&f.Settings.RingId==r.RingId&&f.FrameInUse?f.FrameEpoch:Planetarium.GetUniversalTime();
             double angle=settings.Geometry.P.Omega*(epoch-r.Epoch);
-            var p=RingGeometry.Rotate(r.Position,angle);
+            var p=settings.Geometry.RotateAroundAxis(r.Position,angle);
             UpdateBookkeeping(v,settings,star,p,new DVec(),epoch);
-            v.orbitDriver.pos=ConvertVector.Ksp(p+settings.CenterOffset);v.orbitDriver.vel=Vector3d.zero;
-            v.SetPosition(settings.Center+ConvertVector.Ksp(p),true);
-            v.SetRotation(Quaternion.AngleAxis((float)(angle*180/Math.PI),Vector3.up)*r.Rotation,false);
+            v.orbitDriver.pos=ConvertVector.Ksp(p+settings.AnchorAt(Planetarium.GetUniversalTime()).Position);v.orbitDriver.vel=Vector3d.zero;
+            var renderPosition=f!=null&&f.FrameInUse&&f.Settings.RingId!=r.RingId?RingSceneFrame.Vector(p):p;
+            v.SetPosition(settings.Center+ConvertVector.Ksp(renderPosition),true);
+            v.SetRotation(settings.AxisRotation(angle)*r.Rotation,false);
             v.Landed=true;v.situation=Vessel.Situations.LANDED;v.landedAt="Ringworld";v.displaylandedAt="Ringworld";
         }
     }
@@ -82,7 +83,7 @@ namespace NivenRingworld
             {
                 if(__instance==FlightGlobals.ActiveVessel)Krakensbane.ResetVelocityFrame(true);
                 RingCollisionFrame.Reset(__instance);
-                __instance.SetWorldVelocity(ConvertVector.Ksp(RingGeometry.Rotate(r.Velocity,f.Settings.Geometry.P.Omega*(f.FrameEpoch-r.Epoch))));
+                __instance.SetWorldVelocity(ConvertVector.Ksp(f.Settings.Geometry.RotateAroundAxis(r.Velocity,f.Settings.Geometry.P.Omega*(f.FrameEpoch-r.Epoch))));
             }
         }
     }
@@ -118,7 +119,7 @@ namespace NivenRingworld
                 // Keep a valid inertial osculating orbit for stock persistence and spawned parts.
                 // A stationary rotating-frame velocity otherwise produces a degenerate solar orbit.
                 RingResidence.UpdateBookkeeping(v,f.Settings,f.Star,p,speed,f.FrameEpoch);
-                __instance.pos=ConvertVector.Ksp(p+f.Settings.CenterOffset);__instance.vel=ConvertVector.Ksp(speed);return false;
+                __instance.pos=ConvertVector.Ksp(p+f.Settings.AnchorAt(Planetarium.GetUniversalTime()).Position);__instance.vel=ConvertVector.Ksp(speed);return false;
             }
             if(!r.Landed)return true;
             if(f!=null&&f.surfaceWarp.Anchored(v))return true;

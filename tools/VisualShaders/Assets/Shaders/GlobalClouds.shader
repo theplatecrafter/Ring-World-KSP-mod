@@ -9,12 +9,14 @@ Shader "NivenRingworld/GlobalClouds"
  #pragma fragment frag
  #pragma target 5.0
  #include "UnityCG.cginc"
+#include "RingEclipse.cginc"
  #include "CloudField.cginc"
  #include "RingHullOcclusion.cginc"
  float2 _CloudShellSize;
  float _CircumferenceKm,_WidthKm,_SeedLow,_SeedHigh,_Generation;
  #include "RingTerrainNoise.cginc"
  float4 _Size,_Local,_CloudHandoff,_WeatherState,_FrontDrift;
+ float _PanelsDisabled;
  float _DayPhase,_LocalAmount,_SegmentLength;float4 _LocalChart;
  struct a {float4 vertex:POSITION;float2 uv:TEXCOORD0;float2 field:TEXCOORD1;float2 chart:TEXCOORD2;float2 macro:TEXCOORD3;};
  struct v {float4 vertex:SV_POSITION;float2 uv:TEXCOORD0;float2 field:TEXCOORD1;float2 chart:TEXCOORD2;float2 macro:TEXCOORD3;float3 local:TEXCOORD4;};
@@ -43,7 +45,7 @@ Shader "NivenRingworld/GlobalClouds"
   float opacity=1-(1-.3*c)*(1-.4*c)*(1-.3*c);
   opacity=1-pow(max(.001,1-opacity),1-near);
   float phase=frac(20*i.uv.x-_DayPhase),edge=min(phase,1-phase);
-  float daylight=saturate((edge-.138307)/.02);
+  float daylight=ringEclipse(i.uv);
   float3 color=float3(.94,.97,1)*(.60+.35*cover)*(.07+.93*daylight);
   return float4(color,opacity);
  }

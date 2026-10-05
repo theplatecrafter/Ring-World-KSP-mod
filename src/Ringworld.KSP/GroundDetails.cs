@@ -31,8 +31,8 @@ namespace NivenRingworld
             long x=(long)Math.Floor(p.Along/16),y=(long)Math.Floor(p.Across/16);
             if(force||x!=cellX||y!=cellY||density!=StockGraphics.Scatter||range!=settings.DetailDistance)
             {cellX=x;cellY=y;density=StockGraphics.Scatter;range=settings.DetailDistance;Build(p,star);}
-            double delta=g.OrientationRadians-phase;root.transform.position=(Vector3)(star+ConvertVector.Ksp(RingGeometry.Rotate(anchor,delta)));root.transform.rotation=Quaternion.AngleAxis((float)(delta*180/Math.PI),Vector3.up);
-            float light=(float)(.12+.88*g.Daylight(p.Along,Planetarium.GetUniversalTime()));material.color=new Color(light,light,light);
+            double delta=g.OrientationRadians-phase;root.transform.position=(Vector3)(star+ConvertVector.Ksp(settings.Geometry.RotateAroundAxis(anchor,delta)));root.transform.rotation=settings.AxisRotation(delta);
+            float light=(float)(.12+.88*g.Daylight(p.Along,Planetarium.GetUniversalTime(),p.Across,p.Altitude));material.color=new Color(light,light,light);
         }
         private void Build(RingPoint centre,Vector3d star)
         {
@@ -58,7 +58,7 @@ namespace NivenRingworld
                 }
                 if(hit.collider==null||Vector3.Dot(hit.normal,up)<.75f)continue;
                 var at=hit.point-(Vector3)world+hit.normal*.025f;
-                var side=Vector3.Cross(up,Vector3.up).normalized;if(side.sqrMagnitude<.1f)side=Vector3.right;var along=Vector3.Cross(side,up).normalized;
+                var side=Vector3.Cross(up,ConvertVector.Unity(settings.Geometry.Axis)).normalized;if(side.sqrMagnitude<.1f)side=Vector3.right;var along=Vector3.Cross(side,up).normalized;
                 var climate=Ecology.Sample(settings.Terrain,a,b);Color color=TerrainTint.Color(sample);
                 double patch=settings.Terrain.Noise(a,b,38,853);
                 // Broad patches and openings, rather than an evenly populated jittered grid.

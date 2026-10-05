@@ -36,7 +36,7 @@ namespace NivenRingworld
             if(s==null||s.Body!=v.mainBody)return false;
             // Never alter the active terrain chart while resolving background science.
             double rotation=s.Geometry.OrientationRadians;
-            position=RingGeometry.Rotate(position,rotation-s.Geometry.P.Omega*epoch);
+            position=s.Geometry.RotateAroundAxis(position,rotation-s.Geometry.P.Omega*epoch);
             bool water=v.Splashed;
             if(!v.Landed&&f!=null&&f.Owns(v))
             {

@@ -1,15 +1,37 @@
-# Multiple habitats — v1.1.3
+# Multiple habitats
 
-Sandbox only: Ringworld toolbar → Settings → Sandbox: manage ring worlds.
+These placement features are in the development build after v1.1.6. Published v1.1.6 supports star-relative offsets, not planet/asteroid attachment or physical eclipses.
 
-Select a habitat to edit. Enter a name, existing star (including loaded planet-pack stars) or no designated star, center X/Y/Z offsets in kilometers, diameter, width and seed. Blank seeds randomize on creation. Spawn creates a new persistent ID; editing retains the ID. Save the game after changing the catalog. Visit selected ring performs a sandbox spin-matched transfer to its arrival landmark.
+## Create or edit a ring
 
-Coordinates use KSP's non-rotating reference axes, not longitude/latitude. Y is across the ring. A designated ring follows its selected star plus the offset. Without a designated star it follows the stock Sun plus the offset, does not spawn a star and does not become a new celestial SOI. Normal stellar gravity remains. Planes are parallel; arbitrary tilts and freely orbiting centers are future work. Existing saves migrate their original habitat to the stable `primary` ID.
+In Sandbox, open **Ringworld > Settings > Sandbox: manage ring worlds**. Select a habitat, or enter settings and choose **Spawn a new ring using these fields**. Save the game after editing.
 
-A conservative cylinder-envelope check rejects overlap, including some concentric layouts that might otherwise fit. Move/delete is blocked while the ring has resident vessel records. At least one habitat must remain. Recover or move vessels first. This prevents deleting the surface beneath an expedition. No automatic deletion of ships is performed. World settings outside this editor retain their existing saved-expedition protections.
+Enable **Follow an existing body or asteroid/comet** and select an existing star, planet, moon, or orbiting asteroid/comet. The ring follows that object's motion. Asteroids use their persistent vessel ID, so switching ships or crossing a stock sphere of influence does not change the anchor.
 
-Each habitat has its own global ring/walls/clouds/panels. Only the current nearby habitat generates local terrain and physics; distant habitats use coarse outlines. Extra habitats still cost rendering time and memory. Multiple independently rotating physics frames cannot coexist in one loaded Unity scene. Ring selection follows a saved resident's ID or the nearest habitat for approaching vessels. Tracking encounter guards test all habitats; the selected vessel's nearest habitat supplies its trajectory preview. Combined multi-ring gravitational trajectory prediction is not implemented.
+Turn following off for a location offset from the stock Sun. No option creates or clones celestial bodies. A ring remains a custom habitat, not a new stock celestial SOI.
 
-Saved vessels, landed warp, stock science contexts and reload restoration use their habitat's center/ID. Science in additional habitats has distinct subject IDs. Expedition milestones remain save-wide. Per-ring quality settings are inherited when spawning and can be changed after visiting.
+Center X/Y/Z values are offsets in kilometers in KSP's non-rotating reference axes. They travel with the anchor but do not turn with its surface. **Inclination X/Y/Z** rotates the ring about its center, in X, then Y, then Z order; it does not rotate the offset.
 
-Lighting/cloud-shadow optics retain the central-star/day-panel approximation. Large off-center/no-designated-star habitats are sandbox geography, not a claim of physically correct off-axis illumination. Full multi-star lighting, ring tilt, scripted transport terminals, map icons and arbitrary orbiting habitat centers remain follow-up work.
+Set diameter, width, seed and artificial gravity independently for each ring. Blank seeds randomize on creation. **Reverse rotation direction** changes spin direction; speed is calculated from radius and artificial gravity. Real celestial gravity still acts on vessels, so effective gravity near a planet can differ from the selected centrifugal acceleration.
+
+Diameter can be as small as 2,000 km and width as small as 10 km, subject to the other geometry checks. A very small ring may require reducing wall or atmosphere height first. **Visit selected ring** performs a Sandbox transfer to the arrival landmark.
+
+## Daylight and eclipses
+
+**Day/night shadow panels** enables the twenty orbiting panels. Turning them off removes their shadows, but does not prevent a planet or another ring from eclipsing the star.
+
+Lighting uses the star above the anchor in the orbital hierarchy. Celestial spheres, ring floors, rim walls and enabled panels can block its light. Ring holes remain open to light. Eclipses depend on the observer's position, inclination, current orbit and other rings' positions.
+
+Local and distant terrain/cloud lighting, the stock Sun flare and ring solar-panel illumination use this geometry. The matching development **Ringworld Scattering** build applies it to enhanced water and distant atmosphere. CPU and GPU penumbrae use different approximations, so soft edges are not pixel-identical.
+
+This does not add ring-shadow shaders to stock planetary terrain. Illumination uses one associated star; simultaneous illumination by multiple stars is not simulated.
+
+## Moving, saving and recovery
+
+Move/delete is blocked while a ring has resident vessels. Recover or move those vessels first. At least one habitat must remain. Overlap checks are conservative, especially for tilted rings, but permit a small planet ring inside another ring's empty central region. They check the current layout; they do not guarantee that independently moving rings will never intersect later.
+
+Grounded vessels, surface time warp, save/reload and trajectory encounters use the moving anchor. Only the current nearby habitat generates local terrain and physics; distant habitats use coarse rendering. Multiple independent rotating physics frames cannot run simultaneously in one Unity scene. Unloaded atmospheric flight and collision simulation are not added.
+
+If an asteroid is removed, its ring holds its last recorded center relative to its saved orbital reference and displays an editor warning. Select another anchor when the habitat can be edited. Back up before removing an anchor or planet pack; a removed orbital reference body itself cannot be reconstructed.
+
+Science and landed residents retain each ring's persistent ID. Additional habitats have distinct science subject IDs; expedition milestones remain save-wide. Quality settings are inherited when spawning and can be changed after visiting. Extra rings cost rendering time and memory. Trajectory prediction includes celestial gravity and the selected ring's ribbon gravity, not the combined gravity of every ring.

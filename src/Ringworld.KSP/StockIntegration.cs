@@ -42,8 +42,8 @@ namespace NivenRingworld
         {
             var v=__instance.Vessel;if(!StockIntegration.Applies(v))return;
             var f=RingworldFlight.Instance;var up=f.Settings.Geometry.Up(f.Position(v));
-            v.upAxis=ConvertVector.Ksp(up);v.north=Vector3d.up;
-            v.east=ConvertVector.Ksp(DVec.Cross(new DVec(0,1,0),up));
+            v.upAxis=ConvertVector.Ksp(up);v.north=ConvertVector.Ksp(f.Settings.Geometry.Axis);
+            v.east=ConvertVector.Ksp(DVec.Cross(f.Settings.Geometry.Axis,up));
         }
     }
     [HarmonyPatch(typeof(FlightCamera),nameof(FlightCamera.GetCameraFoR))]
@@ -55,7 +55,7 @@ namespace NivenRingworld
             if(mode!=FoRModes.SRF_NORTH&&mode!=FoRModes.SRF_HDG&&mode!=FoRModes.SRF_VEL)return true;
             __instance.FoRMode=mode;
             var f=RingworldFlight.Instance;
-            __result=Quaternion.LookRotation(Vector3.up,ConvertVector.Unity(f.Settings.Geometry.Up(f.Position(v))));return false;
+            __result=Quaternion.LookRotation(ConvertVector.Unity(f.Settings.Geometry.Axis),ConvertVector.Unity(f.Settings.Geometry.Up(f.Position(v))));return false;
         }
     }
     [HarmonyPatch(typeof(FlightCamera),"GetAutoModeForVessel")]

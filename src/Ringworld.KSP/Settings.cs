@@ -12,19 +12,21 @@ namespace NivenRingworld
         internal static Vector3 Unity(DVec v) { return new Vector3((float)v.X,(float)v.Y,(float)v.Z); }
         internal static Vector3d Orbit(Vector3d v) { return new Vector3d(v.x,v.z,v.y); }
     }
-    internal sealed class Settings
+    internal sealed partial class Settings
     {
         private static bool warnedMultipleDefinitions;
         internal string RingId="primary", RingName="Ringworld", ReferenceBody="Sun";
         internal bool DesignatedStar=true;
-        internal DVec CenterOffset;
+        internal DVec CenterOffset,OrientationDegrees;
+        internal Quaternion AxisRotation(double radians){return Quaternion.AngleAxis((float)(radians*180/Math.PI),ConvertVector.Unity(Geometry.Axis));}
+        internal Quaternion BasisRotation {get{return Quaternion.LookRotation(ConvertVector.Unity(Geometry.Basis.Z),ConvertVector.Unity(Geometry.Axis));}}
         internal CelestialBody Body {get{return FlightGlobals.Bodies.Find(b=>b.name==ReferenceBody);}}
-        internal Vector3d Center {get{return (Body==null?Vector3d.zero:Body.position)+ConvertVector.Ksp(CenterOffset);}}
+        internal Vector3d InertialCenter {get{return (Body==null?Vector3d.zero:Body.position)+ConvertVector.Ksp(AnchorAt(Planetarium.GetUniversalTime()).Position);}}
+        internal Vector3d Center {get{return RingSceneFrame.Center(this);}}
         internal DVec StellarAcceleration(DVec position,double mu,double elapsed=0)
         {
-            var relative=Geometry.ToInertialPosition(position,elapsed)+CenterOffset;
-            double distance=relative.Length;
-            return distance>1?RingGeometry.Rotate(relative*(-mu/(distance*distance*distance)),-Geometry.P.Omega*elapsed):new DVec();
+            double time=Planetarium.GetUniversalTime();
+            return Geometry.RotateAroundAxis(InertialGravity(Geometry.ToInertialPosition(position,elapsed),time),-Geometry.P.Omega*elapsed);
         }
         internal RingGeometry Geometry;
         internal readonly CylaOptions Cyla=new CylaOptions();
@@ -54,8 +56,10 @@ namespace NivenRingworld
         internal void Apply(ConfigNode n)
         {
             RingId=n.GetValue("ringId")??"primary";RingName=n.GetValue("ringName")??"Ringworld";
-            ReferenceBody=n.GetValue("referenceBody")??"Sun";DesignatedStar=n.GetValue("designatedStar")!="False";
-            CenterOffset=new DVec(Read(n,"centerX",0),Read(n,"centerY",0),Read(n,"centerZ",0));
+            ReferenceBody=n.GetValue("referenceBody")??"Sun";AnchorId=n.GetValue("anchorId")??("body:"+ReferenceBody);anchorTime=double.NaN;DesignatedStar=n.GetValue("designatedStar")!="False";
+            CenterOffset=new DVec(Read(n,"centerX",0),Read(n,"centerY",0),Read(n,"centerZ",0));LoadAnchorFallback(n);
+            OrientationDegrees=new DVec(Read(n,"tiltX",0),Read(n,"tiltY",0),Read(n,"tiltZ",0));
+            Geometry.Basis=new RingBasis(OrientationDegrees.X,OrientationDegrees.Y,OrientationDegrees.Z);
             Cyla.Load(n);
             WeatherPeriod=Math.Max(600,Read(n,"weatherPeriod",21600));
             WeatherVariation=Math.Max(0,Math.Min(1,Read(n,"weatherVariation",1)));StormChance=Math.Max(0,Math.Min(1,Read(n,"stormChance",.25)));
@@ -76,9 +80,11 @@ namespace NivenRingworld
             CloudShadow=Math.Max(0,Math.Min(1,Read(n,"cloudShadow",.85)));
             AtmosphereExposure=Math.Max(.25,Math.Min(2,Read(n,"atmosphereExposure",1)));
             WaveHeight=Math.Max(0,Math.Min(2,Read(n,"waveHeight",.65)));
-            Geometry.P.Radius=Math.Max(1000000000,Read(n,"radius",Geometry.P.Radius));
-            Geometry.P.Width=Math.Max(10000000,Math.Min(Geometry.P.Radius,Read(n,"width",Geometry.P.Width)));
-            Geometry.P.Gravity=Math.Max(1,Math.Min(100,Read(n,"gravity",Geometry.P.Gravity)));
+            Geometry.P.Radius=Math.Max(1000000,Read(n,"radius",Geometry.P.Radius));
+            Geometry.P.Width=Math.Max(10000,Math.Min(Geometry.P.Radius,Read(n,"width",Geometry.P.Width)));
+            Geometry.P.SpinDirection=Read(n,"spinDirection",1)<0?-1:1;
+            Geometry.P.PanelsEnabled=!string.Equals(n.GetValue("panelsEnabled"),"false",StringComparison.OrdinalIgnoreCase);
+            Geometry.P.Gravity=Read(n,"gravity",Geometry.P.Gravity);
             Geometry.P.SurfaceDensity=Math.Max(0,Math.Min(100000000,Read(n,"surfaceDensity",1000000)));
             Geometry.P.WallHeight=Math.Max(60000,Math.Min(1000000,Read(n,"wallHeight",Geometry.P.WallHeight)));
             Geometry.P.Validate();
@@ -106,8 +112,8 @@ namespace NivenRingworld
         }
         internal ConfigNode Save()
         {
-            var n=new ConfigNode("OPTIONS");Cyla.Save(n);
-            n.AddValue("ringId",RingId);n.AddValue("ringName",RingName);n.AddValue("referenceBody",ReferenceBody);n.AddValue("designatedStar",DesignatedStar);
+            var n=new ConfigNode("OPTIONS");Cyla.Save(n);SaveAnchorFallback(n);
+            n.AddValue("anchorId",AnchorId??("body:"+ReferenceBody));n.AddValue("ringId",RingId);n.AddValue("ringName",RingName);n.AddValue("referenceBody",ReferenceBody);n.AddValue("designatedStar",DesignatedStar);
             n.AddValue("centerX",CenterOffset.X.ToString("R",CultureInfo.InvariantCulture));n.AddValue("centerY",CenterOffset.Y.ToString("R",CultureInfo.InvariantCulture));n.AddValue("centerZ",CenterOffset.Z.ToString("R",CultureInfo.InvariantCulture));
             n.AddValue("atmosphereBackend",AtmosphereBackend);n.AddValue("cylaLightSteps",CylaLightSteps);n.AddValue("cylaDivisor",CylaDivisor);n.AddValue("cylaDither",CylaDither);
             n.AddValue("weatherPeriod",WeatherPeriod.ToString("R",CultureInfo.InvariantCulture));n.AddValue("weatherVariation",WeatherVariation.ToString("R",CultureInfo.InvariantCulture));n.AddValue("stormChance",StormChance.ToString("R",CultureInfo.InvariantCulture));n.AddValue("cloudWind",CloudWind.ToString("R",CultureInfo.InvariantCulture));n.AddValue("rainDensity",RainDensity.ToString("R",CultureInfo.InvariantCulture));n.AddValue("rainEnabled",RainEnabled);n.AddValue("lightningEnabled",LightningEnabled);
@@ -121,6 +127,8 @@ namespace NivenRingworld
             n.AddValue("haze",Haze.ToString("R",CultureInfo.InvariantCulture));n.AddValue("cloudAmount",CloudAmount.ToString("R",CultureInfo.InvariantCulture));
             n.AddValue("dynamicWeather",DynamicWeather);n.AddValue("heightMultiplier",HeightMultiplier.ToString("R",CultureInfo.InvariantCulture));
             n.AddValue("forestDensity",ForestDensity.ToString("R",CultureInfo.InvariantCulture));n.AddValue("generationVersion",GenerationVersion);
+            n.AddValue("tiltX",OrientationDegrees.X.ToString("R",CultureInfo.InvariantCulture));n.AddValue("tiltY",OrientationDegrees.Y.ToString("R",CultureInfo.InvariantCulture));n.AddValue("tiltZ",OrientationDegrees.Z.ToString("R",CultureInfo.InvariantCulture));
+            n.AddValue("spinDirection",Geometry.P.SpinDirection);n.AddValue("panelsEnabled",Geometry.P.PanelsEnabled);
             n.AddValue("daySeconds",Geometry.P.DaySeconds.ToString("R",CultureInfo.InvariantCulture));return n;
         }
         internal static Settings Load()
@@ -132,6 +140,8 @@ namespace NivenRingworld
             {
                 var n=nodes[0];
                 p.Radius=Read(n,"radius",p.Radius);p.Width=Read(n,"width",p.Width);p.WallHeight=Read(n,"wallHeight",p.WallHeight);
+                s.OrientationDegrees=new DVec(Read(n,"tiltX",0),Read(n,"tiltY",0),Read(n,"tiltZ",0));
+                p.SpinDirection=Read(n,"spinDirection",1)<0?-1:1;p.PanelsEnabled=!string.Equals(n.GetValue("panelsEnabled"),"false",StringComparison.OrdinalIgnoreCase);
                 p.Gravity=Read(n,"gravity",p.Gravity);p.DaySeconds=Read(n,"daySeconds",p.DaySeconds);
                 p.AtmosphereHeight=Read(n,"atmosphereHeight",p.AtmosphereHeight);p.ScaleHeight=Read(n,"scaleHeight",p.ScaleHeight);
                 p.Seed=(int)Read(n,"seed",p.Seed);
@@ -141,7 +151,8 @@ namespace NivenRingworld
                 s.StructuralThickness=Math.Max(1,Math.Min(10000,Read(n,"structuralThickness",100)));
                 s.Atmosphere=n.GetValue("atmosphere")!="false";
             }
-            s.Geometry=new RingGeometry(p);s.Terrain=new TerrainGenerator(s.Geometry);return s;
+            s.Geometry=new RingGeometry(p){Basis=new RingBasis(s.OrientationDegrees.X,s.OrientationDegrees.Y,s.OrientationDegrees.Z)};s.Geometry.LightVisibility=(point,time)=>RingLighting.Visibility(s,point,time);
+            s.Geometry.LightDirection=(point,time)=>RingLighting.Direction(s,point,time);s.Terrain=new TerrainGenerator(s.Geometry);return s;
         }
         // Keep the requested distance in the save. GPU work stops at a conservative ring bounding extent
         // or the finite squared-distance limit; increasing a setting cannot create infinity.
