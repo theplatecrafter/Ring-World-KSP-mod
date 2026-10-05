@@ -46,6 +46,7 @@ namespace NivenRingworld
         private int destination;
         private int panelTab;
         private readonly RingSettingsPanel settingsPanel=new RingSettingsPanel();
+        private readonly RingSandboxEditor ringEditor=new RingSandboxEditor();
         private ConfigNode boundOptions;
         private string status="Fly toward the ring for automatic arrival. Alt+R or the ring toolbar button opens this panel.";
         private float nextCapture;
@@ -572,9 +573,12 @@ namespace NivenRingworld
         }
         private void DrawWindow(int id)
         {
+            int previousTab=panelTab;
+            panelTab=GUILayout.Toolbar(panelTab,SandboxControls?new[]{"Expedition","Settings","Extensions","Research","Rings"}:new[]{"Expedition","Extensions","Research"});
+            if(panelTab!=previousTab)panelScroll=Vector2.zero;
             panelScroll=GUILayout.BeginScrollView(panelScroll,GUILayout.Height(Mathf.Max(240,Mathf.Min(610,Screen.height-150))));
             if(weatherEffects!=null&&Owns(FlightGlobals.ActiveVessel))GUILayout.Label("Weather: "+weatherEffects.Description);
-            panelTab=GUILayout.Toolbar(panelTab,SandboxControls?new[]{"Expedition","Settings","Extensions","Research"}:new[]{"Expedition","Extensions","Research"});
+            if(SandboxControls&&panelTab==4){ringEditor.Draw(this);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
             if(panelTab==(SandboxControls?3:2)){State.Research.Draw(FlightGlobals.ActiveVessel);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
             if(panelTab==(SandboxControls?2:1)){settingsPanel.Draw(this,true);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}
             if(SandboxControls&&panelTab==1){settingsPanel.Draw(this);GUILayout.EndScrollView();GUI.DragWindow(new Rect(0,0,10000,25));return;}

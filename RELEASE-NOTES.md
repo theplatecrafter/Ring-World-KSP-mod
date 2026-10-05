@@ -16,6 +16,11 @@ No dependencies or extensions are bundled. Extract each ZIP into the **KSP insta
 
 ## Unreleased development
 
+- Orbital maps keep celestial bodies and rings in the normal inertial frame while a craft uses ring-relative flight physics.
+- Landed ring residents keep their map markers attached to the moving, spinning habitat during Tracking Station time warp; their temporary bookkeeping orbits are hidden.
+
+- The Sandbox ring editor now has its own **Rings** tab with collapsible placement, terrain, and rotation sections. It includes per-ring wall height and terrain height multiplier for creation and editing. Invalid values are rejected explicitly; existing resident-vessel protections still apply.
+
 - Sandbox ring management adds per-ring artificial gravity, reverse rotation and optional day/night panels. Changes require an unoccupied ring. Spin speed follows gravity and radius; positive gravity below 1 m/s² is supported.
 - Disabling panels removes their meshes and their simulated night masks from local terrain, distant terrain and clouds. The matching development build of Ringworld Scattering also removes the panel mask from its distant atmosphere.
 - Terrain/cloud longitude stays consistent when rotation is reversed.

@@ -199,15 +199,15 @@ namespace NivenRingworld
             bool interior=true;
             if(MapView.MapIsEnabled&&PlanetariumCamera.Camera!=null)
             {
-                var camera=ScaledSpace.ScaledToLocalSpace(PlanetariumCamera.Camera.transform.position)-star;
+                var camera=ScaledSpace.ScaledToLocalSpace(PlanetariumCamera.Camera.transform.position)-settings.InertialCenter;
                 var view=settings.Geometry.Coordinates(ConvertVector.Core(camera));
                 interior=view.Altitude>=TerrainGenerator.MinimumHeight||Math.Abs(view.Across)>settings.Geometry.P.Width/2;
             }
             foreach(var p in patches.Values)
             {
                 p.Root.SetActive(interior);
-                double delta=settings.Geometry.OrientationRadians-p.Phase;
-                var world=star+ConvertVector.Ksp(settings.Geometry.RotateAroundAxis(p.Anchor,delta));
+                double delta=(p.Scaled&&RingMapFrame.Active?settings.Geometry.P.Omega*Planetarium.GetUniversalTime():settings.Geometry.OrientationRadians)-p.Phase;
+                var world=(p.Scaled&&RingMapFrame.Active?settings.InertialCenter:star)+ConvertVector.Ksp(settings.Geometry.RotateAroundAxis(p.Anchor,delta));
                 p.Root.transform.position=p.Scaled?(Vector3)ScaledSpace.LocalToScaledSpace(world):(Vector3)world;
                 p.Root.transform.rotation=settings.AxisRotation(delta);
             }

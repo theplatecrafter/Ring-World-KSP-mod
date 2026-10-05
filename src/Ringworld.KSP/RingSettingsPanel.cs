@@ -5,7 +5,6 @@ namespace NivenRingworld
 {
     internal sealed class RingSettingsPanel
     {
-        private readonly RingSandboxEditor rings=new RingSandboxEditor();
         private bool cloudsOpen,scatteringOpen,cylaOpen;
         private bool cloudExtension;private int cloudMode;private float cloudDensity;
         private bool fullRingAtmosphere;private bool waterExtension;private bool waterScattering;private bool cylaAdvanced;private string[] cylaFields;private int cylaMode;
@@ -34,7 +33,6 @@ namespace NivenRingworld
                 atmosphereBackend=s.AtmosphereBackend;cylaResolution=s.CylaDivisor==8?0:s.CylaDivisor==4?1:s.CylaDivisor==2?2:3;cylaDither=s.CylaDither;cylaLightSteps=N(s.CylaLightSteps);presetLabel=RingQualityPresets.Match(s);forestQuality=s.ForestQuality;quality=s.LodResolution==8?0:s.LodResolution==16?1:2;budget=s.GenerationBudget-1;initialized=true;
             }
             if(extensions){DrawExtensions(flight,s);return;}
-            rings.Draw(flight);
             GUILayout.Label("Settings are stored with this save.");
             if(GUILayout.Button("Quality preset: "+presetLabel+"  v"))presetOpen=!presetOpen;
             if(presetOpen)for(int i=0;i<RingQualityPresets.Names.Length;i++)

@@ -69,9 +69,51 @@ namespace NivenRingworld
             TimeWarp.SetRate(3,true);yield return new WaitForSecondsRealtime(2);TimeWarp.SetRate(0,true);yield return new WaitForSecondsRealtime(3);
             if((f.Position(v)-expected).Length>5||!v.Landed||Planetarium.GetUniversalTime()<=ut+2){fail("Remote landed warp failed");yield break;}
             Debug.Log("[RingworldSmoke] MULTIRING remote landing, science identity and native warp passed");
-            MapView.EnterMapView();yield return new WaitForSecondsRealtime(2);PlanetariumCamera.fetch.SetDistance(f.Settings.Geometry.P.Radius<1e8?5000:5000000);yield return new WaitForSecondsRealtime(3);ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(KSPUtil.ApplicationRootPath,"RingworldMultiRingMap.png"));yield return new WaitForSecondsRealtime(2);MapView.ExitMapView();
+            MapView.EnterMapView();yield return new WaitForSecondsRealtime(2);
+            // Verify after the body-frame camera callback has run, not just before rendering.
+            bool rotatedMapBody=false;int mapFrames=0;
+            Camera.CameraCallback inspectMap=c=>
+            {
+                if(c!=PlanetariumCamera.Camera)return;
+                foreach(var body in FlightGlobals.Bodies)if(body.scaledBody!=null)
+                {
+                    var wanted=(Vector3)ScaledSpace.LocalToScaledSpace(body.position);
+                    if(Vector3.Distance(body.scaledBody.transform.position,wanted)>Math.Max(.02,wanted.magnitude*2e-6))rotatedMapBody=true;
+                }
+                mapFrames++;
+            };
+            Camera.onPreCull+=inspectMap;
+            yield return new WaitForSecondsRealtime(2);
+            Camera.onPreCull-=inspectMap;
+            if(mapFrames==0||rotatedMapBody){fail("Orbital map bodies were rotated by the surface frame");yield break;}
+            yield return new WaitForEndOfFrame();
+            Vector3d mapPosition;
+            if(!RingMapFrame.TryPosition(v,out mapPosition)||Vector3.Distance(v.mapObject.transform.position,(Vector3)ScaledSpace.LocalToScaledSpace(mapPosition))>.1f){fail("Flight map resident marker is not inertial");yield break;}
+            Debug.Log("[RingworldSmoke] MAP inertial celestial poses and resident marker passed");
+            PlanetariumCamera.fetch.SetDistance(f.Settings.Geometry.P.Radius<1e8?5000:5000000);yield return new WaitForSecondsRealtime(3);ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(KSPUtil.ApplicationRootPath,"RingworldMultiRingMap.png"));yield return new WaitForSecondsRealtime(2);MapView.ExitMapView();
             f.Capture();var id=v.id;var folder=HighLogic.SaveFolder;expected=f.Position(v);
             GamePersistence.SaveGame(HighLogic.CurrentGame.Updated(),"persistent",folder,SaveMode.OVERWRITE);
+            HighLogic.LoadScene(GameScenes.TRACKSTATION);
+            end=Time.realtimeSinceStartup+60;
+            while((HighLogic.LoadedScene!=GameScenes.TRACKSTATION||PlanetariumCamera.fetch==null||TrackingRing.Trajectory==null)&&Time.realtimeSinceStartup<end)yield return null;
+            yield return new WaitForSecondsRealtime(4);
+            v=FlightGlobals.Vessels.Find(resident=>resident.id==id);
+            if(v==null||v.mapObject==null){fail("Landed resident missing in tracking station");yield break;}
+            PlanetariumCamera.fetch.SetTarget(v.mapObject);
+            double trackingStart=Planetarium.GetUniversalTime();
+            TimeWarp.SetRate(5,true);
+            for(int sample=0;sample<12;sample++)
+            {
+                yield return new WaitForSecondsRealtime(.25f);yield return new WaitForEndOfFrame();
+                var saved=RingworldScenario.Instance.Vessels[id.ToString()];var ringSettings=RingworldScenario.Instance.RingSettings(saved.RingId);
+                double now=Planetarium.GetUniversalTime();
+                var attached=ringSettings.InertialCenter+ConvertVector.Ksp(ringSettings.Geometry.RotateAroundAxis(saved.Position,ringSettings.Geometry.P.Omega*(now-saved.Epoch)));
+                if(Vector3.Distance(v.mapObject.transform.position,(Vector3)ScaledSpace.LocalToScaledSpace(attached))>.1f||!RingOrbitSplinePatch.ShouldHide(v.orbit))
+                {TimeWarp.SetRate(0,true);fail("Tracking warp detached the surface marker or exposed its osculating orbit");yield break;}
+            }
+            TimeWarp.SetRate(0,true);
+            if(Planetarium.GetUniversalTime()<=trackingStart+10){fail("Tracking surface-marker test did not advance warp");yield break;}
+            Debug.Log("[RingworldSmoke] TRACKING landed marker remains on moving ring through warp");
             HighLogic.LoadScene(GameScenes.SPACECENTER);while(HighLogic.LoadedScene!=GameScenes.SPACECENTER)yield return null;yield return new WaitForSecondsRealtime(4);
             var reload=GamePersistence.LoadGame("persistent",folder,true,false);int index=reload.flightState.protoVessels.FindIndex(p=>p.vesselID==id);
             if(index<0){fail("Remote resident lost");yield break;}

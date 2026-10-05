@@ -36,6 +36,10 @@ namespace NivenRingworld
                 foreach(var id in remove)scenario.Vessels.Remove(id);
                 initialized=true;
             }
+            // Tracking rails may advance a stock osculating orbit independently of
+            // OrbitDriver.UpdateOrbit. Keep surface residents at their saved material point.
+            foreach(var resident in FlightGlobals.Vessels)
+            {VesselRecord record;if(resident.packed&&RingResidence.Saved(resident,out record)&&record.Landed)RingResidence.HoldSaved(resident,record);}
             var selected=PlanetariumCamera.fetch!=null&&PlanetariumCamera.fetch.target!=null?PlanetariumCamera.fetch.target.vessel:null;
             string nearest=RingSelection.Nearest(selected);if(nearest!=null){Settings=scenario.RingSettings(nearest);Star=Settings.Body;}
             if(Time.realtimeSinceStartup<nextCheck)return;

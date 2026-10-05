@@ -21,7 +21,7 @@ namespace NivenRingworld
         private Extensions.RingworldScattering scattering;
         internal bool DetailActive { get { return farActive; } }
         internal string RingId="primary";
-        private Vector3d Center {get{return settings.Center;}}
+        private Vector3d Center {get{return RingMapFrame.Center(settings);}}
         private RingworldFlight LocalFlight {get{var f=RingworldFlight.Instance;return f!=null&&f.Settings!=null&&f.Settings.RingId==RingId?f:null;}}
         private CelestialBody star;
         private Settings settings;
@@ -96,12 +96,12 @@ namespace NivenRingworld
             if(LocalFlight!=null){Shader.SetGlobalVector("_RingScaledCenter",root.transform.position);Shader.SetGlobalVector("_RingScaledSize",new Vector4((float)(settings.Geometry.P.Radius*ScaledSpace.InverseScaleFactor),(float)(settings.Geometry.P.Width*.5*ScaledSpace.InverseScaleFactor),0,0));}
             // Squares and material longitude use the same phase in both flight charts.
             var flight=LocalFlight;
-            double epoch=flight!=null&&flight.Active?flight.FrameEpoch:Planetarium.GetUniversalTime();
+            double epoch=!mapView&&flight!=null&&flight.Active?flight.FrameEpoch:Planetarium.GetUniversalTime();
             renderEpoch=epoch;
             if(LocalFlight!=null){Shader.SetGlobalVector("_RingBasisX",ConvertVector.Unity(settings.Geometry.Basis.X));Shader.SetGlobalVector("_RingBasisY",ConvertVector.Unity(settings.Geometry.Basis.Y));Shader.SetGlobalVector("_RingBasisZ",ConvertVector.Unity(settings.Geometry.Basis.Z));}
             root.transform.rotation=settings.BasisRotation*Quaternion.Euler(0,(float)(RingGeometry.Wrap(settings.Geometry.P.Omega*epoch,2*Math.PI)*180/Math.PI),0);
             var sceneFlight=RingSceneFrame.Flight;
-            if(sceneFlight!=null&&LocalFlight==null)root.transform.rotation=sceneFlight.Settings.AxisRotation(-sceneFlight.Settings.Geometry.P.Omega*(Planetarium.GetUniversalTime()-sceneFlight.FrameEpoch))*root.transform.rotation;
+            if(!mapView&&sceneFlight!=null&&LocalFlight==null)root.transform.rotation=sceneFlight.Settings.AxisRotation(-sceneFlight.Settings.Geometry.P.Omega*(Planetarium.GetUniversalTime()-sceneFlight.FrameEpoch))*root.transform.rotation;
             squares.SetActive(settings.Geometry.P.PanelsEnabled);
             squares.transform.localRotation=Quaternion.Euler(0,(float)(RingGeometry.Wrap(Planetarium.GetUniversalTime()/(flight!=null&&flight.Settings!=null?flight.Settings.Geometry.P.DaySeconds:settings.Geometry.P.DaySeconds),20)*18),0);
         }
@@ -156,7 +156,7 @@ namespace NivenRingworld
                 var vertex=source[i];
                 // Rodrigues rotation: reuse sine/cosine for the entire camera upload.
                 var p=vertex*c+DVec.Cross(axis,vertex)*sn+axis*(DVec.Dot(axis,vertex)*(1-c));
-                if(LocalFlight==null)p=RingSceneFrame.Vector(p);
+                if(!mapGeometry&&LocalFlight==null)p=RingSceneFrame.Vector(p);
                 cameraVertices[i]=ConvertVector.Unity(p-observer);
             }
             ribbonObject.transform.position=camera.transform.position;ribbonObject.transform.rotation=Quaternion.identity;

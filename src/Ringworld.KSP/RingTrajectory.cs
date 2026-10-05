@@ -80,7 +80,8 @@ namespace NivenRingworld
                 float distance=Vector3.Distance(PlanetariumCamera.Camera.transform.position,line.GetPosition(0));
                 line.widthMultiplier=Mathf.Max(.002f,distance*.001f);
             }
-            if(!Tracking&&line.positionCount>0&&v.mainBody==f.Star)line.SetPosition(0,(Vector3)ScaledSpace.LocalToScaledSpace(f.Center+ConvertVector.Ksp(f.Position(v))));
+            Vector3d marker;
+            if(line.positionCount>0&&RingMapFrame.TryPosition(v,out marker))line.SetPosition(0,(Vector3)ScaledSpace.LocalToScaledSpace(marker));
             if(!computing&&Time.realtimeSinceStartup>=nextPrediction){nextPrediction=Time.realtimeSinceStartup+1f/30;StartCoroutine(Predict(f,v));}
         }
         public void OnGUI()
@@ -175,9 +176,9 @@ namespace NivenRingworld
                     {result="Coast ends at terrain contact";break;}
                     if(Math.Abs(Math.Abs(coord.Across)-g.P.Width/2)<2&&coord.Altitude>=settings.UndersideAltitude&&coord.Altitude<=g.P.WallHeight)
                     {result="Coast ends at rim wall";break;}
-                    // The map uses the same frozen rotating chart as the local scene.
-                    var display=rotating?g.RotateAroundAxis(state.Position,-g.P.Omega*(elapsed+time)):state.Position+settings.AnchorAt(start+time).Position-settings.AnchorAt(Planetarium.GetUniversalTime()).Position;
-                    points.Add((Vector3)ScaledSpace.LocalToScaledSpace(settings.Center+ConvertVector.Ksp(display)));insidePoints.Add(inside);
+                    // Plot inertial positions, including the moving anchor, in the stock orbital map.
+                    var display=state.Position+settings.AnchorAt(start+time).Position;
+                    points.Add((Vector3)ScaledSpace.LocalToScaledSpace(star.position+ConvertVector.Ksp(display)));insidePoints.Add(inside);
                     double gap=Math.Max(1,Math.Abs(coord.Altitude-g.P.AtmosphereHeight));
                     double radial=Math.Abs(DVec.Dot(g.Up(state.Position),state.Velocity));
                     double dt=Math.Min(120,Math.Max(.01,Math.Min(gap/(radial+1)*.2,Math.Sqrt(gap/(state.Velocity.Length*state.Velocity.Length/state.Position.Length+1))*.2)));
@@ -214,6 +215,8 @@ namespace NivenRingworld
         internal static bool ShouldHide(Orbit orbit)
         {
             if(orbit==null)return false;
+            foreach(var resident in FlightGlobals.Vessels)
+            {VesselRecord record;if(ReferenceEquals(resident.orbit,orbit)&&RingResidence.Saved(resident,out record)&&record.Landed)return true;}
             var f=RingworldFlight.Instance;var v=FlightGlobals.ActiveVessel;
             if(HighLogic.LoadedScene==GameScenes.TRACKSTATION&&TrackingRing.Trajectory!=null&&TrackingRing.Settings!=null&&TrackingRing.Settings.ShowTrajectory)
                 return TrackingRing.Trajectory.PointCount>=2&&ReferenceEquals(orbit,TrackingRing.Trajectory.PredictedOrbit);

@@ -4,7 +4,7 @@ These placement features are in the development build after v1.1.6. Published v1
 
 ## Create or edit a ring
 
-In Sandbox, open **Ringworld > Settings > Sandbox: manage ring worlds**. Select a habitat, or enter settings and choose **Spawn a new ring using these fields**. Save the game after editing.
+In Sandbox, open **Ringworld > Rings**. Select a habitat, or enter settings and choose **Spawn a new ring using these fields**. The editor groups controls into collapsible placement, terrain, and rotation sections. Save the game after editing.
 
 Enable **Follow an existing body or asteroid/comet** and select an existing star, planet, moon, or orbiting asteroid/comet. The ring follows that object's motion. Asteroids use their persistent vessel ID, so switching ships or crossing a stock sphere of influence does not change the anchor.
 
@@ -12,9 +12,9 @@ Turn following off for a location offset from the stock Sun. No option creates o
 
 Center X/Y/Z values are offsets in kilometers in KSP's non-rotating reference axes. They travel with the anchor but do not turn with its surface. **Inclination X/Y/Z** rotates the ring about its center, in X, then Y, then Z order; it does not rotate the offset.
 
-Set diameter, width, seed and artificial gravity independently for each ring. Blank seeds randomize on creation. **Reverse rotation direction** changes spin direction; speed is calculated from radius and artificial gravity. Real celestial gravity still acts on vessels, so effective gravity near a planet can differ from the selected centrifugal acceleration.
+Set diameter, width, rim wall height, terrain height multiplier, seed and artificial gravity independently for each ring. Wall height is entered in kilometers (60 to 1,000 km, below one tenth of the radius). Terrain height multiplier ranges from 0.25 to 3; 1 preserves normal terrain heights. Both fields apply when creating a ring or editing an unoccupied ring. Blank seeds randomize on creation. **Reverse rotation direction** changes spin direction; speed is calculated from radius and artificial gravity. Real celestial gravity still acts on vessels, so effective gravity near a planet can differ from the selected centrifugal acceleration.
 
-Diameter can be as small as 2,000 km and width as small as 10 km, subject to the other geometry checks. A very small ring may require reducing wall or atmosphere height first. **Visit selected ring** performs a Sandbox transfer to the arrival landmark.
+Diameter can be as small as 2,000 km and width as small as 10 km, subject to the other geometry checks. For a small ring, reduce wall height in the same editor before applying; the atmosphere must still fit beneath the wall. **Visit selected ring** performs a Sandbox transfer to the arrival landmark.
 
 ## Daylight and eclipses
 

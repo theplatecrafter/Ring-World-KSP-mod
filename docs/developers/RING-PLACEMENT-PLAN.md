@@ -29,9 +29,9 @@ Unreleased work after v1.1.6. This checklist describes development status, not s
 
 `anchorId` uses `body:<name>` or `vessel:<GUID>`. Old settings migrate from `referenceBody`; offsets retain their non-rotating axes. Ephemerides are composed to their common ancestor. Prediction samples the correct orbit patch and parent body at each time.
 
-The active Unity chart freezes its anchor position at frame entry, avoiding per-tick translation of terrain colliders and landed rigidbodies. Actual orbits remain inertial. Frame transitions add/remove anchor and rotational velocities; relative forces remove origin acceleration. Scaled celestial transforms are temporarily mapped for rendering, then restored. Actual ephemerides are never rewritten.
+The active Unity chart freezes its anchor position at frame entry, avoiding per-tick translation of terrain colliders and landed rigidbodies. Actual orbits remain inertial. Frame transitions add/remove anchor and rotational velocities; relative forces remove origin acceleration. Scaled celestial transforms are temporarily mapped for the flight sky only, then restored. Map rendering uses inertial centers and current ring phase, including scaled terrain patches and trajectory points. `RingMapFrame` positions resident icons through `ScaledMovement.OnLateUpdate` without moving loaded physics objects. Actual ephemerides are never rewritten.
 
-Unloaded landed records follow anchor motion and spin through bookkeeping. Tracking guards use the moving center at both ends of each prediction chord. Atmosphere/collision simulation still requires Flight; guards stop warp without automatically opening another vessel.
+Unloaded landed records follow anchor motion and spin through bookkeeping. Tracking Station refreshes their position each frame, and map markers sample their saved material position directly rather than propagating a temporary Keplerian orbit. Those bookkeeping orbit lines are hidden. Tracking guards use the moving center at both ends of each prediction chord. Atmosphere/collision simulation still requires Flight; guards stop warp without automatically opening another vessel.
 
 Missing asteroids hold their last recorded position relative to the saved reference body and report a warning. Future prediction samples cannot overwrite the recovery snapshot. Missing reference bodies still require restoring the planet pack.
 
@@ -44,6 +44,8 @@ Terrain, weather, solar flux/tracking and flare suppression use ring-aware illum
 One star is selected from the anchor's ancestor hierarchy. Simultaneous multi-star illumination and ring shadows on stock planetary surface shaders are outside this implementation. Ring shells approximate the structural hull, not individual mountain/scenery silhouettes.
 
 ## Verification
+
+- `RingworldSmoke-20261005-020421.log`: compact Kerbin ring passed map-camera celestial-pose checks, inertial resident marker placement, 12 Tracking Station warp marker samples, hidden resident orbit lines, save/reload, explicit Fly and automatic arrival. The run also passed the existing multiple-ring lifecycle checks. A stock PQS subdivision exception occurred during teleport; it did not prevent completion. The final normal build includes the matching inertial-center terrain visibility check.
 
 - Core suite: 110,373 checks, including inclined geometry, ephemeris composition, finite-star occlusion, annular holes and camera bounds.
 - Base/Scattering Release and Unity shader builds pass.

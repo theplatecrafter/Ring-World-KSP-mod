@@ -33,7 +33,7 @@ namespace NivenRingworld
         private void Prepare(Camera camera)
         {
             if(rendering!=null)return;var f=RingSceneFrame.Flight;
-            if(f==null||(camera.cullingMask&(1<<10))==0)return;
+            if(f==null||RingMapFrame.Active||(camera.cullingMask&(1<<10))==0)return;
             rendering=camera;double now=Planetarium.GetUniversalTime();var anchor=f.Settings.AnchorAt(now);
             var q=f.Settings.AxisRotation(-f.Settings.Geometry.P.Omega*(now-f.FrameEpoch));
             foreach(var body in FlightGlobals.Bodies)
