@@ -59,3 +59,10 @@ One star is selected from the anchor's ancestor hierarchy. Simultaneous multi-st
 - Tests use an isolated save and Slow or lower. High-preset scenery, third-party planet packs and every graphics backend are not certified by these runs.
 
 No release ZIP or tag changes. The harness restores the normal development build after each runtime test.
+
+
+## Instance configuration packs (target 1.1.7+)
+
+RingConfigPacks loads NIVEN_RINGWORLD_SYSTEM nodes through GameDatabase after ModuleManager. RingworldScenario snapshots these only when no saved options or resident/research state exists. Construction settings (atmosphere thickness/scale height, tile budgets and structural thickness) are now saved per ring. The sibling Ringworld Configs directory holds four separate source packs and reproducible preview ZIPs. See ../guides/CONFIG-PACKS.md for the schema.
+
+DistantStar.cfg conditionally registers a Sun-template Kopernicus body named NivenRingworldHost at 0.1 or 1 Julian light-year. Exactly one interstellar preset folder activates it. The standard star is gameplay-scaled; the full-size variant uses solar radius/gravitational parameter. Explicit SOIs avoid capturing the Kerbol system. Distance-limited lighting and ring-relative ephemerides are configured, but both distances still require Kopernicus in-game lifecycle testing. These preview packages must not be advertised as tested stable releases.

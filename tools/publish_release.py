@@ -49,7 +49,7 @@ release = existing or request(base + '/releases', 'POST', {
     'tag_name': tag, 'target_commitish': commit, 'name': 'Niven Ringworld Expedition v'+version,
     'body': release_body(root / 'RELEASE-NOTES.md', version),
     'draft': True, 'prerelease': False})
-for path in (archive, checksum, root / f'distribution/NivenRingworld-{version}.ckan', root / 'distribution/NivenRingworld.netkan'):
+for path in (archive, checksum):
     if any(asset['name'] == path.name for asset in release['assets']):
         raise SystemExit('Draft asset already present; verify it before retrying: ' + path.name)
     request(release['upload_url'].split('{')[0] + '?name=' + urllib.parse.quote(path.name),

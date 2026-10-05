@@ -91,7 +91,7 @@ namespace NivenRingworld
             if(body==null)return null;
             if(body.isStar)return body;
             var seen=new HashSet<CelestialBody>();
-            while(body.orbit!=null&&body.orbit.referenceBody!=null&&body.orbit.referenceBody!=body&&seen.Add(body))body=body.orbit.referenceBody;
+            while(!body.isStar&&body.orbit!=null&&body.orbit.referenceBody!=null&&body.orbit.referenceBody!=body&&seen.Add(body))body=body.orbit.referenceBody;
             return body;
         }
     }

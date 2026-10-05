@@ -60,6 +60,7 @@ namespace NivenRingworld
             CenterOffset=new DVec(Read(n,"centerX",0),Read(n,"centerY",0),Read(n,"centerZ",0));LoadAnchorFallback(n);
             OrientationDegrees=new DVec(Read(n,"tiltX",0),Read(n,"tiltY",0),Read(n,"tiltZ",0));
             Geometry.Basis=new RingBasis(OrientationDegrees.X,OrientationDegrees.Y,OrientationDegrees.Z);
+            ApplyConstruction(n);
             Cyla.Load(n);
             WeatherPeriod=Math.Max(600,Read(n,"weatherPeriod",21600));
             WeatherVariation=Math.Max(0,Math.Min(1,Read(n,"weatherVariation",1)));StormChance=Math.Max(0,Math.Min(1,Read(n,"stormChance",.25)));
@@ -86,7 +87,7 @@ namespace NivenRingworld
             Geometry.P.PanelsEnabled=!string.Equals(n.GetValue("panelsEnabled"),"false",StringComparison.OrdinalIgnoreCase);
             Geometry.P.Gravity=Read(n,"gravity",Geometry.P.Gravity);
             Geometry.P.SurfaceDensity=Math.Max(0,Math.Min(100000000,Read(n,"surfaceDensity",1000000)));
-            Geometry.P.WallHeight=Math.Max(60000,Math.Min(1000000,Read(n,"wallHeight",Geometry.P.WallHeight)));
+            Geometry.P.WallHeight=Math.Max(60000,Read(n,"wallHeight",Geometry.P.WallHeight));
             Geometry.P.Validate();
             foreach(double coordinate in new[]{CenterOffset.X,CenterOffset.Y,CenterOffset.Z})
                 if(!RingParameters.Finite(coordinate)||Math.Abs(coordinate)+Geometry.P.Radius+.01==Math.Abs(coordinate)+Geometry.P.Radius)
@@ -113,6 +114,7 @@ namespace NivenRingworld
         internal ConfigNode Save()
         {
             var n=new ConfigNode("OPTIONS");Cyla.Save(n);SaveAnchorFallback(n);
+            SaveConstruction(n);
             n.AddValue("anchorId",AnchorId??("body:"+ReferenceBody));n.AddValue("ringId",RingId);n.AddValue("ringName",RingName);n.AddValue("referenceBody",ReferenceBody);n.AddValue("designatedStar",DesignatedStar);
             n.AddValue("centerX",CenterOffset.X.ToString("R",CultureInfo.InvariantCulture));n.AddValue("centerY",CenterOffset.Y.ToString("R",CultureInfo.InvariantCulture));n.AddValue("centerZ",CenterOffset.Z.ToString("R",CultureInfo.InvariantCulture));
             n.AddValue("atmosphereBackend",AtmosphereBackend);n.AddValue("cylaLightSteps",CylaLightSteps);n.AddValue("cylaDivisor",CylaDivisor);n.AddValue("cylaDither",CylaDither);
@@ -130,6 +132,26 @@ namespace NivenRingworld
             n.AddValue("tiltX",OrientationDegrees.X.ToString("R",CultureInfo.InvariantCulture));n.AddValue("tiltY",OrientationDegrees.Y.ToString("R",CultureInfo.InvariantCulture));n.AddValue("tiltZ",OrientationDegrees.Z.ToString("R",CultureInfo.InvariantCulture));
             n.AddValue("spinDirection",Geometry.P.SpinDirection);n.AddValue("panelsEnabled",Geometry.P.PanelsEnabled);
             n.AddValue("daySeconds",Geometry.P.DaySeconds.ToString("R",CultureInfo.InvariantCulture));return n;
+        }
+        private void ApplyConstruction(ConfigNode n)
+        {
+            Geometry.P.AtmosphereHeight=Read(n,"atmosphereHeight",Geometry.P.AtmosphereHeight);
+            Geometry.P.ScaleHeight=Read(n,"scaleHeight",Geometry.P.ScaleHeight);
+            if(Geometry.P.ScaleHeight<=0)throw new ArgumentException("Atmosphere scale height must be positive.");
+            if(n.HasValue("atmosphere"))Atmosphere=string.Equals(n.GetValue("atmosphere"),"true",StringComparison.OrdinalIgnoreCase);
+            TileSize=Math.Max(256,Math.Min(4096,Read(n,"tileSize",TileSize)));
+            TileResolution=(int)Math.Max(16,Math.Min(64,Read(n,"tileResolution",TileResolution)));
+            TileRadius=(int)Math.Max(2,Math.Min(5,Read(n,"tileRadius",TileRadius)));
+            StructuralThickness=Math.Max(1,Math.Min(10000,Read(n,"structuralThickness",StructuralThickness)));
+        }
+        private void SaveConstruction(ConfigNode n)
+        {
+            n.AddValue("atmosphere",Atmosphere);
+            n.AddValue("atmosphereHeight",Geometry.P.AtmosphereHeight.ToString("R",CultureInfo.InvariantCulture));
+            n.AddValue("scaleHeight",Geometry.P.ScaleHeight.ToString("R",CultureInfo.InvariantCulture));
+            n.AddValue("tileSize",TileSize.ToString("R",CultureInfo.InvariantCulture));
+            n.AddValue("tileResolution",TileResolution);n.AddValue("tileRadius",TileRadius);
+            n.AddValue("structuralThickness",StructuralThickness.ToString("R",CultureInfo.InvariantCulture));
         }
         internal static Settings Load()
         {

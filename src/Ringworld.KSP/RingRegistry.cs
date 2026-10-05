@@ -127,7 +127,7 @@ namespace NivenRingworld
             if(terrainOpen)
             {
             diameter=Field("Diameter (km)",diameter);width=Field("Width (km)",width);seed=Field("Seed (blank = random)",seed);
-            wallHeight=Field("Rim wall height (60 to 1,000 km; below one tenth of radius)",wallHeight);
+            wallHeight=Field("Rim wall height (minimum 60 km; below one tenth of radius)",wallHeight);
             terrainHeight=Field("Terrain height multiplier (0.25 to 3; 1 = normal)",terrainHeight);
             }
             rotationOpen=GUILayout.Toggle(rotationOpen,"Rotation and day/night");
@@ -163,7 +163,7 @@ namespace NivenRingworld
             if(!double.TryParse(tiltX,NumberStyles.Float,CultureInfo.InvariantCulture,out tx)||!double.TryParse(tiltY,NumberStyles.Float,CultureInfo.InvariantCulture,out ty)||!double.TryParse(tiltZ,NumberStyles.Float,CultureInfo.InvariantCulture,out tz)||!RingParameters.Finite(tx)||!RingParameters.Finite(ty)||!RingParameters.Finite(tz)){message="Enter finite inclination angles in degrees.";return;}
             if(!double.TryParse(gravity,NumberStyles.Float,CultureInfo.InvariantCulture,out grav)||!RingParameters.Finite(grav)||grav<=0||grav>100){message="Enter artificial gravity greater than 0 and at most 100 m/s².";return;}
             if(!double.TryParse(x,NumberStyles.Float,CultureInfo.InvariantCulture,out px)||!double.TryParse(y,NumberStyles.Float,CultureInfo.InvariantCulture,out py)||!double.TryParse(z,NumberStyles.Float,CultureInfo.InvariantCulture,out pz)||!double.TryParse(diameter,NumberStyles.Float,CultureInfo.InvariantCulture,out di)||!double.TryParse(width,NumberStyles.Float,CultureInfo.InvariantCulture,out wi)||!RingParameters.Finite(px*1000)||!RingParameters.Finite(py*1000)||!RingParameters.Finite(pz*1000)||!RingParameters.Finite(di*500)||!RingParameters.Finite(wi*1000)||di<2000||wi<10||wi>di/2){message="Enter finite coordinates, diameter >= 2,000 km, and width from 10 km to the radius.";return;}
-            if(!double.TryParse(wallHeight,NumberStyles.Float,CultureInfo.InvariantCulture,out wall)||!RingParameters.Finite(wall)||wall<60||wall>1000||wall>=di/20){message="Enter a wall height from 60 to 1,000 km, below one tenth of the ring radius.";return;}
+            if(!double.TryParse(wallHeight,NumberStyles.Float,CultureInfo.InvariantCulture,out wall)||!RingParameters.Finite(wall*1000)||wall<60||wall>=di/20){message="Enter a wall height of at least 60 km, below one tenth of the ring radius.";return;}
             if(!double.TryParse(terrainHeight,NumberStyles.Float,CultureInfo.InvariantCulture,out terrain)||!RingParameters.Finite(terrain)||terrain<.25||terrain>3){message="Enter a terrain height multiplier from 0.25 to 3.";return;}
             if(string.IsNullOrWhiteSpace(seed))parsed=BitConverter.ToInt32(Guid.NewGuid().ToByteArray(),0);
             else if(!int.TryParse(seed,out parsed)){message="Seed must be a whole 32-bit number or blank.";return;}

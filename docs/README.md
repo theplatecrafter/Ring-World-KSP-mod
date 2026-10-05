@@ -10,6 +10,7 @@ Build an expedition, land on a rotating world, and explore its biomes and ancien
 - [Ringworld extensions and water ](guides/RINGWORLD-EXTENSIONS.md)
 - [Science and expedition rewards](guides/SCIENCE-AND-EXPEDITIONS.md)
 - [Creating multiple rings in Sandbox](guides/MULTIPLE-RINGS.md)
+- [Instance configuration packs (development, 1.1.7+)](guides/CONFIG-PACKS.md)
 - [Limitations and troubleshooting](guides/KNOWN-LIMITATIONS.md)
 - [Release history and dependency versions](../RELEASE-NOTES.md)
 

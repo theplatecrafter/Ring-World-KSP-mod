@@ -110,23 +110,20 @@ An unofficial fan project inspired by Larry Niven's *Ringworld*. Original code, 
 See [release notes](RELEASE-NOTES.md) for version changes, dependency requirements and historical installation details.
 
 ## TODO
-1. Implemented in v1.1.3: sandbox ring manager with spawn/move/delete, existing-star or unassigned reference, persistent ring IDs and offset habitats. See docs/guides/MULTIPLE-RINGS.md; arbitrary tilt, orbiting habitats and off-center stellar lighting remain future work.
-2. More structures?
-3. Check compatibility with other visual/physics mods
-4. Improve performance for high-resolution terrain and atmosphere rendering
-5. Implement whole-ring Cyla scattering for distant visuals
-6. Sciences on various parts on the ring world — implemented in v1.1.3 with stock experiments and an expedition journal; continue expanding specialised result text and optional-science-mod adapters.
-7. Progression-gated arrival/return transport: remote reconnaissance locates a surviving terminal, then science/funds unlock a transfer that matches ring velocity. Preserve physical unmatched arrivals; do not require Sandbox teleport controls for a practical stock-parts Career expedition. Not implemented yet.
-8. Native Mission Control contracts, tourism and rescue chains building on the research journal; current milestones have no deadlines or penalties.
-9. Persistent field bases: supplies, repair expeditions, infrastructure restoration and resource logistics. Decide which systems belong in optional compatibility modules rather than mandatory life support.
-10. Kerbal expedition experience and awards on safe return; avoid granting repeated XP for the same destination.
-11. Add-on content validation for duplicate research IDs, missing prerequisites/cycles and generation migrations; localisation of journal/config text.
-12. Science-overhaul adapters (especially Kerbalism), research-driven map markers and saved discovery coordinates for individual procedural colossi.
-13. Weather realism: continue cloud shadow projection, cloud-aware branching lightning, transported precipitation, humidity/temperature modelling and high-preset validation. Current development includes world-space rain/snow, shallow weather effects and distance-scaled cloud detail.
-14. Ringworld ocean FFT/whitecap spectra, wave silhouette LOD, underwater scattering and object reflections.
-15. Parallax-style Ringworld terrain extension after weather/water work; keep laptop presets viable.
-16. Ring resource deposits and shared scanner/harvester provider, per-ring exploration unlocks, stock drill tests and optional resource-pack adapters. KFS gravitic-drive integration needs ring up/acceleration, surface coordinates and safe warp handling.
-17. Flattened map of Earth or Kerbol system stellar objects in the great oceans just like in the books.
+1. More structures?
+2. Check compatibility with other visual/physics mods
+3. Improve performance for high-resolution terrain and atmosphere rendering
+4. Progression-gated arrival/return transport: remote reconnaissance locates a surviving terminal, then science/funds unlock a transfer that matches ring velocity. Preserve physical unmatched arrivals; do not require Sandbox teleport controls for a practical stock-parts Career expedition. Not implemented yet.
+5. Native Mission Control contracts, tourism and rescue chains building on the research journal; current milestones have no deadlines or penalties.
+6. Persistent field bases: supplies, repair expeditions, infrastructure restoration and resource logistics. Decide which systems belong in optional compatibility modules rather than mandatory life support.
+7. Kerbal expedition experience and awards on safe return; avoid granting repeated XP for the same destination.
+8. Add-on content validation for duplicate research IDs, missing prerequisites/cycles and generation migrations; localisation of journal/config text.
+9. Science-overhaul adapters (especially Kerbalism), research-driven map markers and saved discovery coordinates for individual procedural colossi.
+10. Parallax-style Ringworld terrain extension after weather/water work; keep laptop presets viable.
+11. Ring resource deposits and shared scanner/harvester provider, per-ring exploration unlocks, stock drill tests and optional resource-pack adapters. KFS gravitic-drive integration needs ring up/acceleration, surface coordinates and safe warp handling.
+12. Flattened map of Earth or Kerbol system stellar objects in the great oceans just like in the books.
+13. Huge Attitude Jets around the circumference
+14. Config extensions for various playstyle such as late-game interstellar exploration.
 
 ### Active visual compatibility work
 

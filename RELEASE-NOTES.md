@@ -16,6 +16,10 @@ No dependencies or extensions are bundled. Extract each ZIP into the **KSP insta
 
 ## Unreleased development
 
+- Configuration packs (target: v1.1.7+) initialize ring systems for new saves through NIVEN_RINGWORLD_SYSTEM nodes. Existing saved rings are preserved. Optional interstellar presets activate a Kopernicus yellow-dwarf host; Kopernicus and ModuleManager are required only for those presets. In-game interstellar validation is pending.
+- Full-size presets support 1,600 km rim walls; wall height remains limited by ring geometry rather than the former arbitrary 1,000 km maximum.
+- Ring orbital reference selection stops at the nearest ancestor star, including secondary stars added by planet packs.
+
 - Orbital maps keep celestial bodies and rings in the normal inertial frame while a craft uses ring-relative flight physics.
 - Landed ring residents keep their map markers attached to the moving, spinning habitat during Tracking Station time warp; their temporary bookkeeping orbits are hidden.
 

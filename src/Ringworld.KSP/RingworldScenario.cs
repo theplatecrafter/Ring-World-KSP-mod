@@ -49,6 +49,15 @@ namespace NivenRingworld
         {
             if(Options==null)
             {
+                if(Vessels.Count==0&&Discoveries.Count==0&&Research.Receipts.Count==0)
+                {
+                    var configured=RingConfigPacks.Load();
+                    if(configured!=null&&configured.Count>0)
+                    {
+                        Rings.AddRange(configured);options=Rings[0];ActiveRingId=options.GetValue("ringId");
+                        return options;
+                    }
+                }
                 var defaults=Settings.Load();
                 if(Vessels.Count>0||Discoveries.Count>0)defaults.GenerationVersion=1;
                 else
