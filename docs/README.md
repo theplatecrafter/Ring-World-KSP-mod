@@ -1,6 +1,6 @@
 # Niven Ringworld documentation
 
-Build an expedition, land on a rotating world, and explore its biomes and ancient structures. These guides describe **v1.1.6**, with historical development notes for **KSP 1.12.5 on Windows x64 / Direct3D 11**.
+Build an expedition, land on a rotating world, and explore its biomes and ancient structures. These guides describe **v1.1.7**, with historical development notes for **KSP 1.12.5 on Windows x64 / Direct3D 11**.
 
 ## Start here
 
@@ -10,7 +10,7 @@ Build an expedition, land on a rotating world, and explore its biomes and ancien
 - [Ringworld extensions and water ](guides/RINGWORLD-EXTENSIONS.md)
 - [Science and expedition rewards](guides/SCIENCE-AND-EXPEDITIONS.md)
 - [Creating multiple rings in Sandbox](guides/MULTIPLE-RINGS.md)
-- [Instance configuration packs (development, 1.1.7+)](guides/CONFIG-PACKS.md)
+- [Instance configuration packs (1.1.7+)](guides/CONFIG-PACKS.md)
 - [Limitations and troubleshooting](guides/KNOWN-LIMITATIONS.md)
 - [Release history and dependency versions](../RELEASE-NOTES.md)
 

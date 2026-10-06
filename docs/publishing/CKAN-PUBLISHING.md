@@ -1,16 +1,9 @@
-# CKAN metadata for v1.1.3
+# CKAN publishing
 
-Submit `distribution/NivenRingworld.netkan` to the CKAN maintainers handling the existing indexing request. It downloads the GitHub release, reads the bundled AVC version file (KSP 1.12.5), installs only GameData/NivenRingworld, and requires Harmony2 >= 2.2.1.0. Release archives contain no Harmony or Cyla files. Metadata preparation does not itself publish the mod on CKAN.
+Authoritative metadata lives in the sibling **NetKAN/NetKAN** checkout on the Ringworld branch. Do not generate distribution copies, .ckan assets or metadata.json files in the base, extensions or config packs. Submit changes from that checkout to KSP-CKAN/NetKAN.
 
-Cyla is an optional visual backend, not a required runtime dependency. Missing or unsupported Cyla falls back to Original. Once blackrack and the CKAN team approve Cyla's listing, add its **actual assigned identifier** under `suggests`; do not guess an identifier or invent a dependency that CKAN cannot resolve. Contacting the author/submitting metadata remains with the mod author.
+The base entry has GitHub and SpaceDock (listing 4573) download sources. Harmony2 >= 2.2.1.0 is required. Instance config packs are optional; the built-in default ring remains available without one. Config providers require base >= 1.1.7 and each provides/conflicts with NivenRingworldConfig to select one replacement system. Interstellar providers additionally require Kopernicus and ModuleManager. Ringworld Scattering 1.0.1 requires base >= 1.1.7; Clouds 1.0.1 retains base >= 1.1.5. Cyla and both extensions are optional to the base runtime.
 
-Manual users must install Harmony separately. Cyla 1.1.0 is the supported optional version. Retain existing dependency installations when upgrading. Breaking Ground remains optional.
+Manual installations can omit a config pack to retain the built-in default ring. All archives extract into the KSP root, merging GameData. Dependencies are downloaded separately, never bundled. Each config has its own SpaceDock listing and ZIP. GitHub publication does not upload files to SpaceDock. For listings with both download sources, keep versions synchronized on both hosts; submit/merge metadata and allow NetKAN to index them.
 
-The GitHub release includes a separate version-specific .ckan asset for maintainer review/local installation; it is not embedded in the mod ZIP. The .netkan file supports automatic indexing of future releases. Official listing still requires maintainer acceptance. Windows x64 / D3D11 is the tested platform; cross-platform shader behavior is unverified.
-
-Sources: https://github.com/KSP-CKAN/CKAN/blob/master/Spec.md and https://raw.githubusercontent.com/KSP-CKAN/CKAN-meta/master/Harmony2/Harmony2-2.2.1.0.ckan .
-
-## Release documentation checklist
-
-For every release, update `RELEASE-NOTES.md` at the repository root before packaging. Record the supported KSP/platform target, required versus optional dependencies, exact tested dependency versions, declared minimum/range where applicable, bundling policy, installation/migration changes, gameplay changes, known limitations and validation performed. Keep the README and CKAN metadata consistent. Do not describe untested versions as supported. The build includes this document in future release ZIPs; existing published ZIPs are not rewritten by a documentation update.
-
+Update RELEASE-NOTES.md, version files and project versions before packaging. Validate ZIP/source equality and dependency constraints. Keep limitations explicit: interstellar lifecycle is not yet certified, and graphics testing does not cover every GPU/API. Do not rewrite historical release assets to change their dependencies.

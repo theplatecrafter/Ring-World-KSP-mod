@@ -1,6 +1,6 @@
 # Ringworld configuration packs
 
-**Development feature for Niven Ringworld 1.1.7 or newer.** These packs do not work with 1.1.6 or earlier. Configurations initialize rings once per save, in any game mode. Existing saved ring layouts take precedence.
+**Requires Niven Ringworld 1.1.7 or newer.** These packs do not work with 1.1.6 or earlier. Configurations initialize rings once per save, in any game mode. Existing saved ring layouts take precedence.
 
 ## Definition format
 
@@ -60,7 +60,7 @@ The base mod contains Compatibility/DistantStar.cfg. It activates only with Kope
 
 The full-size star uses solar radius and gravitational parameter with G2V-inspired light; the standard variant scales radius to 1/10 and gravitational parameter to 1/100 for KSP gameplay. Flux is normalized to 1,360 W/m² at the ring in each variant. This is not a stellar-evolution simulation. The circular Sun-referenced orbit and explicitly bounded sphere of influence are KSP approximations, not a self-consistent binary-star model. The full-size Kerbol pack does not brighten or resize stock Kerbol.
 
-Kopernicus registers the star; Ringworld retains its cylindrical terrain/physics. This does not turn the ring into a PQS planet or automatically enable planet-only visual configs. Interstellar in-game lifecycle and planet-pack compatibility still need validation before public release.
+Kopernicus registers the star; Ringworld retains its cylindrical terrain/physics. This does not turn the ring into a PQS planet or automatically enable planet-only visual configs. Interstellar in-game lifecycle and planet-pack compatibility still need validation before claiming full compatibility.
 
 ## Updates and removal
 

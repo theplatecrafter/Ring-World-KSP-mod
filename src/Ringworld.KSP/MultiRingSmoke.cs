@@ -9,6 +9,7 @@ namespace NivenRingworld
     {
         internal static IEnumerator Run(RingworldFlight f,Action<string> fail)
         {
+            try{ConfigPackSmoke.Run();}catch(Exception ex){fail("Config packs: "+ex);yield break;}
             var state=RingworldScenario.Instance;var v=FlightGlobals.ActiveVessel;
             bool missingCyla=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-no-cyla")>=0;
             if(missingCyla)foreach(var assembly in AppDomain.CurrentDomain.GetAssemblies())if(assembly.GetType("Cyla.ShaderLoader",false)!=null){fail("Cyla still loaded in dependency-free fixture");yield break;}

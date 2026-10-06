@@ -1,4 +1,4 @@
-# Niven Ringworld Expedition 1.1.6
+# Niven Ringworld Expedition 1.1.7
 
 A Larry Niven-inspired, star-encircling habitat with a landable rotating interior, procedural terrain, atmosphere, science and persistent expeditions. The default world uses one-tenth of the published linear ring dimensions. Original geography and architecture are interpretations of the setting.
 
@@ -22,11 +22,13 @@ When settled on dry ground, use **KSP's stock time-warp controls**. Universal ti
 
 Open the Ringworld panel → Settings → **Sandbox: manage ring worlds**. Select an existing star or no designated star, enter the center offset in km, dimensions and seed, then spawn a new ring. The list selects a ring for editing; **Visit selected ring** transfers the active vessel. All rings have distant outlines, while detailed terrain runs around the current habitat. Moving/deleting an occupied ring is blocked; at least one ring must remain. See [multiple-ring behavior and limits](docs/guides/MULTIPLE-RINGS.md).
 
-## v1.1.6
+## v1.1.7
+
+Rings can follow moving bodies, with adjustable inclination, gravity, panels and wall height. Instance config packs initialize new saves; see [configuration packs](docs/guides/CONFIG-PACKS.md). Distant-star presets require Kopernicus and ModuleManager; interstellar gameplay is experimental and not yet fully tested.
 
 Stock air intakes now use ring oxygen and airflow. Terrain retains its previous complete layout while replacement chunks build. Settled residents can save despite unsafe nearby vessels, and Tracking Station encounters no longer automatically send you into Flight. See the release notes for validation scope.
 
-Enhanced rendering is now provided by two optional downloads: [Ringworld Clouds](https://github.com/theplatecrafter/Ringworld-Clouds-KSP) and [Ringworld Scattering](https://github.com/theplatecrafter/Ringworld-Scattering-KSP). The base mod retains lightweight visuals and all gameplay. Install either extension, both, or neither. Their 1.0.0 binaries remain compatible with base 1.1.6. Settings are grouped in the Extensions tab, and installed extensions default to enabled unless previously disabled.
+Enhanced rendering is now provided by two optional downloads: [Ringworld Clouds](https://github.com/theplatecrafter/Ringworld-Clouds-KSP) and [Ringworld Scattering](https://github.com/theplatecrafter/Ringworld-Scattering-KSP). The base mod retains lightweight visuals and all gameplay. Install either extension, both, or neither. Use extension 1.0.1 with base 1.1.7 for inclined water and physical eclipses. Settings are grouped in the Extensions tab, and installed extensions default to enabled unless previously disabled.
 
 This release also adds stock-compatible immersion and displacement-based buoyancy, SunkWorks water-query support, and the ReStock Surveyor model fix. See the release notes for tested cases and remaining limitations.
 

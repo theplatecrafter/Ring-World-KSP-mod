@@ -2,21 +2,23 @@
 
 Consolidated release history, newest first. Historical requirements apply only to their own version. This is the release publisher's single source for release descriptions.
 
-## Current requirements ? v1.1.6
+## Current requirements ? v1.1.7
 
 | Component | Requirement | Version |
 | --- | --- | --- |
 | Kerbal Space Program | Required | 1.12.5 |
 | Harmony 2 / HarmonyKSP | Required, installed separately | 2.2.1.0 tested; CKAN minimum 2.2.1.0 |
 | Cyla | Optional local atmosphere | 1.1.0.0 release (Cyla-1.1.0.zip) |
-| Ringworld Clouds | Optional volumetric clouds | 1.0.0, compatible with base 1.1.6 |
-| Ringworld Scattering | Optional enhanced water and distant atmosphere | 1.0.0, compatible with base 1.1.6 |
+| Ringworld Clouds | Optional volumetric clouds | 1.0.1, compatible with base 1.1.7 |
+| Ringworld Scattering | Optional enhanced water and distant atmosphere | 1.0.1, compatible with base 1.1.7 |
 
 No dependencies or extensions are bundled. Extract each ZIP into the **KSP installation root**, merging GameData. The base works without either extension and uses Original atmosphere without Cyla. Optional metadata is supplied for CKAN submission; publication alone does not update the central index.
 
-## Unreleased development
+## Release-v1.1.7
 
-- Configuration packs (target: v1.1.7+) initialize ring systems for new saves through NIVEN_RINGWORLD_SYSTEM nodes. Existing saved rings are preserved. Optional interstellar presets activate a Kopernicus yellow-dwarf host; Kopernicus and ModuleManager are required only for those presets. In-game interstellar validation is pending.
+Validation: 110,373 core checks passed. A fresh Slow-preset in-game run passed both Kerbol config parsers, moving-ring landing/warp, map positions, Tracking Station, explicit Fly and save/reload. Interstellar Kopernicus lifecycle remains unverified.
+
+- Configuration packs (v1.1.7+) initialize ring systems for new saves through NIVEN_RINGWORLD_SYSTEM nodes. Existing saved rings are preserved. Optional interstellar presets activate a Kopernicus yellow-dwarf host; Kopernicus and ModuleManager are required only for those presets. In-game interstellar validation is pending.
 - Full-size presets support 1,600 km rim walls; wall height remains limited by ring geometry rather than the former arbitrary 1,000 km maximum.
 - Ring orbital reference selection stops at the nearest ancestor star, including secondary stars added by planet packs.
 
@@ -26,16 +28,16 @@ No dependencies or extensions are bundled. Extract each ZIP into the **KSP insta
 - The Sandbox ring editor now has its own **Rings** tab with collapsible placement, terrain, and rotation sections. It includes per-ring wall height and terrain height multiplier for creation and editing. Invalid values are rejected explicitly; existing resident-vessel protections still apply.
 
 - Sandbox ring management adds per-ring artificial gravity, reverse rotation and optional day/night panels. Changes require an unoccupied ring. Spin speed follows gravity and radius; positive gravity below 1 m/s² is supported.
-- Disabling panels removes their meshes and their simulated night masks from local terrain, distant terrain and clouds. The matching development build of Ringworld Scattering also removes the panel mask from its distant atmosphere.
+- Disabling panels removes their meshes and their simulated night masks from local terrain, distant terrain and clouds. The Ringworld Scattering 1.0.1 also removes the panel mask from its distant atmosphere.
 - Terrain/cloud longitude stays consistent when rotation is reversed.
-- Sandbox ring management adds per-ring X/Y/Z inclination. Tilt is applied to the flight frame, terrain, scenery, navigation, walls, atmosphere and distant ring rendering. Water orientation follows the ring in the matching development Scattering build.
+- Sandbox ring management adds per-ring X/Y/Z inclination. Tilt is applied to the flight frame, terrain, scenery, navigation, walls, atmosphere and distant ring rendering. Water orientation follows the ring in the Ringworld Scattering 1.0.1.
 
 - Rings can follow an existing planet, moon, star or orbiting asteroid/comet, retaining its identity across saves and orbital reference changes. No body cloning is included.
 - Anchor position, velocity and acceleration feed flight transitions, landed persistence, time warp and encounter prediction. Compact-ring transfers use a safe temporary orbit outside the reference body.
-- Physical sunlight visibility accounts for celestial bodies, ring hulls, rim walls and enabled panels. Off-axis lighting reaches terrain, clouds, water, atmosphere and stock solar tracking in the matching development builds.
+- Physical sunlight visibility accounts for celestial bodies, ring hulls, rim walls and enabled panels. Off-axis lighting reaches terrain, clouds, water, atmosphere and stock solar tracking in the 1.1.7 base / 1.0.1 extension builds.
 - Small planet rings may occupy another ring's empty central region. Missing asteroid anchors retain the last recorded center and show an editor warning.
 
-These changes are not included in the published v1.1.6 ZIP. Use the matching development Ringworld Scattering build for inclined water and distant-atmosphere eclipses. Stock planetary terrain does not receive ring-shadow shaders; lighting uses one associated star.
+Use Ringworld Scattering 1.0.1 for inclined water and distant-atmosphere eclipses. Stock planetary terrain does not receive ring-shadow shaders; lighting uses one associated star.
 
 ## Release-v1.1.6
 
