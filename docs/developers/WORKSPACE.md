@@ -1,5 +1,11 @@
 # Shared development workspace
 
+## Development and release ownership
+
+The [workspace workflow](../../../AGENTS.md) governs local development. The development assistant edits ordinary files, builds and tests locally, and packages ZIPs only when requested. All Git operations, GitHub/SpaceDock publication, and NetKAN pull requests are handled by the project owner. Publishing steps below are instructions for the owner, not authorization for automated publication.
+
+Each component's `RELEASE-NOTES.md` must report required dependencies and version constraints, optional/suggested integrations, configuration-provider conflicts, installation layout, and validation limits for the version being prepared. Configuration release notes must distinguish the requirements of all four packs.
+
 The Windows development layout is:
 
 ```
@@ -7,6 +13,8 @@ Ring World KSP mods/
   Ring World KSP/        base Git repository
   Ringworld Clouds/     optional cloud repository
   Ringworld Scattering/ optional water/atmosphere repository
+  Ringworld Configs/    instance configuration packs
+  NetKAN/               owner-managed authoritative CKAN metadata
   template_instance/    shared KSP test installation (never distribute)
   Ring World KSP mods.code-workspace
 ```

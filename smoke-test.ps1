@@ -1,4 +1,4 @@
-param([switch]$SkipIssue3,[int]$TimeoutSeconds=900,[switch]$InstalledIssuesOnly,[switch]$IntegrationsOnly,[switch]$MapOnly,[switch]$TerrainOnly,[switch]$WarpOnly,[switch]$UnmatchedOnly,[switch]$PhotoOnly,[switch]$DistantOnly,[switch]$WeatherOnly,[switch]$SceneryOnly,[switch]$GlobalCloudsOnly,[switch]$ResidenceOnly,[switch]$GuidanceOnly,[switch]$StabilityOnly,[switch]$LandmarksOnly,[switch]$GearOnly,[switch]$CylaOnly,[switch]$CylaDiagnosticOnly,[switch]$CylaSaveProbe,[switch]$TrackingOnly,[switch]$ReentryOnly,[switch]$RenderOnly,[switch]$VisualOptionsOnly,[switch]$WallOnly,[switch]$ScienceOnly,[switch]$MultiRingOnly,[switch]$WithoutCyla,[switch]$AsteroidAnchor)
+param([switch]$SkipIssue3,[int]$TimeoutSeconds=900,[switch]$InstalledIssuesOnly,[switch]$IntegrationsOnly,[switch]$MapOnly,[switch]$TerrainOnly,[switch]$WarpOnly,[switch]$UnmatchedOnly,[switch]$PhotoOnly,[switch]$DistantOnly,[switch]$WeatherOnly,[switch]$SceneryOnly,[switch]$GlobalCloudsOnly,[switch]$ResidenceOnly,[switch]$GuidanceOnly,[switch]$StabilityOnly,[switch]$LandmarksOnly,[switch]$GearOnly,[switch]$CylaOnly,[switch]$CylaDiagnosticOnly,[switch]$CylaSaveProbe,[switch]$TrackingOnly,[switch]$ReentryOnly,[switch]$RenderOnly,[switch]$VisualOptionsOnly,[switch]$WallOnly,[switch]$ScienceOnly,[switch]$MultiRingOnly,[switch]$WithoutCyla,[switch]$AsteroidAnchor,[switch]$MapRenderingOnly,[switch]$InterstellarLandingOnly,[switch]$MatchCkanGraphics)
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
 $gameRoot=Join-Path (Split-Path -Parent $taskRoot) 'template_instance'
@@ -6,7 +6,33 @@ $logName='RingworldSmoke-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.log'
 $logPath=Join-Path $gameRoot $logName
 $testProcess=$null
 $cylaBackup=$null
+$taskPackBackups=@()
+$taskGeneratedPack=$null
+$taskSettingsBackup=$null
 try {
+    if($MatchCkanGraphics){
+        $taskSettingsSource=Join-Path $taskRoot 'artifacts/diagnostics/interstellar-landing-20261006/released-settings.cfg'
+        $taskSettingsBackup=Join-Path $taskRoot ('artifacts/settings-test-backup-'+[Guid]::NewGuid().ToString('N')+'.cfg')
+        Copy-Item -LiteralPath (Join-Path $gameRoot 'settings.cfg') -Destination $taskSettingsBackup
+        Copy-Item -LiteralPath $taskSettingsSource -Destination (Join-Path $gameRoot 'settings.cfg') -Force
+    }
+    if ($InterstellarLandingOnly) {
+        $taskWorkspace=[IO.Path]::GetFullPath((Split-Path -Parent $taskRoot))
+        $taskPackStore=Join-Path $taskRoot ('artifacts/config-test-backup-'+[Guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $taskPackStore -Force | Out-Null
+        foreach($taskPackName in @('NivenRingworldInterstellarStandard','NivenRingworldInterstellarFullSize')) {
+            $taskPackPath=[IO.Path]::GetFullPath((Join-Path $gameRoot ('GameData/'+$taskPackName)))
+            if(-not $taskPackPath.StartsWith($taskWorkspace+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Config test path is outside the shared workspace.'}
+            if(Test-Path -LiteralPath $taskPackPath){
+                $taskBackupPath=Join-Path $taskPackStore $taskPackName
+                Move-Item -LiteralPath $taskPackPath -Destination $taskBackupPath
+                $taskPackBackups+=@{Original=$taskPackPath;Backup=$taskBackupPath}
+            }
+        }
+        $taskGeneratedPack=Join-Path $gameRoot 'GameData/NivenRingworldInterstellarFullSize'
+        New-Item -ItemType Directory -Path $taskGeneratedPack | Out-Null
+        Copy-Item -LiteralPath (Join-Path $taskWorkspace 'Ringworld Configs/packs/NivenRingworldInterstellarFullSize/GameData/NivenRingworldInterstellarFullSize/Rings.cfg') -Destination (Join-Path $taskGeneratedPack 'Rings.cfg')
+    }
     if ($WithoutCyla) {
         $cylaPath=Join-Path $gameRoot 'GameData\Cyla'
         if (Test-Path -LiteralPath $cylaPath) {
@@ -24,6 +50,8 @@ try {
     if ($IntegrationsOnly) { $taskArguments += '-ringworld-integrations-only' }
     if ($WithoutCyla) { $taskArguments += '-ringworld-no-cyla' }
     if ($AsteroidAnchor) { $taskArguments += '-ringworld-asteroid-anchor' }
+    if ($InterstellarLandingOnly) { $taskArguments += '-ringworld-interstellar-landing-only' }
+    if ($MapRenderingOnly) { $taskArguments += '-ringworld-map-rendering-only' }
     if ($MultiRingOnly) { $taskArguments += '-ringworld-multi-ring-only' }
     if ($ScienceOnly) { $taskArguments += '-ringworld-science-only' }
     if ($WallOnly) { $taskArguments += '-ringworld-wall-only' }
@@ -61,6 +89,8 @@ try {
     if ($InstalledIssuesOnly) { $reportName='installed-issues-smoke.txt' }
     if ($IntegrationsOnly) { $reportName='integrations-smoke.txt' }
     if ($AsteroidAnchor) { $taskArguments += '-ringworld-asteroid-anchor' }
+    if ($InterstellarLandingOnly) { $reportName='interstellar-landing-smoke.txt' }
+    if ($MapRenderingOnly) { $reportName='map-rendering-smoke.txt' }
     if ($MultiRingOnly) { $reportName='multi-ring-smoke.txt' }
     if ($ScienceOnly) { $reportName='science-smoke.txt' }
     if ($WallOnly) { $reportName='wall-smoke.txt' }
@@ -99,6 +129,16 @@ try {
     Write-Host "Game smoke test passed. Log: $logPath"
 }
 finally {
+    if ($testProcess -and -not $testProcess.HasExited) { $testProcess.Kill();$testProcess.WaitForExit() }
+    if ($taskGeneratedPack -and (Test-Path -LiteralPath $taskGeneratedPack)) {
+        $taskExpectedPack=[IO.Path]::GetFullPath((Join-Path $gameRoot 'GameData/NivenRingworldInterstellarFullSize'))
+        if([IO.Path]::GetFullPath($taskGeneratedPack) -ne $taskExpectedPack){throw 'Unexpected generated config test path.'}
+        $taskGeneratedCfg=Join-Path $taskGeneratedPack 'Rings.cfg'
+        if(Test-Path -LiteralPath $taskGeneratedCfg){Remove-Item -LiteralPath $taskGeneratedCfg}
+        Remove-Item -LiteralPath $taskGeneratedPack
+    }
+    foreach($taskRestore in $taskPackBackups){Move-Item -LiteralPath $taskRestore.Backup -Destination $taskRestore.Original}
+    if($taskSettingsBackup){Copy-Item -LiteralPath $taskSettingsBackup -Destination (Join-Path $gameRoot 'settings.cfg') -Force}
     if ($cylaBackup -and (Test-Path -LiteralPath $cylaBackup)) {
         if ($testProcess -and -not $testProcess.HasExited) { $testProcess.Kill();$testProcess.WaitForExit() }
         Move-Item -LiteralPath $cylaBackup -Destination (Join-Path $gameRoot 'GameData\Cyla')

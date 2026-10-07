@@ -1,5 +1,13 @@
 # Reported issue regressions
 
+## Full-size interstellar plane landing ? October 6, 2026
+
+See [Interstellar landing](INTERSTELLAR-LANDING.md) for the supplied hang evidence, startup-orbit and aircraft-attitude fixes, and natural-gravity Aeris 4A landing/impact tests with development and reported KSP graphics settings. The original freeze has not been reproduced or attributed conclusively.
+
+## Map and Tracking Station camera movement ? October 6, 2026
+
+See [Map rendering](MAP-RENDERING.md) for the camera-time trajectory backend, double-precision visual-layer positioning, Harmony suppression of cloned conic lines, and the isolated `-MapRenderingOnly` regression. Dependencies and pending release constraints are recorded in the base and Scattering release notes.
+
 Development tracking for v1.1.5. A source change or isolated test is not equivalent to reproducing the reporter's craft. Public issues stay open until their remaining cases are verified.
 
 | Report | Development status | Remaining verification |

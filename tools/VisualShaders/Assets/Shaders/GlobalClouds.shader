@@ -12,7 +12,7 @@ Shader "NivenRingworld/GlobalClouds"
 #include "RingEclipse.cginc"
  #include "CloudField.cginc"
  #include "RingHullOcclusion.cginc"
- float2 _CloudShellSize;
+ float2 _CloudShellSize;float _RingCameraRelative;float3 _RingCameraLocal;float4x4 _RingToChart;
  float _CircumferenceKm,_WidthKm,_SeedLow,_SeedHigh,_Generation;
  #include "RingTerrainNoise.cginc"
  float4 _Size,_Local,_CloudHandoff,_WeatherState,_FrontDrift;
@@ -20,10 +20,10 @@ Shader "NivenRingworld/GlobalClouds"
  float _DayPhase,_LocalAmount,_SegmentLength;float4 _LocalChart;
  struct a {float4 vertex:POSITION;float2 uv:TEXCOORD0;float2 field:TEXCOORD1;float2 chart:TEXCOORD2;float2 macro:TEXCOORD3;};
  struct v {float4 vertex:SV_POSITION;float2 uv:TEXCOORD0;float2 field:TEXCOORD1;float2 chart:TEXCOORD2;float2 macro:TEXCOORD3;float3 local:TEXCOORD4;};
- v vert(a i){v o;o.vertex=UnityObjectToClipPos(i.vertex);o.uv=i.uv;o.field=i.field;o.chart=i.chart;o.macro=i.macro;o.local=i.vertex.xyz;return o;}
+ v vert(a i){v o;o.vertex=UnityObjectToClipPos(i.vertex);o.uv=i.uv;o.field=i.field;o.chart=i.chart;o.macro=i.macro;o.local=_RingCameraRelative>.5?mul((float3x3)_RingToChart,i.vertex.xyz)+_RingCameraLocal:i.vertex.xyz;return o;}
  float4 frag(v i):SV_Target
  {
-  float3 cameraLocal=mul(unity_WorldToObject,float4(_WorldSpaceCameraPos,1)).xyz;
+  float3 cameraLocal=_RingCameraRelative>.5?_RingCameraLocal:mul(unity_WorldToObject,float4(_WorldSpaceCameraPos,1)).xyz;
   if(ringHullOccludes(cameraLocal,i.local,_CloudShellSize.x,_CloudShellSize.y))discard;
   float front=noise(i.uv+_FrontDrift.xy,800,1213);
   float regional=saturate(_WeatherState.w+(front-.5)*.7),wet=1-_WeatherState.z;

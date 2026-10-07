@@ -10,13 +10,14 @@ namespace NivenRingworld
         private readonly GameObject root;
         private readonly Mesh mesh;
         private readonly Material material;
+        private readonly CameraRelativeRingMesh placement;
         internal GlobalClouds(Transform parent,Settings s,AssetBundle bundle)
         {
             var shader=bundle.LoadAsset<Shader>("Assets/Shaders/GlobalClouds.shader");
             if(shader==null||!shader.isSupported)return;
             material=new Material(shader);material.SetVector("_CloudShellSize",new Vector4((float)(s.Geometry.P.Radius*ScaledSpace.InverseScaleFactor),(float)(s.Geometry.P.Width*.5*ScaledSpace.InverseScaleFactor),0,0));material.SetTexture("_Noise",bundle.LoadAsset<Texture3D>("Assets/CloudNoise.asset"));
             root=new GameObject("Ringworld global cloud shell");root.layer=10;root.transform.SetParent(parent,false);
-            const int n=16384;var vertices=new Vector3[n*4];var uv=new Vector2[n*4];var field=new Vector2[n*4];var chart=new Vector2[n*4];var macro=new Vector2[n*4];var triangles=new int[n*6];
+            const int n=16384;var precise=new DVec[n*4];var vertices=new Vector3[n*4];var uv=new Vector2[n*4];var field=new Vector2[n*4];var chart=new Vector2[n*4];var macro=new Vector2[n*4];var triangles=new int[n*6];
             var geometry=new RingGeometry(s.Geometry.P); // Parent supplies the scaled-ring rotation.
             double macroPeriod=s.Geometry.P.Circumference/Math.Round(s.Geometry.P.Circumference/RingCloudField.CoverageScale);
             for(int i=0;i<n;i++)
@@ -25,7 +26,8 @@ namespace NivenRingworld
                 for(int j=0;j<4;j++)
                 {
                     double along=a+(j/2)*span,across=(j%2-.5)*s.Geometry.P.Width;
-                    vertices[i*4+j]=ConvertVector.Unity(geometry.Position(along,across,5500)*ScaledSpace.InverseScaleFactor);
+                    precise[i*4+j]=geometry.Position(along,across,5500)*ScaledSpace.InverseScaleFactor;
+                    vertices[i*4+j]=ConvertVector.Unity(precise[i*4+j]);
                     uv[i*4+j]=new Vector2((float)(along/s.Geometry.P.Circumference),(float)(across/s.Geometry.P.Width+.5));
                     field[i*4+j]=new Vector2((float)Math.Floor(a/macroPeriod),(float)(across/512000));
                     chart[i*4+j]=new Vector2(i,(float)((j/2)*span));
@@ -35,6 +37,7 @@ namespace NivenRingworld
             }
             mesh=new Mesh{name="Continuous full-ring clouds",indexFormat=UnityEngine.Rendering.IndexFormat.UInt32};mesh.vertices=vertices;mesh.uv=uv;mesh.uv2=field;mesh.uv3=chart;mesh.uv4=macro;mesh.triangles=triangles;mesh.RecalculateBounds();
             root.AddComponent<MeshFilter>().sharedMesh=mesh;root.AddComponent<MeshRenderer>().sharedMaterial=material;
+            placement=new CameraRelativeRingMesh(root,mesh,material,precise,s);
         }
         internal void Update(Settings s,RingworldFlight flight,CelestialBody star,double time)
         {
@@ -65,6 +68,6 @@ namespace NivenRingworld
             material.SetFloat("_SegmentLength",(float)span);material.SetVector("_LocalChart",new Vector4((float)sector,(float)(c.Along-sector*span),(float)c.Across,(float)c.Altitude));
             material.SetFloat("_LocalAmount",(float)s.Weather(c.Along,c.Across,time).Cloud);
         }
-        public void Dispose(){if(root!=null)UnityEngine.Object.Destroy(root);if(mesh!=null)UnityEngine.Object.Destroy(mesh);if(material!=null)UnityEngine.Object.Destroy(material);}
+        public void Dispose(){if(placement!=null)placement.Dispose();if(root!=null)UnityEngine.Object.Destroy(root);if(mesh!=null)UnityEngine.Object.Destroy(mesh);if(material!=null)UnityEngine.Object.Destroy(material);}
     }
 }

@@ -140,6 +140,17 @@ namespace NivenRingworld
         }
         private void PrepareCamera(Camera camera)
         {
+            // Refresh panel/cloud parent placement after KSP's map camera and origin.
+            if(root!=null&&star!=null&&(camera.cullingMask&(1<<10))!=0)
+            {
+                bool map=RingMapFrame.Active;var f=LocalFlight;
+                renderEpoch=!map&&f!=null&&f.Active?f.FrameEpoch:Planetarium.GetUniversalTime();
+                root.transform.position=(Vector3)ScaledSpace.LocalToScaledSpace(Center);
+                root.transform.rotation=settings.BasisRotation*Quaternion.Euler(0,(float)(RingGeometry.Wrap(settings.Geometry.P.Omega*renderEpoch,2*Math.PI)*Mathf.Rad2Deg),0);
+                var scene=RingSceneFrame.Flight;
+                if(!map&&scene!=null&&f==null)root.transform.rotation=scene.Settings.AxisRotation(-scene.Settings.Geometry.P.Omega*(Planetarium.GetUniversalTime()-scene.FrameEpoch))*root.transform.rotation;
+                mapGeometry=map;
+            }
             if(ribbonObject==null||ring==null||star==null||(camera.cullingMask&(1<<10))==0)return;
             // Do not rotate a 10^11-metre habitat using a float Transform. Subtract
             // the camera in double precision first, then upload camera-relative

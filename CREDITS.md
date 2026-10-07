@@ -13,3 +13,5 @@ The v1.1.5 development integrations use the interfaces and rendering systems mai
 Ringworld is inspired by Larry Niven's fiction. This is an unofficial fan mod, not an endorsed adaptation. Kerbal Space Program and its assets belong to their respective owners; the game and its assemblies are not included.
 
 Ringworld Clouds design references: [Environmental Visual Enhancements](https://github.com/LGhassen/EnvironmentalVisualEnhancements) by Ryan Bray, Warwick Allison, Ghassen Lahmar (blackrack) and contributors, and its public raymarched-cloud documentation. Ringworld's replacement volume implementation and generated noise assets are original; EVE binaries, source and art are not included.
+
+Map-rendering design research references [Trajectories](https://github.com/linuxgurugamer/KSPTrajectories) and its contributors. The camera-time trajectory implementation is original Ringworld code using the Vectrosity backend already included in KSP; no Trajectories source or dependency is bundled.

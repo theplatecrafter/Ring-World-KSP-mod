@@ -21,6 +21,18 @@ namespace NivenRingworld
             catch(InvalidOperationException e){error=e.Message;return false;}
         }
 
+        internal static bool OrbitReady(Orbit orbit)
+        {
+            return orbit!=null&&orbit.referenceBody!=null&&RingParameters.Finite(orbit.semiMajorAxis)&&orbit.semiMajorAxis!=0&&
+                RingParameters.Finite(orbit.eccentricity)&&orbit.eccentricity>=0;
+        }
+        internal static bool TryVesselRelative(Vessel vessel,CelestialBody reference,double time,out RingAnchorState state)
+        {
+            state=new RingAnchorState();if(vessel==null||!OrbitReady(vessel.orbit))return false;
+            try{state=VesselRelative(vessel,reference,time);return true;}
+            catch(InvalidOperationException){return false;}
+            catch(ArgumentException){return false;}
+        }
         internal static RingAnchorState VesselRelative(Vessel vessel,CelestialBody reference,double time)
         {
             return OrbitRelative(vessel.orbit,reference,time);
@@ -71,12 +83,12 @@ namespace NivenRingworld
         }
         private static AnchorOrbitSample OrbitSample(Orbit orbit,double time)
         {
-            if(orbit.referenceBody==null)throw new InvalidOperationException("Anchor orbit has no reference body.");
+            if(!OrbitReady(orbit))throw new InvalidOperationException("Orbit state is not initialized; wait for KSP's orbital reference transition.");
             // KSP's orbit API uses XZY, while local-space render/physics use XYZ.
             var p=ConvertVector.Core(ConvertVector.Orbit(orbit.getRelativePositionAtUT(time)));
             var v=ConvertVector.Core(ConvertVector.Orbit(orbit.getOrbitalVelocityAtUT(time)));
             double r=p.Length;
-            if(!(r>0))throw new InvalidOperationException("Anchor orbit has a zero radius.");
+            if(!(r>0)||!RingParameters.Finite(r)||!RingParameters.Finite(v.X)||!RingParameters.Finite(v.Y)||!RingParameters.Finite(v.Z))throw new InvalidOperationException("Orbit state is not finite or has a zero radius.");
             var a=p*(-orbit.referenceBody.gravParameter/(r*r*r));
             return new AnchorOrbitSample(Id(orbit.referenceBody),new RingAnchorState(p,v,a));
         }

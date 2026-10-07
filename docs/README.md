@@ -34,6 +34,8 @@ Explore the world's design or plan an add-on:
 - [Reference frames and mod compatibility](developers/MOD-INTEROPERABILITY.md)
 - [Visual and utility integrations: v1.1.5 test plan](developers/VISUAL-INTEGRATIONS.md)
 - [Reported issues and regression coverage](developers/ISSUE-REGRESSIONS.md)
+- [Map and Tracking Station rendering](developers/MAP-RENDERING.md)
+- [Full-size interstellar landing investigation](developers/INTERSTELLAR-LANDING.md)
 - [Cyla integration](developers/CYLA-INTEGRATION.md)
 - [Clouds and weather implementation](developers/CLOUDS-AND-WEATHER.md)
 - [CKAN publishing](publishing/CKAN-PUBLISHING.md)

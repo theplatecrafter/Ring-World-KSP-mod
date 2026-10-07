@@ -48,7 +48,7 @@ namespace NivenRingworld
             if(cylaSaveProbe&&File.Exists(Path.Combine(KSPUtil.ApplicationRootPath,"CylaNoNativeRenderer.flag")))
                 foreach(var vessel in state.GetNodes("VESSEL"))foreach(var part in vessel.GetNodes("PART"))foreach(var module in part.GetNodes("MODULE"))if(module.GetValue("name")=="CylindricalAtmosphereModule")part.RemoveNode(module);
             foreach(var vessel in state.GetNodes("VESSEL"))if(vessel.GetValue("type")=="SpaceObject")state.RemoveNode(vessel);
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-multi-ring-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-weather-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-residence-only")>=0)
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-map-rendering-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-multi-ring-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-weather-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-residence-only")>=0)
             {
                 // A single flat-bottomed command pod isolates rendering tests from articulated crash debris.
                 foreach(var vessel in state.GetNodes("VESSEL"))
@@ -72,20 +72,21 @@ namespace NivenRingworld
             game.Parameters.Flight.CanEVA=true;
             if(!cylaSaveProbe)game.AddProtoScenarioModule(typeof(RingworldScenario),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION);
             game.AddProtoScenarioModule(typeof(Expansions.Serenity.DeployedScience.Runtime.DeployedScience),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION,GameScenes.EDITOR);
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-gear-only")>=0)
+            bool planeLanding=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-interstellar-landing-only")>=0;
+            if(planeLanding||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-gear-only")>=0)
             {
-                var craft=Path.Combine(KSPUtil.ApplicationRootPath,"saves","default","Ships","VAB","Auto-Saved Ship.craft");
+                var craft=planeLanding?Path.Combine(KSPUtil.ApplicationRootPath,"Ships","SPH","Aeris 4A.craft"):Path.Combine(KSPUtil.ApplicationRootPath,"saves","default","Ships","VAB","Auto-Saved Ship.craft");
                 var craftCopy=Path.Combine(KSPUtil.ApplicationRootPath,"saves",folder,"GearRegression.craft");
                 File.Copy(craft,craftCopy);
                 game.flightState.protoVessels.Clear();game.startScene=GameScenes.SPACECENTER;game.Start();
                 while(HighLogic.LoadedScene!=GameScenes.SPACECENTER)yield return null;yield return new WaitForSecondsRealtime(8);
-                FlightDriver.StartWithNewLaunch(craftCopy,"Squad/Flags/default","LaunchPad",VesselCrewManifest.FromConfigNode(ConfigNode.Load(craftCopy)));
+                FlightDriver.StartWithNewLaunch(craftCopy,"Squad/Flags/default",planeLanding?"Runway":"LaunchPad",VesselCrewManifest.FromConfigNode(ConfigNode.Load(craftCopy)));
             }
             else game.Start();
             while(!HighLogic.LoadedSceneIsFlight||RingworldFlight.Instance==null||FlightGlobals.ActiveVessel==null||FlightGlobals.ActiveVessel.packed)yield return null;
             var v=FlightGlobals.ActiveVessel;
             Debug.Log("[RingworldSmoke] FLIGHT READY "+v.vesselName);
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-gear-only")>=0&&RingworldScenario.Instance==null)
+            if((planeLanding||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-gear-only")>=0)&&RingworldScenario.Instance==null)
             {
                 var gearScenario=HighLogic.CurrentGame.AddProtoScenarioModule(typeof(RingworldScenario),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION);
                 AccessTools.Method(typeof(ScenarioRunner),"LoadModules",new[]{typeof(ProtoScenarioModule)}).Invoke(ScenarioRunner.Instance,new object[]{gearScenario});
@@ -126,6 +127,8 @@ namespace NivenRingworld
             catch(Exception ex){Fail("Toolbar/API: "+ex);yield break;}
             var smokeOptions=RingworldScenario.Instance.GetOptions().CreateCopy();smokeOptions.SetValue("seed",-739779896,true);RingQualityPresets.Apply(smokeOptions,6);
             flight.ApplyOptions(smokeOptions,true);
+            if(planeLanding){yield return InterstellarLandingSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-map-rendering-only")>=0){yield return MapRenderingSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-multi-ring-only")>=0){yield return MultiRingSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-installed-issues-only")>=0){yield return InstalledIssueSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-integrations-only")>=0){yield return IntegrationSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}

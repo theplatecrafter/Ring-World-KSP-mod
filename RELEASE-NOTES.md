@@ -1,5 +1,29 @@
 # Niven Ringworld ? release notes
 
+## Unreleased ? interstellar plane landing
+
+- Arrival monitoring and packed coast updates wait for a usable stock orbit during flight loading and reference-body changes. This prevents the `Anchor orbit has a zero radius` exceptions observed with released 1.1.7.
+- Teleporting preserves a craft's pitch and roll relative to surface up. The old alignment used the craft's nose axis, which could stand a horizontal stock plane vertically.
+
+Validation: a stock Aeris 4A was launched from the runway, teleported to Explorer's Landing Field on the 300-million-km ring one light-year away, and landed under normal 9.72 m/s? gravity. A 12 m descent kept all 40 parts; a 60 m descent caused ordinary impact damage, with the cockpit/debris simulation remaining responsive. Damage was enabled and gravity was not changed during either descent. Both development graphics and a replay of the reported CKAN instance's KSP settings passed. See [Landing investigation](docs/developers/INTERSTELLAR-LANDING.md).
+
+The reported Windows application hang has no native crash stack in the supplied logs. These tests establish that the updated build handles these landing/impact cases; they do not establish the exact cause of the original freeze. The investigation remains open for differing flight/engine conditions or an exact instance reproduction.
+
+Dependencies remain KSP 1.12.5 and separately installed Harmony2 >= 2.2.1.0. Interstellar packs require Kopernicus, ModuleManager and Kopernicus's dependencies (including ModularFlightIntegrator and KSPTextureLoader). Cyla, Ringworld Clouds and Ringworld Scattering remain optional. No configuration-pack or external dependency change is required by these two fixes. No release ZIP or publication has been made.
+
+## Unreleased ? map and Tracking Station rendering
+
+- Ring encounter/coast lines and markers use KSP's built-in Vectrosity line backend. Camera projection and line-mesh upload run at render time, preventing a stale screen-space line when the map camera moves.
+- Predictions retain double-precision positions and absolute timestamps. Elapsed sections are removed every rendered frame; curve display adapts to screen-space curvature. Ordinary planetary orbits keep their stock lines when no ring encounter is predicted. Outside the rotating frame, massless-ring predictions sample KSP's stock patched-conic ephemeris.
+- Landed or splashed ring residents show no coast or bookkeeping orbit. Changing vessel, ring or map visibility clears the retained line and encounter markers.
+- Distant cloud shells, panel transforms and the Ringworld Scattering distant atmosphere update against the current rendering camera and scaled-space origin. Cloud and atmosphere vertices retain a double-precision ring chart until their camera-relative upload.
+
+Dependencies: KSP 1.12.5 and separately installed Harmony2 >= 2.2.1.0 remain required. No new external mod is required for trajectory rendering; Vectrosity ships with KSP. Cyla 1.1.0.0, Ringworld Clouds and Ringworld Scattering remain optional. The distant-atmosphere fix needs the matching development build of Ringworld Scattering; the new extension binary must be released with a minimum base version containing the new camera-placement helper. The release owner must set that version constraint when assigning the next versions. No ZIP or publication has been made for these changes.
+
+Prediction limits: rotating-frame numerical paths are unpowered vacuum coasts and end at atmosphere/terrain contact. These changes do not add aerodynamic or thrust prediction. Configuration packs and their existing replacement-provider constraints are unchanged.
+
+Validation: 110,581 core checks passed, including timestamp trimming and physical interpolation at enlarged ring coordinates. Base and Scattering builds and both shader bundles compile. The final Slow-preset in-game map/Tracking Station regression passed (RingworldSmoke-20261006-232548.log); the normal development build is installed. Detailed results are recorded in [Map rendering](docs/developers/MAP-RENDERING.md).
+
 Consolidated release history, newest first. Historical requirements apply only to their own version. This is the release publisher's single source for release descriptions.
 
 ## Current requirements ? v1.1.7

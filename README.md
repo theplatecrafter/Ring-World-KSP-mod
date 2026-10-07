@@ -125,7 +125,11 @@ See [release notes](RELEASE-NOTES.md) for version changes, dependency requiremen
 11. Ring resource deposits and shared scanner/harvester provider, per-ring exploration unlocks, stock drill tests and optional resource-pack adapters. KFS gravitic-drive integration needs ring up/acceleration, surface coordinates and safe warp handling.
 12. Flattened map of Earth or Kerbol system stellar objects in the great oceans just like in the books.
 13. Huge Attitude Jets around the circumference
-14. Config extensions for various playstyle such as late-game interstellar exploration.
+14. Fix and smoothen out trajectories
+15. Kopernicus says "You have changed terrain settings" for some reason for interstellar configs
+16. RSS Compatibility and RSS features
+17. Animals on the ringworld (Animal Mod compatibility)
+18. Some dude said he lodged into the ground at a reletavistic speeds with a kraken drive and null-aero hack.
 
 ### Active visual compatibility work
 

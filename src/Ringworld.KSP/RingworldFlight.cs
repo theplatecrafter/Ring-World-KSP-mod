@@ -109,7 +109,12 @@ namespace NivenRingworld
             // Rails anchors are stationary in the rotating atmosphere, including
             // the packing tick after rigidbodies have become kinematic.
             if(surfaceWarp.Anchored(v))return new DVec();
-            if(v.packed)return RingAnchorEphemeris.VesselRelative(v,Star,Planetarium.GetUniversalTime()).Velocity-Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity;
+            if(v.packed)
+            {
+                RingAnchorState state;
+                if(RingAnchorEphemeris.TryVesselRelative(v,Star,Planetarium.GetUniversalTime(),out state))return state.Velocity-Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity;
+                return ConvertVector.Core(v.obt_velocity)-Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity;
+            }
             double mass=0;DVec velocity=new DVec();var seen=new HashSet<Rigidbody>();
             foreach(var part in v.parts)
             {
@@ -375,7 +380,11 @@ namespace NivenRingworld
             var t=Settings.Terrain.Sample(along,across);
             double height=Math.Max(t.Height,double.IsNegativeInfinity(t.WaterHeight)?t.Height:t.WaterHeight)+arrivalHeight;
             DVec position=Settings.Geometry.Position(along,across,height);
-            Quaternion rotation=Quaternion.FromToRotation(v.transform.up,ConvertVector.Unity(Settings.Geometry.Up(position)))*v.transform.rotation;
+            // Preserve pitch/roll relative to the old surface. A plane's nose axis
+            // is not its surface-up axis; aligning the nose stood stock planes upright.
+            var previousUp=ConvertVector.Unity(ConvertVector.Core(v.upAxis));
+            if(previousUp.sqrMagnitude<.5f)previousUp=v.transform.up;
+            Quaternion rotation=Quaternion.FromToRotation(previousUp,ConvertVector.Unity(Settings.Geometry.Up(position)))*v.transform.rotation;
             StartCoroutine(Transfer(v,position,new DVec(),rotation,true));
         }
         private IEnumerator TrainingApproach()
@@ -438,7 +447,8 @@ namespace NivenRingworld
         private void PrepareArrival()
         {
             var v=FlightGlobals.ActiveVessel;
-            if(v==null||State==null||Settings.IsAnchor(v)){InputLockManager.RemoveControlLock(WarpLock);return;}
+            if(transferring||!FlightGlobals.ready||v==null||State==null||Settings.IsAnchor(v)||!RingAnchorEphemeris.OrbitReady(v.orbit))
+            {InputLockManager.RemoveControlLock(WarpLock);return;}
             var g=Settings.Geometry;var pos=Position(v);
             var coord=g.Coordinates(pos);
             if(coord.Altitude>-1000&&coord.Altitude<600000&&Math.Abs(coord.Across)<g.P.Width/2+500000)
