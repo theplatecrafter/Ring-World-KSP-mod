@@ -49,6 +49,22 @@ namespace NivenRingworld
             v.Landed=true;v.situation=Vessel.Situations.LANDED;v.landedAt="Ringworld";v.displaylandedAt="Ringworld";
         }
     }
+    // A ring participant's local velocity is not a Keplerian state vector. KSP
+    // can recreate a solver while unpacking/initializing debris, before our
+    // explicit Detach call. Never solve those temporary zero-angular-momentum
+    // orbits; RingTrajectory owns their prediction until they leave the frame.
+    [HarmonyPatch(typeof(PatchedConicSolver),"Update")]
+    internal static class RingParticipantConics
+    {
+        internal static int Suppressed;
+        private static bool Prefix(PatchedConicSolver __instance)
+        {
+            var v=__instance.obtDriver==null?null:__instance.obtDriver.vessel;
+            var f=RingworldFlight.Instance;
+            if(f==null||!f.IsParticipant(v))return true;
+            Suppressed++;return false;
+        }
+    }
     [HarmonyPatch(typeof(Vessel),"GoOnRails")]
     internal static class RingResidentPack
     {

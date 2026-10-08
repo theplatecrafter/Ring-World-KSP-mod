@@ -15,6 +15,16 @@ static class Program
         ResearchTests.Run(Check);
         TrajectoryTests.Run(Check);
         PlacementTests.Run(Check);
+        foreach(double angle in new[]{0.0,-0.0,Math.PI,2*Math.PI,4*Math.PI,-4*Math.PI,-616194345473.6643,1e100,-1e100,double.MaxValue,-double.MaxValue})
+        {
+            double reduced=AngleReduction.RadiansInclusive(angle);
+            Check(reduced>=0&&reduced<=2*Math.PI,"Bounded orbital angle reduction");
+            if(angle>=0&&angle<=2*Math.PI)Near(reduced,angle,0,"Ordinary angle unchanged");
+        }
+        Near(AngleReduction.RadiansInclusive(4*Math.PI),2*Math.PI,0,"Positive endpoint preserved");
+        Near(AngleReduction.RadiansInclusive(-4*Math.PI),0,0,"Negative endpoint preserved");
+        Check(double.IsNaN(AngleReduction.RadiansInclusive(double.PositiveInfinity)),"Infinite angle terminates as invalid");
+        Check(double.IsNaN(AngleReduction.RadiansInclusive(double.NaN)),"NaN angle remains invalid");
         var p=new RingParameters();var g=new RingGeometry(p);var t=new TerrainGenerator(g);
         foreach(double diameterKm in new[]{200000000.0,300000000.0,2000000000.0})
         {

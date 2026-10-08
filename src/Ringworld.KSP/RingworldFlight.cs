@@ -16,6 +16,7 @@ namespace NivenRingworld
         internal Vector3d Center {get{return Settings.Center;}}
         internal DVec Acceleration(DVec p,DVec velocity,bool ribbon=true){return Settings.Geometry.Acceleration(p,velocity,0,ribbon)+Settings.StellarAcceleration(p,Star.gravParameter,Planetarium.GetUniversalTime()-FrameEpoch);}
         private SurfaceStreamer surface;
+        internal double ScatterFloor(double along,double across){return surface!=null?surface.CollisionHeight(along,across):Settings.Terrain.Sample(along,across).Height;}
         internal GroundDetails groundDetails;
         private AmbientGroundWeather groundWeather;
         internal RingTrajectory trajectory;
@@ -169,6 +170,7 @@ namespace NivenRingworld
         internal bool VisitRing(string id,out string reason)
         {
             reason="";if(!SandboxControls||State==null||transferring||(visuals!=null&&visuals.PhotoActive)){reason="Finish the current transition/photo first.";return false;}
+            if(!LiveCraft(FlightGlobals.ActiveVessel)){reason="The controlled craft was destroyed. Select or launch a surviving craft before relocating.";return false;}
             var s=State.RingSettings(id);if(s==null||s.Body==null){reason="Reference body is not installed.";return false;}
             if(Active)foreach(var other in FlightGlobals.VesselsLoaded)if(other!=FlightGlobals.ActiveVessel&&Owns(other)){reason="Nearby vessels share this rotating frame. Switch to a distant vessel before transferring between rings.";return false;}
             if(Active){Leave();if(Active){reason="Unpack the vessel and leave time warp first.";return false;}}
@@ -213,6 +215,10 @@ namespace NivenRingworld
             if(v==null||State==null||Settings.IsAnchor(v))return;
             string id=v.id.ToString();if(State.Vessels.ContainsKey(id))return;
             State.Vessels[id]=new VesselRecord{Id=id,RingId=Settings.RingId,Position=RootPosition(v),Velocity=Velocity(v),Rotation=v.transform.rotation,Restored=true,Epoch=FrameEpoch};
+            // Stock modules can query the debris orbit in Initialize/Start,
+            // before our next FixedUpdate. Publish inertial bookkeeping now.
+            var record=State.Vessels[id];
+            if(v.orbit!=null)RingResidence.UpdateBookkeeping(v,Settings,Star,record.Position,record.Velocity,FrameEpoch);
             Debug.Log("[NivenRingworld] Inherited rotating frame: "+v.vesselName);
         }
         internal bool AdoptParticipant(Vessel v)
@@ -358,6 +364,7 @@ namespace NivenRingworld
         internal void Visit()
         {
             var v=FlightGlobals.ActiveVessel;if(v==null||State==null||transferring)return;
+            if(!CanRelocate(v))return;
             var l=Settings.Terrain.Landmarks[destination];
             VisitCoordinates(l.Along,l.Across);
         }
@@ -365,6 +372,7 @@ namespace NivenRingworld
         internal void VisitRandomTerrain(int? suppliedSelectionSeed=null)
         {
             if(FlightGlobals.ActiveVessel==null||State==null||transferring)return;
+            if(!CanRelocate(FlightGlobals.ActiveVessel))return;
             RingPoint site;int selectionSeed=suppliedSelectionSeed??explorationRandom.Next();
             if(!TerrainExploration.TryChoose(Settings.Terrain,selectionSeed,out site))
             {status="No suitable dry terrain found. Try another random location.";return;}
@@ -374,6 +382,7 @@ namespace NivenRingworld
         private void VisitCoordinates(double along,double across)
         {
             var v=FlightGlobals.ActiveVessel;
+            if(!CanRelocate(v))return;
             Capture();
             SetFrameEpoch(Planetarium.GetUniversalTime());
             // Arrive above the analytic surface; scenery clearance still requires piloting.
@@ -397,6 +406,7 @@ namespace NivenRingworld
         }
         private IEnumerator Transfer(Vessel v,DVec position,DVec velocity,Quaternion rotation,bool newVisit)
         {
+            if(!CanRelocate(v))yield break;
             RingCameraBlend.Cancel();
             surfaceWarp.Rate=1;transferring=true;status="Preparing surface colliders...";
             TimeWarp.SetRate(0,true);
@@ -414,12 +424,19 @@ namespace NivenRingworld
             {
                 status="KSP did not finish switching the orbital reference. Retry when unpacked.";transferring=false;yield break;
             }
+            if(!CanRelocate(v)){transferring=false;yield break;}
             v.Landed=false;v.Splashed=false;v.landedAt="";
             // Shift first: putting a float Transform billions of metres away loses hundreds of metres.
             FloatingOrigin.SetOffset(Center+ConvertVector.Ksp(position));
             Krakensbane.ResetVelocityFrame(true);
             v.SetRotation(rotation,false);v.SetPosition(Center+ConvertVector.Ksp(position),true);
             v.SetWorldVelocity(ConvertVector.Ksp(velocity));
+            // SetWorldVelocity reports the rotating-frame speed (often zero).
+            // Publish its valid inertial orbit in the same frame so stock readers
+            // never see a degenerate zero-angular-momentum stellar orbit.
+            RingResidence.UpdateBookkeeping(v,Settings,Star,position,velocity,FrameEpoch);
+            v.orbitDriver.pos=ConvertVector.Ksp(position+Settings.AnchorAt(Planetarium.GetUniversalTime()).Position);
+            v.orbitDriver.vel=ConvertVector.Ksp(velocity);
             RingCollisionFrame.Reset(v);
             v.DetachPatchedConicsSolver();
             v.IgnoreGForces(30);v.IgnoreSpeed(30);
@@ -429,6 +446,16 @@ namespace NivenRingworld
             transferring=false;status="Ring frame active. Alt+R opens the ring information panel.";
             FlightCamera.SetMode(FlightCamera.Modes.FREE);
             Debug.Log("[NivenRingworld] Expedition entered at "+Settings.Geometry.Coordinates(position).Along);
+        }
+        internal static bool LiveCraft(Vessel v)
+        {
+            return v!=null&&v.state!=Vessel.State.DEAD&&v.rootPart!=null&&v.parts!=null&&v.parts.Exists(part=>part!=null);
+        }
+        private bool CanRelocate(Vessel v)
+        {
+            if(LiveCraft(v))return true;
+            status="The controlled craft was destroyed. Select or launch a surviving craft before relocating.";
+            Debug.LogWarning("[NivenRingworld] Relocation refused: active craft is dead or has no surviving root part.");return false;
         }
         private void CaptureBeforeTransfer(Vessel v)
         {
@@ -621,7 +648,9 @@ namespace NivenRingworld
                 GUILayout.Label(Settings.Terrain.Landmarks[destination].Description);
                 GUILayout.Label("Arrival height: "+arrivalHeight.ToString("F0")+" m above ground / water");
                 arrivalHeight=GUILayout.HorizontalSlider(arrivalHeight,60,2000);
-                GUI.enabled=!transferring&&v!=null&&State!=null;
+                bool live=LiveCraft(v);
+                if(!live)GUILayout.Label("Craft destroyed: select or launch a surviving craft to relocate. The camera cannot be teleported with an empty vessel.");
+                GUI.enabled=!transferring&&live&&State!=null;
                 if(GUILayout.Button(Active?"Relocate above selected site":"Begin expedition at selected site"))Visit();
                 if(GUILayout.Button("Random terrain test location (spin-matched)"))VisitRandomTerrain();
                 GUILayout.Label("Random visit: dry procedural terrain, at the arrival height above ground. Fly the descent; this is not an automatic landing.");

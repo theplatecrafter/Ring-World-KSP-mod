@@ -139,7 +139,7 @@ namespace NivenRingworld
             {
                 double a=Math.Max(plannedAlong-settings.Geometry.P.Circumference/2,Math.Min(plannedAlong+settings.Geometry.P.Circumference/2,b.X+b.Size*x/n)),c=b.Y+b.Size*y/n;double rawAcross=c;c=Math.Max(-settings.Geometry.P.Width/2,Math.Min(settings.Geometry.P.Width/2,c));var s=settings.Terrain.Sample(a,Math.Max(-settings.Geometry.P.Width/2+.01,Math.Min(settings.Geometry.P.Width/2-.01,c)));
                 var appearance=BiomePresentation.Sample(settings.Terrain,a,c,s,b.Size/n,Math.Min(2,settings.ForestDensity*StockGraphics.Scatter));
-                double h=(s.Wet?s.WaterHeight+.3:s.Height+(b.Size>ForestCanopy.MaximumDistantBlock(settings)?appearance.CanopyHeight:0))-.2;
+                double h=(s.Wet?s.WaterHeight+.3:s.Height+(settings.NativeSurfaceScatters&&b.Size>ForestCanopy.MaximumDistantBlock(settings)?appearance.CanopyHeight:0))-.2;
                 vertices.Add(ConvertVector.Unity(settings.Geometry.Position(a,c,h)-p.Anchor));
                 seabed[y*(n+1)+x]=ConvertVector.Unity(settings.Geometry.Position(a,c,s.Height)-p.Anchor);
                 wet[y*(n+1)+x]=s.Wet;waterUv[y*(n+1)+x]=new Vector2(s.Wet?(float)Math.Max(0,s.WaterHeight-s.Height):0,(float)(b.Size/n));
@@ -186,7 +186,7 @@ namespace NivenRingworld
             p.Mesh=new Mesh{name="Adaptive ring terrain block"};p.Mesh.SetVertices(vertices);p.Mesh.SetUVs(0,uv);p.Mesh.SetUVs(1,longitude);p.Mesh.SetTriangles(triangles,0);p.Mesh.RecalculateNormals();p.Mesh.RecalculateBounds();
             p.Root.AddComponent<MeshFilter>().sharedMesh=p.Mesh;var renderer=p.Root.AddComponent<MeshRenderer>();renderer.sharedMaterial=p.Scaled?farMaterial:material;var block=new MaterialPropertyBlock();block.SetTexture("_MainTex",p.Texture);if(p.Scaled)block.SetTexture("_EmissionMap",p.Texture);renderer.SetPropertyBlock(block);
             renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;
-            if(!p.Scaled&&b.Size<=ForestCanopy.MaximumDistantBlock(settings))
+            if(settings.NativeSurfaceScatters&&!p.Scaled&&b.Size<=ForestCanopy.MaximumDistantBlock(settings))
             {
                 p.CanopyWork=ForestCanopy.DistantMesh(settings,b,p.Anchor,p.Phase);canopyPending.Enqueue(p);
             }

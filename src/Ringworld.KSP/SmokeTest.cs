@@ -72,7 +72,8 @@ namespace NivenRingworld
             game.Parameters.Flight.CanEVA=true;
             if(!cylaSaveProbe)game.AddProtoScenarioModule(typeof(RingworldScenario),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION);
             game.AddProtoScenarioModule(typeof(Expansions.Serenity.DeployedScience.Runtime.DeployedScience),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION,GameScenes.EDITOR);
-            bool planeLanding=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-interstellar-landing-only")>=0;
+            bool movingLanding=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-moving-landing-only")>=0;
+            bool planeLanding=movingLanding||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-interstellar-landing-only")>=0;
             if(planeLanding||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-gear-only")>=0)
             {
                 var craft=planeLanding?Path.Combine(KSPUtil.ApplicationRootPath,"Ships","SPH","Aeris 4A.craft"):Path.Combine(KSPUtil.ApplicationRootPath,"saves","default","Ships","VAB","Auto-Saved Ship.craft");
@@ -127,6 +128,19 @@ namespace NivenRingworld
             catch(Exception ex){Fail("Toolbar/API: "+ex);yield break;}
             var smokeOptions=RingworldScenario.Instance.GetOptions().CreateCopy();smokeOptions.SetValue("seed",-739779896,true);RingQualityPresets.Apply(smokeOptions,6);
             flight.ApplyOptions(smokeOptions,true);
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-parallax-only")>=0){
+                var type=AccessTools.TypeByName("Ringworld.Parallax.BridgeSmoke");
+                if(type==null){Fail("Parallax smoke extension missing");yield break;}
+                var test=(IEnumerator)AccessTools.Method(type,Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-parallax-desert")>=0?"RunDesert":"Run").Invoke(null,new object[]{flight});
+                while(true){bool more;try{more=test.MoveNext();}catch(Exception e){Fail("Parallax bridge: "+e);yield break;}if(!more)break;yield return test.Current;}
+                running=false;Application.Quit();yield break;
+            }
+            if(movingLanding)
+            {
+                var test=MovingLandingSmoke.Run(flight,Fail);
+                while(true){bool more;try{more=test.MoveNext();}catch(Exception e){Time.timeScale=1;Fail("Moving landing: "+e);yield break;}if(!more)break;yield return test.Current;}
+                running=false;Application.Quit();yield break;
+            }
             if(planeLanding){yield return InterstellarLandingSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-map-rendering-only")>=0){yield return MapRenderingSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-multi-ring-only")>=0){yield return MultiRingSmoke.Run(flight,Fail);running=false;Application.Quit();yield break;}
@@ -301,7 +315,7 @@ namespace NivenRingworld
                 if(!v.packed||TimeWarp.CurrentRateIndex!=5){Fail("Native warp UI rate did not engage: index="+TimeWarp.CurrentRateIndex+" packed="+v.packed+" status="+flight.surfaceWarp.Status);yield break;}
                 yield return new WaitForEndOfFrame();
                 var habitatLight=GameObject.Find("Ringworld habitat sunlight").GetComponent<Light>();var warpCoord=flight.Settings.Geometry.Coordinates(flight.Position(v));
-                double expectedLight=flight.Settings.Geometry.Daylight(warpCoord.Along,Planetarium.GetUniversalTime())*.5;
+                double expectedLight=flight.Settings.Geometry.Daylight(warpCoord.Along,Planetarium.GetUniversalTime());
                 Debug.Log("[RingworldSmoke] PACKED LIGHT actual="+habitatLight.intensity+" expected="+expectedLight);
                 if(Math.Abs(habitatLight.intensity-expectedLight)>.001){Fail("Lighting did not update during native warp");yield break;}
                 AccessTools.Method(typeof(TimeWarp),"btnSetHighRate").Invoke(TimeWarp.fetch,new object[]{0});while(v.packed)yield return null;yield return new WaitForSecondsRealtime(1);

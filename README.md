@@ -121,7 +121,7 @@ See [release notes](RELEASE-NOTES.md) for version changes, dependency requiremen
 7. Kerbal expedition experience and awards on safe return; avoid granting repeated XP for the same destination.
 8. Add-on content validation for duplicate research IDs, missing prerequisites/cycles and generation migrations; localisation of journal/config text.
 9. Science-overhaul adapters (especially Kerbalism), research-driven map markers and saved discovery coordinates for individual procedural colossi.
-10. Parallax-style Ringworld terrain extension after weather/water work; keep laptop presets viable.
+10. Optional Parallax Continued bridge: stable placement patches, ring biome/ecology masks, object LOD and distant forest aggregates; retain laptop fallback. [Research and staged implementation design](docs/developers/PARALLAX-INTEGRATION.md). No working Parallax adapter yet.
 11. Ring resource deposits and shared scanner/harvester provider, per-ring exploration unlocks, stock drill tests and optional resource-pack adapters. KFS gravitic-drive integration needs ring up/acceleration, surface coordinates and safe warp handling.
 12. Flattened map of Earth or Kerbol system stellar objects in the great oceans just like in the books.
 13. Huge Attitude Jets around the circumference
@@ -130,6 +130,8 @@ See [release notes](RELEASE-NOTES.md) for version changes, dependency requiremen
 16. RSS Compatibility and RSS features
 17. Animals on the ringworld (Animal Mod compatibility)
 18. Some dude said he lodged into the ground at a reletavistic speeds with a kraken drive and null-aero hack.
+19. marker for interstellar ringworld in map
+20. The outer side of the ring still has visible cloud and shadow layers, when it should be just scryth in shadow
 
 ### Active visual compatibility work
 

@@ -1,5 +1,37 @@
 # Niven Ringworld ? release notes
 
+## Unreleased - ring lighting and flight stability
+
+- Local ring cameras use consistent configured starlight and concentrate the existing shadow atlas around the camera's terrain height. Shadow range, projection, cascade splits and light bias are restored after rendering; shadow resolution/cascade count remain inherited. This improves nearby vessel/ground precision without increasing the user's graphics quality. See [surface lighting](docs/developers/SURFACE-LIGHTING.md).
+
+Surface-lighting validation at Slow passed: 30 repeated paused renders and 120 moving camera views retained consistent key lighting; the Aeris retained 40 parts. A 50 km native shadow range became about 1.54 km in the reported above-craft view, retaining Low resolution/two cascades. The paired Parallax build showed green terrain-tinted grass and passed shader texture-dimension checks. Other presets/hardware remain unverified; dependencies and publication status are unchanged.
+- A live crash dump identified a CPU stall in KSP's repeated orbital-angle wrapping. Extremely large angles now use bounded remainder reduction through Harmony; ordinary angle inputs keep the stock path. Newly detached rotating-frame participants receive inertial bookkeeping immediately on registration. See [live hang investigation](docs/developers/LIVE-HANG-20261008.md) for evidence and validation limits.
+- Random terrain, landmark relocation, training and inter-ring transfer reject a destroyed or empty active craft. The expedition panel explains why those buttons are disabled. This prevents repacking the dead Aeris/root and nearby debris after a crash; select or launch a surviving craft before relocating.
+
+- Ring terrain, structures and Parallax scatters use one stellar key light. Distant secondary stars no longer illuminate the interstellar habitat at full strength. Lighting direction and panel/body eclipses follow the rotating ring frame.
+- With Deferred installed, ring cameras use the stock ambient term instead of the planetary probe-derived diffuse contribution that washed out the scene. Specular reflections remain available. The camera scope restores external lighting parameters after rendering; planetary and map views keep their normal settings.
+- Transfers publish a valid inertial bookkeeping orbit immediately. Ring-controlled vessels bypass stock conic solving, including solvers recreated while unpacking or initializing debris. Orbit sampling rejects non-finite anomalies/orientation and invalid orbital shapes before calling stock iterative methods.
+- Nearby terrain retires old meshes and colliders independently of the distant generation queue, retaining the current near footprint and the near hole in the visible LOD generation.
+
+Dependency and installation requirements are unchanged. This is a local development fix, not a new published release; the matching base DLL and visual shader bundle must be installed together. See the [lighting and landing investigation](docs/developers/LIGHTING-AND-LANDING.md) for runtime checks and remaining reproduction limits.
+
+Validation at Slow: corrected lighting captures, a bounded 20 km terrain-streaming traversal, and a stock Aeris 4A approach with deployed wheels and pitch-up input passed. The plane reached ground contact and suffered impact damage; the simulation remained responsive for 1,848 frames. All 110,581 core checks passed. The exact manually flown freeze is not proven resolved by these automated cases.
+
+The post-crash regression also passed: Random terrain refused to relocate the destroyed active Aeris without moving/packing it or changing residence records, and 60 further frames ran. The complete approach/impact observation remained responsive for 1,929 frames. This specifically validates the reported post-crash button path.
+
+October 8 live-hang follow-up: 110,600 core checks passed. The captured large-angle/infinity calls terminated through the patched stock helper in KSP. A reported-location wheels-deployed approach/crash remained responsive for 1,811 frames. The dump resolves the stalled caller to the stock transfer planner rather than `PatchedConicSolver`; these are distinct regression cases.
+
+The stock `TransferMath.AlignmentTime` large-distance regression also returned a finite result in 0.1384 ms. This fixes its angle-wrapping stall; stock transfer estimates still assume planetary orbits.
+
+
+## Unreleased ? optional Ringworld Parallax bridge
+
+The `parallax-continued-bridge` development branch adds a separate, optional Ringworld Parallax provider, saved extension controls/quality budgets, cylindrical terrain sampling and ready/retiring notifications (Terrain API v2). Near top meshes expose colour buffers. Native forest cells share periodic ownership boundaries with the bridge when fallback is enabled. The development preview defaults native trees/grass/rocks/canopy off, retaining buildings and landmarks. Contact proxies follow frame/origin changes.
+
+The sibling Ringworld Parallax project references separately installed Parallax Continued scatter assets/materials and uses an original placement/evaluation pipeline. Parallax is **not required by the base mod**. The bridge needs this matching unpublished base ABI; released base 1.1.7 is insufficient. Intended external stack: Parallax Continued 1.0.4, stock scatter assets 1.0.0, KSPTextureLoader and Parallax's normal Kopernicus/ModuleManager/KSPBurst/texture-package dependencies. No dependency binaries are bundled, no NetKAN metadata is changed, and no release ZIP has been created. See [bridge documentation](../Ringworld Parallax/README.md) in the shared workspace and the [integration design](docs/developers/PARALLAX-INTEGRATION.md).
+
+Validation: core checks and bridge placement tests passed; D3D11 compute bundle and DLLs compiled. An installed-assets flight test produced all three object LOD outputs and passed map/disable isolation. A focused forest readiness/Parallax-only preview regression also passed, preserving structures and omitting native trees/ground cover/canopy. Broader motion/biome/coexistence checks remain pending; this is not release certification.
+
 ## Unreleased ? interstellar plane landing
 
 - Arrival monitoring and packed coast updates wait for a usable stock orbit during flight loading and reference-body changes. This prevents the `Anchor orbit has a zero radius` exceptions observed with released 1.1.7.

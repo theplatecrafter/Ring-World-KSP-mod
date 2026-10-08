@@ -1,6 +1,6 @@
 # Mod integrations and v1.1.5 work plan
 
-This page tracks the **unpublished v1.1.5 development build**. v1.1.4 remains the public release. An installed framework, an implemented adapter, and an installed-mod test are different levels of support.
+This page retains the **v1.1.5 integration plan and dated development tests**. Current user documentation describes v1.1.7; historical test dates and version limits below remain evidence for those builds. An installed framework, an implemented adapter, and an installed-mod test are different levels of support. See the [7 October Parallax Continued research](PARALLAX-INTEGRATION.md) for the current custom-terrain integration proposal.
 
 ## Installation and automatic behaviour
 
@@ -18,7 +18,7 @@ Harmony remains required. Cyla and other visual mods are installed separately; t
 | ReStock / ReStock+ | Replacement stock part art / additional parts; independent of ring terrain. | No geometry adapter needed for ordinary stock part rendering. Ring landing/EVA tests with these assets pending. |
 | EVE Redux | Spherical planet cloud layers. Ringworld Clouds now replaces the old local volume model with an original cylindrical extension. | Public CloudsObject, VolumeManager and VolumeSection source inspected: body registration, local up and particle placement use a sphere. Reusing this renderer requires an adapter/fork, not a normal configuration. |
 | Raymarched volumetric clouds | Volumetric planetary clouds, distinct from simply installing EVE Redux. | No automatic ring geometry adapter. Check the actual provider/version and distribution licence; do not bundle private shaders/assets. |
-| Parallax Continued | PQS terrain/scatters, requiring Kopernicus and assets. | Ring terrain is not PQS. A planet-name config cannot place Parallax scatters on a cylinder. No ring terrain replacement yet. |
+| Parallax Continued | PQS terrain/scatters, requiring its separately installed dependencies/assets. | No working ring adapter. The [source audit and biome/LOD design](PARALLAX-INTEGRATION.md) recommends a custom terrain provider or Ringworld placement feeding the installed evaluation shaders. A planet-name config alone is insufficient. |
 | BetterTimeWarp Continued (`BetterTimeWarpCont`) | Custom stock warp-rate tables. Ring landing checks and configured rate ceiling remain authoritative; physics warp remains unsupported in the ring frame. | Installed 2.3.14.2: custom table, rate ceiling and airborne rejection passed. Live-table clamping also rechecks during warp. Installed-mod landed warp/unwarp regression also passed (about 496 s UT, 2.83 mm anchor drift). Slow motion/lossless physics and resource-mod combinations not certified. |
 | Trajectories | Atmospheric/orbital prediction around celestial bodies. | Ringworld retains its own prediction. Upstream spherical altitude, atmosphere and PQS queries require a dedicated solver adapter; no claim of accurate ring impact prediction through its API. |
 | Firefly | Reentry effects with per-body profiles. | Source checked: AtmoFxModule rejects bodies without atmosphere, checks spherical atmosphereDepth and selects profiles by mainBody. Needs scoped ring air, altitude and profile adapters. No Sun atmosphere mutation or compatibility claim. |

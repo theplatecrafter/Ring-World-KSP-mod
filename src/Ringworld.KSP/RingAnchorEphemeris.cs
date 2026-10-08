@@ -23,8 +23,16 @@ namespace NivenRingworld
 
         internal static bool OrbitReady(Orbit orbit)
         {
-            return orbit!=null&&orbit.referenceBody!=null&&RingParameters.Finite(orbit.semiMajorAxis)&&orbit.semiMajorAxis!=0&&
-                RingParameters.Finite(orbit.eccentricity)&&orbit.eccentricity>=0;
+            // A finite SMA/eccentricity alone is insufficient: a radial/zero-speed
+            // state can have NaN orientation or anomaly. Do not pass those values
+            // into KSP's iterative Kepler solvers (their convergence tests can hang).
+            return orbit!=null&&orbit.referenceBody!=null&&orbit.referenceBody.gravParameter>0&&
+                RingParameters.Finite(orbit.semiMajorAxis)&&
+                RingParameters.Finite(orbit.eccentricity)&&orbit.eccentricity>=0&&orbit.eccentricity!=1&&
+                ((orbit.eccentricity<1&&orbit.semiMajorAxis>0)||(orbit.eccentricity>1&&orbit.semiMajorAxis<0))&&
+                RingParameters.Finite(orbit.inclination)&&RingParameters.Finite(orbit.LAN)&&
+                RingParameters.Finite(orbit.argumentOfPeriapsis)&&RingParameters.Finite(orbit.epoch)&&
+                RingParameters.Finite(orbit.meanAnomalyAtEpoch)&&RingParameters.Finite(orbit.meanMotion)&&orbit.meanMotion>0;
         }
         internal static bool TryVesselRelative(Vessel vessel,CelestialBody reference,double time,out RingAnchorState state)
         {
