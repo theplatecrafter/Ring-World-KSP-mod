@@ -1,5 +1,11 @@
 # Reported issue regressions
 
+## Repository audit - October 9, 2026
+
+Issues [3](https://github.com/theplatecrafter/Ring-World-KSP-mod/issues/3) and [4](https://github.com/theplatecrafter/Ring-World-KSP-mod/issues/4) are closed as completed in unpublished development. The [case-by-case audit](ISSUE-AUDIT-20261008.md) records all seven issue-3 symptoms and all three issue-4 symptoms, installed mod versions, failures during investigation and final runtime evidence. Representative tests passed natural EVA recovery/walking, two actual 49-part physics-range cycles, native map switching, gentle placement, stock/GoldStrike drilling, stock/SCANsat labels, altitude-dependent HL/Heisenberg lift, and actual SunkWorks flotation/ballast/thrust with damage enabled. ReStock's loaded Surveyor model/materials also passed.
+
+The fixes are installed in the shared development instance with its normal DLL and original settings restored. No release or package was produced. SCANsat orbital maps, GoldStrike rich lodes, whole-airship controllers and arbitrary craft stability remain separate compatibility targets. The older entries below are historical investigation results, superseded for these reported cases by the October 9 audit.
+
 ## Full-size interstellar plane landing ? October 6, 2026
 
 See [Interstellar landing](INTERSTELLAR-LANDING.md) for the supplied hang evidence, startup-orbit and aircraft-attitude fixes, and natural-gravity Aeris 4A landing/impact tests with development and reported KSP graphics settings. The original freeze has not been reproduced or attributed conclusively.

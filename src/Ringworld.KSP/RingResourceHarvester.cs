@@ -17,8 +17,12 @@ namespace NivenRingworld
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> source)
         {
             var method=AccessTools.Method(typeof(ResourceMap),"GetAbundance",new[]{typeof(AbundanceRequest)});bool replaced=false;
+            var horizontal=AccessTools.Field(typeof(Vessel),"horizontalSrfSpeed");
             foreach(var code in source)
             {
+                // Recipe preparation can run during initialization before the
+                // surface cache's first tick. Use the same live local quantity.
+                if(code.LoadsField(horizontal)){code.opcode=OpCodes.Call;code.operand=AccessTools.Method(typeof(EvaTransitionSpeedPatch),"HorizontalSpeed");}
                 if(code.Calls(method))
                 {
                     var arg=new CodeInstruction(OpCodes.Ldarg_0);arg.labels.AddRange(code.labels);code.labels.Clear();yield return arg;

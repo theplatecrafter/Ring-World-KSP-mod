@@ -5,6 +5,7 @@ param(
     [switch]$Package
 )
 $ErrorActionPreference = 'Stop'
+if($Package -and $SmokeTest){throw 'A smoke-test base build cannot be packaged for release.'}
 $taskRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
 $gameRoot = (Resolve-Path -LiteralPath $KspRoot).Path
 if (-not (Test-Path -LiteralPath (Join-Path $gameRoot 'KSP_x64_Data\Managed\Assembly-CSharp.dll'))) { throw 'KspRoot is not a KSP 1 installation.' }
@@ -32,6 +33,7 @@ if ($Install) {
     Write-Host "Installed into $target"
 }
 if ($Package -and -not $SmokeTest) {
+    Get-ChildItem -LiteralPath $stage -Filter '*.build.json' -Recurse -File | ForEach-Object {Remove-Item -LiteralPath $_.FullName -Force}
     # Include the documentation tree automatically so reorganization cannot omit guides.
     foreach ($doc in @('README.md','RELEASE-NOTES.md','LICENSE','THIRD-PARTY-NOTICES.md','CREDITS.md')) {
         Copy-Item -LiteralPath (Join-Path $taskRoot $doc) -Destination (Join-Path $distributionRoot $doc) -Force
@@ -40,9 +42,10 @@ if ($Package -and -not $SmokeTest) {
     $releaseVersion = ([xml](Get-Content -LiteralPath (Join-Path $taskRoot 'src\Ringworld.KSP\Ringworld.KSP.csproj') -Raw)).Project.PropertyGroup.Version
     $unexpected = Get-ChildItem -LiteralPath (Join-Path $distributionRoot 'GameData') | Where-Object Name -ne 'NivenRingworld'
     if ($unexpected) { throw 'Release contains an unexpected bundled mod.' }
-    Compress-Archive -Path (Join-Path $distributionRoot '*') -DestinationPath (Join-Path $taskRoot "artifacts\NivenRingworld-$releaseVersion.zip") -Force
+    $releaseZip=Join-Path $taskRoot "artifacts\NivenRingworld-$releaseVersion.zip"
+    Compress-Archive -Path (Join-Path $distributionRoot '*') -DestinationPath $releaseZip -Force
+    ((Get-FileHash -LiteralPath $releaseZip -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+[IO.Path]::GetFileName($releaseZip)) | Set-Content -LiteralPath ($releaseZip+'.sha256')
 }
 Write-Host "Build staged in $stage"
-
 
 

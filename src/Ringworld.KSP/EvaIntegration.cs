@@ -1,7 +1,6 @@
 using HarmonyLib;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Reflection.Emit;
 using Ringworld.Core;
 using UnityEngine;
 
@@ -21,9 +20,9 @@ namespace NivenRingworld
             return height>=0&&height<=eva.halfHeight+.15f&&Vector3.Dot(eva.vessel.HeightFromSurfaceHit.normal,eva.fUp)>.4f;
         }
     }
-    // State changes seed walking interpolation from horizontalSrfSpeed. At the
-    // ring this stock cache describes the Sun, not the local physics frame.
-    // Replace the reads, including landing/jump decisions, without speed caps.
+    // State changes seed walking interpolation and jump/landing decisions from
+    // surface-speed caches. Refresh the shared ring caches at the boundary;
+    // do not depend on a particular IL read surviving other mods' transpilers.
     [HarmonyPatch]
     internal static class EvaTransitionSpeedPatch
     {
@@ -32,18 +31,10 @@ namespace NivenRingworld
             foreach(var name in new[]{"heading_acquire_OnLeave","bound_fl_OnLeave","land_OnEnter","jump_OnEnter"})
                 yield return AccessTools.Method(typeof(KerbalEVA),name);
         }
-        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        [HarmonyPriority(Priority.Last)]
+        private static void Prefix(KerbalEVA __instance)
         {
-            var field=AccessTools.Field(typeof(Vessel),"horizontalSrfSpeed");
-            var replacement=AccessTools.Method(typeof(EvaTransitionSpeedPatch),nameof(HorizontalSpeed));
-            int replaced=0;
-            foreach(var instruction in instructions)
-            {
-                if(instruction.opcode==OpCodes.Ldfld&&Equals(instruction.operand,field))
-                {instruction.opcode=OpCodes.Call;instruction.operand=replacement;replaced++;}
-                yield return instruction;
-            }
-            if(replaced==0)throw new System.InvalidOperationException("KSP EVA speed read was not found; incompatible game assembly.");
+            if(__instance!=null)RingSurfaceCaches.Publish(__instance.vessel);
         }
         internal static double HorizontalSpeed(Vessel v)
         {

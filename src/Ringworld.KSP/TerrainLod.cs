@@ -32,7 +32,8 @@ namespace NivenRingworld
         internal int ScaledCount {get{int count=0;foreach(var p in patches.Values)if(p.Scaled&&p.Root.activeSelf)count++;return count;}}
         internal TerrainLod(Settings s,Material m,Material water,Material forest){settings=s;material=m;waterMaterial=water;forestMaterial=forest;farMaterial=new Material(m);farMaterial.color=Color.black;farMaterial.EnableKeyword("_EMISSION");farMaterial.SetColor("_EmissionColor",Color.white);farMaterial.SetFloat("_Glossiness",0);
             visualBundle=RingVisualAssets.Acquire();var shader=visualBundle!=null?visualBundle.LoadAsset<Shader>("Assets/Shaders/TerrainNight.shader"):null;
-            if(shader!=null&&shader.isSupported){farMaterial.shader=shader;farMaterial.renderQueue=2010;nightShader=true;}
+            if(shader!=null&&shader.isSupported){farMaterial.shader=shader;farMaterial.SetFloat("_SurfaceMetresPerUnit",(float)(1.0/ScaledSpace.InverseScaleFactor));farMaterial.renderQueue=2010;nightShader=true;}
+            Camera.onPreCull+=PrepareCamera;
         }
         internal bool NeedsNearTile(long x,long y){return Math.Abs(x-lastX)<=settings.TileRadius&&Math.Abs(y-lastY)<=settings.TileRadius;}
         internal void Update(double along,double across,bool nearReady=true)
@@ -135,11 +136,14 @@ namespace NivenRingworld
             var colors=new Color[count];
             var seabed=new Vector3[count];var wet=new bool[count];var waterUv=new Vector2[count];
             var vertices=new List<Vector3>(count+4*(n+1));var uv=new List<Vector2>(vertices.Capacity);var longitude=new List<Vector2>(vertices.Capacity);var triangles=new List<int>();
+            var detailCoordinates=new List<Vector4>(vertices.Capacity);var surfaceWeights=new List<Vector4>(vertices.Capacity);
+            var noisePoints=new List<Vector3>(vertices.Capacity);var noiseOrigin=TerrainSurface.NoiseOrigin(b.X,b.Y,settings.Geometry.P.Radius);
             for(int y=0;y<=n;y++)for(int x=0;x<=n;x++)
             {
                 double a=Math.Max(plannedAlong-settings.Geometry.P.Circumference/2,Math.Min(plannedAlong+settings.Geometry.P.Circumference/2,b.X+b.Size*x/n)),c=b.Y+b.Size*y/n;double rawAcross=c;c=Math.Max(-settings.Geometry.P.Width/2,Math.Min(settings.Geometry.P.Width/2,c));var s=settings.Terrain.Sample(a,Math.Max(-settings.Geometry.P.Width/2+.01,Math.Min(settings.Geometry.P.Width/2-.01,c)));
                 var appearance=BiomePresentation.Sample(settings.Terrain,a,c,s,b.Size/n,Math.Min(2,settings.ForestDensity*StockGraphics.Scatter));
-                double h=(s.Wet?s.WaterHeight+.3:s.Height+(b.Size>ForestCanopy.MaximumDistantBlock(settings)?appearance.CanopyHeight:0))-.2;
+                TerrainSurfaceDetail.Add(detailCoordinates,surfaceWeights,noisePoints,s,a,c,noiseOrigin,settings.Geometry.P.Radius);
+                double h=(s.Wet?s.WaterHeight+.3:s.Height+(settings.NativeSurfaceScatters&&b.Size>ForestCanopy.MaximumDistantBlock(settings)?appearance.CanopyHeight:0))-.2;
                 vertices.Add(ConvertVector.Unity(settings.Geometry.Position(a,c,h)-p.Anchor));
                 seabed[y*(n+1)+x]=ConvertVector.Unity(settings.Geometry.Position(a,c,s.Height)-p.Anchor);
                 wet[y*(n+1)+x]=s.Wet;waterUv[y*(n+1)+x]=new Vector2(s.Wet?(float)Math.Max(0,s.WaterHeight-s.Height):0,(float)(b.Size/n));
@@ -177,16 +181,17 @@ namespace NivenRingworld
                     int top=edge==0?k:edge==1?k*(n+1)+n:edge==2?n*(n+1)+n-k:(n-k)*(n+1);
                     int bottom=vertices.Count;var point=p.Anchor+ConvertVector.Core(vertices[top]);
                     vertices.Add(vertices[top]-ConvertVector.Unity(settings.Geometry.Up(point))*(float)Math.Max(50,b.Size/n));uv.Add(uv[top]);longitude.Add(longitude[top]);
+                    detailCoordinates.Add(detailCoordinates[top]);surfaceWeights.Add(surfaceWeights[top]);noisePoints.Add(noisePoints[top]);
                     if(k>0)triangles.AddRange(new[]{previousTop,previous,top,top,previous,bottom,top,previous,previousTop,bottom,previous,top});
                     previous=bottom;previousTop=top;
                 }
             }
             if(p.Scaled)for(int i=0;i<vertices.Count;i++)vertices[i]*=(float)ScaledSpace.InverseScaleFactor;
             p.Texture=TerrainTint.Texture(n+1,colors);
-            p.Mesh=new Mesh{name="Adaptive ring terrain block"};p.Mesh.SetVertices(vertices);p.Mesh.SetUVs(0,uv);p.Mesh.SetUVs(1,longitude);p.Mesh.SetTriangles(triangles,0);p.Mesh.RecalculateNormals();p.Mesh.RecalculateBounds();
-            p.Root.AddComponent<MeshFilter>().sharedMesh=p.Mesh;var renderer=p.Root.AddComponent<MeshRenderer>();renderer.sharedMaterial=p.Scaled?farMaterial:material;var block=new MaterialPropertyBlock();block.SetTexture("_MainTex",p.Texture);if(p.Scaled)block.SetTexture("_EmissionMap",p.Texture);renderer.SetPropertyBlock(block);
+            p.Mesh=new Mesh{name="Adaptive ring terrain block"};p.Mesh.SetVertices(vertices);p.Mesh.SetUVs(0,uv);p.Mesh.SetUVs(1,longitude);p.Mesh.SetUVs(2,detailCoordinates);p.Mesh.SetUVs(3,surfaceWeights);p.Mesh.SetUVs(4,noisePoints);p.Mesh.SetTriangles(triangles,0);p.Mesh.RecalculateNormals();p.Mesh.RecalculateTangents();p.Mesh.RecalculateBounds();
+            p.Root.AddComponent<MeshFilter>().sharedMesh=p.Mesh;var renderer=p.Root.AddComponent<MeshRenderer>();renderer.sharedMaterial=p.Scaled?farMaterial:material;var block=new MaterialPropertyBlock();block.SetTexture("_MainTex",p.Texture);TerrainSurfaceDetail.Origin(block,noiseOrigin,settings.Geometry.P.Seed);if(p.Scaled)block.SetTexture("_EmissionMap",p.Texture);renderer.SetPropertyBlock(block);
             renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;
-            if(!p.Scaled&&b.Size<=ForestCanopy.MaximumDistantBlock(settings))
+            if(settings.NativeSurfaceScatters&&!p.Scaled&&b.Size<=ForestCanopy.MaximumDistantBlock(settings))
             {
                 p.CanopyWork=ForestCanopy.DistantMesh(settings,b,p.Anchor,p.Phase);canopyPending.Enqueue(p);
             }
@@ -213,7 +218,20 @@ namespace NivenRingworld
             }
         }
         private static void Destroy(Patch p){p.Retired=true;if(p.CanopyWork!=null){p.CanopyWork.Dispose();p.CanopyWork=null;}UnityEngine.Object.Destroy(p.Root);UnityEngine.Object.Destroy(p.Mesh);if(p.CanopyMesh!=null)UnityEngine.Object.Destroy(p.CanopyMesh);if(p.WaterMesh!=null)UnityEngine.Object.Destroy(p.WaterMesh);UnityEngine.Object.Destroy(p.Texture);}
-        public void Dispose(){foreach(var p in patches.Values)Destroy(p);patches.Clear();foreach(var p in staged.Values)Destroy(p);staged.Clear();canopyPending.Clear();UnityEngine.Object.Destroy(farMaterial);if(visualBundle!=null)RingVisualAssets.Release();}
+        private void PrepareCamera(Camera camera)
+        {
+            bool scaled=camera==PlanetariumCamera.Camera||(ScaledCamera.Instance!=null&&camera==ScaledCamera.Instance.cam)||(camera.cullingMask&(1<<15))==0;
+            if(!scaled&&(camera.cullingMask&(1<<15))==0)return;
+            DVec observer;
+            if(scaled){
+                var center=RingMapFrame.Center(settings);
+                var world=!RingMapFrame.Active&&ScaledCamera.Instance!=null&&camera==ScaledCamera.Instance.cam&&ScaledCamera.Instance.tgtRef!=null?(Vector3d)ScaledCamera.Instance.tgtRef.position:ScaledSpace.ScaledToLocalSpace(camera.transform.position);
+                observer=ConvertVector.Core(world-center);
+            }else observer=ConvertVector.Core((Vector3d)camera.transform.position-settings.Center);
+            var chart=settings.Geometry.Coordinates(observer);
+            farMaterial.SetFloat("_RingCameraExterior",chart.Altitude<settings.UndersideAltitude&&Math.Abs(chart.Across)<=settings.Geometry.P.Width/2?1:0);
+        }
+        public void Dispose(){Camera.onPreCull-=PrepareCamera;foreach(var p in patches.Values)Destroy(p);patches.Clear();foreach(var p in staged.Values)Destroy(p);staged.Clear();canopyPending.Clear();UnityEngine.Object.Destroy(farMaterial);if(visualBundle!=null)RingVisualAssets.Release();}
         internal void Light(float light){if(!nightShader)farMaterial.SetColor("_EmissionColor",new Color(light,light,light));}
     }
 }

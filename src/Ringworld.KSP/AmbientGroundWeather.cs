@@ -21,7 +21,7 @@ namespace NivenRingworld
         internal void Update(DVec observer,Vector3d star)
         {
             var camera=FlightCamera.fetch==null?null:FlightCamera.fetch.mainCamera;var g=settings.Geometry;var p=g.Coordinates(observer);var ground=settings.Terrain.Sample(p.Along,p.Across);
-            bool show=settings.AmbientParticles&&!MapView.MapIsEnabled&&camera!=null&&p.Altitude-ground.Height<30&&!ground.Wet;
+            bool show=settings.NativeSurfaceScatters&&settings.AmbientParticles&&!MapView.MapIsEnabled&&camera!=null&&p.Altitude-ground.Height<30&&!ground.Wet;
             root.SetActive(show);if(!show||Time.realtimeSinceStartup<next)return;next=Time.realtimeSinceStartup+.1f;
             var climate=Ecology.Sample(settings.Terrain,p.Along,p.Across);bool dust=climate.Desert>.35;double strength=dust?climate.Desert:climate.Forest*.4;
             var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var indices=new List<int>();double time=Planetarium.GetUniversalTime();

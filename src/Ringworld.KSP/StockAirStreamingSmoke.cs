@@ -30,6 +30,8 @@ namespace NivenRingworld
    try{f.Settings.Atmosphere=false;Check(!RingIntakeEnvironment.Oxygen(v.mainBody,module),"Oxygen supplied with ring atmosphere disabled");}
    finally{f.Settings.Atmosphere=atmosphere;}
    Check(v.mainBody.atmosphereContainsOxygen==originalOxygen&&v.mainBody.atmosphere==originalAtmosphere,"Intake adapter changed the host body's atmosphere");
+   var local=f.Velocity(v);var up=f.Settings.Geometry.Up(f.Position(v));
+   Check(Math.Abs(v.srfSpeed-local.Length)<1&&Math.Abs(v.verticalSpeed-Ringworld.Core.DVec.Dot(local,up))<1&&Math.Abs(v.horizontalSrfSpeed-(local-up*Ringworld.Core.DVec.Dot(local,up)).Length)<1,"Stock surface-speed caches mismatch: speed="+v.srfSpeed+" expected="+local.Length+" vertical="+v.verticalSpeed+" expected="+Ringworld.Core.DVec.Dot(local,up)+" horizontal="+v.horizontalSrfSpeed);
    Debug.Log("[RingworldSmoke] STOCK AIR actual airScoop ModuleResourceIntake produces IntakeAir; disabled air rejects oxygen; host flags unchanged");
    Check(RingIntakeEnvironment.Gravity(v.GetWorldPos3D(),module).magnitude>1,"Gravity instrument lacks ring acceleration");
    Check(double.IsPositiveInfinity(RingIntakeEnvironment.SensorRadius(v.mainBody,module)),"Gravity instrument retains solar-distance cutoff");

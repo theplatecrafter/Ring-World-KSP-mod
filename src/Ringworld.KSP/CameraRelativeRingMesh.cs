@@ -45,6 +45,9 @@ namespace NivenRingworld
             root.transform.SetPositionAndRotation(camera.transform.position,Quaternion.identity);
             mesh.vertices=vertices;mesh.RecalculateBounds();
             material.SetFloat("_RingCameraRelative",1);
+            // Decide outside/inside before converting this enormous chart to float.
+            bool exterior=RingExterior.InHullBand(cameraChart/ScaledSpace.InverseScaleFactor,settings.Geometry.P.Radius,settings.Geometry.P.Width/2,settings.UndersideAltitude);
+            material.SetFloat("_RingCameraExterior",exterior?1:0);
             material.SetVector("_RingCameraLocal",ConvertVector.Unity(cameraChart));
             material.SetMatrix("_RingToChart",Matrix4x4.Rotate(Quaternion.Inverse(rotation)));
             LastCameraPosition=camera.transform.position;PreparedFrames++;

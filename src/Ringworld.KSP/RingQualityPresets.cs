@@ -24,6 +24,11 @@ namespace NivenRingworld
         {
             if(index<0||index>=Names.Length)throw new ArgumentOutOfRangeException("index");
             n.SetValue("atmosphereBackend",index<=5?1:0,true);
+            n.SetValue("parallaxRange",new[]{12000,9000,6000,4000,2500,1500,600,450,300,180,50}[index],true);
+            n.SetValue("parallaxDensity",new[]{2,1.6,1.3,1,.8,.6,.35,.25,.15,.08,0}[index].ToString("R",CultureInfo.InvariantCulture),true);
+            n.SetValue("parallaxMaxObjects",new[]{500000,350000,240000,160000,100000,60000,12000,8000,4000,1500,256}[index],true);
+            n.SetValue("parallaxBudget",new[]{8,6,4,3,2,2,1,.75,.5,.25,.25}[index].ToString("R",CultureInfo.InvariantCulture),true);
+            n.SetValue("parallaxColliders",index<10,true);
             n.SetValue("cylaViewSteps",new[]{500,192,128,80,48,32,24,16,8,4,1}[index],true);
             for(int k=0;k<Keys.Length;k++)n.SetValue(Keys[k],Values[index][k].ToString("R",CultureInfo.InvariantCulture),true);
             n.SetValue("cloudRange",new[]{20000000,10000000,5000000,2000000,750000,300000,100000,75000,50000,40000,30000}[index],true);

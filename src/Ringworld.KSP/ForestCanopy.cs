@@ -9,7 +9,7 @@ namespace NivenRingworld
     // Trunk contacts are activated only near loaded vessels; leaves never collide.
     internal sealed class ForestCanopy : MonoBehaviour
     {
-        private struct Tree {internal Vector3 Position,Up;internal float Height,Radius,Yaw,Variation;internal bool Conifer;}
+        private struct Tree {internal Vector3 Position,Up;internal double Along,Across;internal float Height,Radius,Yaw,Variation;internal bool Conifer;}
         private readonly List<Tree> trees=new List<Tree>();
         private readonly List<Mesh> meshes=new List<Mesh>();
         private readonly Dictionary<int,CapsuleCollider> contacts=new Dictionary<int,CapsuleCollider>();
@@ -17,21 +17,28 @@ namespace NivenRingworld
         private PhysicMaterial friction;private float nextContacts;
         internal int TreeCount {get{return trees.Count;}}
         internal int ContactCount {get{return contacts.Count;}}
-        internal void Build(Settings s,double x0,double y0,double size,DVec anchor,Material foliage,PhysicMaterial ground)
+        internal void Build(Settings s,double x0,double y0,double size,DVec anchor,Material foliage,PhysicMaterial ground,Action<GameObject,double,double,double> fallback=null)
         {
             friction=ground;double density=Math.Min(2,s.ForestDensity*StockGraphics.Scatter);
             if(density<=0)return;
             double spacing=24/Math.Sqrt(Math.Max(.2,density));
-            int patches=(int)Math.Ceiling(size/256);double patchSize=size/patches;
-            for(int py=0;py<patches;py++)for(int px=0;px<patches;px++)
+            bool bridge=Extensions.ExtensionProviders.Parallax!=null;
+            double patchSize=bridge?s.Geometry.P.Circumference/Math.Ceiling(s.Geometry.P.Circumference/256):size/Math.Ceiling(size/256);
+            double crossSize=bridge?256:patchSize;
+            long firstX=bridge?(long)Math.Floor(x0/patchSize):0,firstY=bridge?(long)Math.Floor(y0/crossSize):0;
+            long lastX=bridge?(long)Math.Floor((x0+size-.001)/patchSize):(long)Math.Ceiling(size/patchSize)-1;
+            long lastY=bridge?(long)Math.Floor((y0+size-.001)/crossSize):(long)Math.Ceiling(size/crossSize)-1;
+            for(long py=firstY;py<=lastY;py++)for(long px=firstX;px<=lastX;px++)
             {
-                var patch=new List<Tree>();double ax=x0+px*patchSize,by=y0+py*patchSize;
+                var patch=new List<Tree>();double ax=bridge?px*patchSize:x0+px*patchSize,by=bridge?py*crossSize:y0+py*crossSize;
+                double lowA=Math.Max(ax,x0),highA=Math.Min(ax+patchSize,x0+size),lowB=Math.Max(by,y0),highB=Math.Min(by+crossSize,y0+size);
                 // Global cells make the forest continuous across tile borders.
-                for(long y=(long)Math.Ceiling(by/spacing);y*spacing<by+patchSize;y++)
-                for(long x=(long)Math.Ceiling(ax/spacing);x*spacing<ax+patchSize;x++)
+                for(long y=(long)Math.Floor(lowB/spacing)-1;y*spacing<highB+spacing;y++)
+                for(long x=(long)Math.Floor(lowA/spacing)-1;x*spacing<highA+spacing;x++)
                 {
                     double a=(x+.7*(s.Terrain.Scatter(x,y,2101)-.5))*spacing;
                     double b=(y+.7*(s.Terrain.Scatter(x,y,2103)-.5))*spacing;
+                    if(a<lowA||a>=highA||b<lowB||b>=highB)continue;
                     if(Math.Abs(b)>s.Geometry.P.Width/2-20)continue;
                     var floor=s.Terrain.Sample(a,b);
                     if(!BiomePresentation.ForestAllowed(floor))continue;
@@ -41,7 +48,7 @@ namespace NivenRingworld
                     if(f!=null)foreach(var v in FlightGlobals.VesselsLoaded)
                         if(f.Owns(v)&&(f.Position(v)-point).Length<18){occupied=true;break;}
                     if(occupied)continue;
-                    var tree=new Tree{Position=ConvertVector.Unity(point-anchor),Up=ConvertVector.Unity(s.Geometry.Up(point)),
+                    var tree=new Tree{Along=a,Across=b,Position=ConvertVector.Unity(point-anchor),Up=ConvertVector.Unity(s.Geometry.Up(point)),
                         Yaw=(float)(360*s.Terrain.Scatter(x,y,2119)),Variation=(float)s.Terrain.Scatter(x,y,2121),
                         Height=(float)(30+18*s.Terrain.Scatter(x,y,2113)),Radius=(float)(spacing*(.70+.15*s.Terrain.Scatter(x,y,2117))),
                         Conifer=s.Terrain.Noise(a,b,18000,601)>.5};
@@ -49,6 +56,7 @@ namespace NivenRingworld
                 }
                 if(patch.Count==0)continue;
                 var root=new GameObject("Continuous forest patch");root.layer=15;root.transform.SetParent(transform,false);
+                if(fallback!=null)fallback(root,ax,by,patchSize);
                 bool economy=s.ForestQuality==0;
                 var visualPatch=patch;
                 if(economy){visualPatch=new List<Tree>();for(int i=0;i<patch.Count;i+=4){var t=patch[i];t.Radius*=2;visualPatch.Add(t);}}
@@ -149,7 +157,10 @@ namespace NivenRingworld
             var f=RingworldFlight.Instance;if(f==null)return;
             var nearby=new List<Vector3>();foreach(var v in FlightGlobals.VesselsLoaded)if(f.Owns(v))nearby.Add(transform.InverseTransformPoint(v.transform.position));
             var wanted=new HashSet<int>();
-            for(int i=0;i<trees.Count;i++)foreach(var p in nearby)if((trees[i].Position-p).sqrMagnitude<180*180){wanted.Add(i);break;}
+            for(int i=0;i<trees.Count;i++){
+                if(Extensions.ExtensionProviders.Parallax?.OwnsTrees(trees[i].Along,trees[i].Across,0)==true)continue;
+                foreach(var p in nearby)if((trees[i].Position-p).sqrMagnitude<180*180){wanted.Add(i);break;}
+            }
             var remove=new List<int>();foreach(var pair in contacts)if(!wanted.Contains(pair.Key)){pair.Value.enabled=false;pool.Push(pair.Value);remove.Add(pair.Key);}
             foreach(int i in remove)contacts.Remove(i);
             foreach(int i in wanted)if(!contacts.ContainsKey(i))

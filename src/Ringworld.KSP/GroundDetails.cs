@@ -25,6 +25,7 @@ namespace NivenRingworld
         }
         internal void Update(DVec observer,Vector3d star,bool force=false)
         {
+            if(!settings.NativeSurfaceScatters){Hide();return;}
             var g=settings.Geometry;var p=g.Coordinates(observer);var s=settings.Terrain.Sample(p.Along,p.Across);
             bool visible=!MapView.MapIsEnabled&&StockGraphics.Scatter>0&&p.Altitude-s.Height<80&&p.Altitude>s.Height-5;
             root.SetActive(visible);if(!visible){Count=0;cellX=long.MinValue;return;}

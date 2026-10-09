@@ -10,6 +10,8 @@ The ring-aware map trajectory predicts a vacuum coast and marks entry/escape. It
 
 Use stock engines, landing gear and parachutes normally. Parachutes still need suitable pressure, altitude and speed; their deployment rules are not bypassed. Avoid an unmatched atmospheric approach: the air rotates with the habitat.
 
+In the Sandbox expedition tab, **Gentle placement near ground / water** overrides the arrival-height slider. It places the craft just above the surface with clearance for its colliders, then lets ordinary gravity settle it. Choose a clear, level location: this option does not clear buildings, repair a damaged craft or guarantee stability on a steep slope. Leave it off for the normal descent from your selected altitude. The training approach always uses its advertised high-altitude descent.
+
 ## Land and keep your progress
 
 Let the craft settle on dry ground, with the engines off and little translation or rotation. Use **Save** and the normal **Space Center** controls when available. **Revert Flight** intentionally discards progress.

@@ -1,6 +1,7 @@
 #if RINGWORLD_SMOKE_TEST
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using HarmonyLib;
 using Ringworld.Core;
 using UnityEngine;
@@ -11,13 +12,16 @@ namespace NivenRingworld
   static void Check(bool value,string message){if(!value)throw new Exception(message);}
   internal static IEnumerator Run(RingworldFlight f,Action<string> fail)
   {
-   var routine=Execute(f,fail);
-   while(true)
+   var routines=new Stack<IEnumerator>();routines.Push(Execute(f,fail));
+   while(routines.Count>0)
    {
+    var routine=routines.Peek();
     bool more=false;object current=null;Exception error=null;
     try{more=routine.MoveNext();if(more)current=routine.Current;}catch(Exception ex){error=ex;}
-    if(error!=null){fail("Installed mods: "+error);yield break;}
-    if(!more)yield break;yield return current;
+    if(error!=null){while(routines.Count>0){try{(routines.Pop() as IDisposable)?.Dispose();}catch{}}fail("Installed mods: "+error);yield break;}
+    if(!more){routines.Pop();(routine as IDisposable)?.Dispose();continue;}
+    if(current is IEnumerator nested&&!(current is CustomYieldInstruction)){routines.Push(nested);continue;}
+    yield return current;
    }
   }
   static IEnumerator Execute(RingworldFlight f,Action<string> fail)
@@ -31,7 +35,10 @@ namespace NivenRingworld
    Debug.Log("[RingworldSmoke] RESTOCK actual Surveyor prefab/model/materials passed: "+model);
    f.arrivalHeight=100;f.Visit();while(!f.Ready)yield return null;
    yield return new WaitForSeconds(2);
+   if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-repo-residents-only")>=0){yield return ResidentIssueSmoke.Run(f);yield break;}
+   if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-repo-aquatic-only")>=0){yield return AquaticCraftIssueSmoke.Run(f);yield break;}
    yield return StockAirStreamingSmoke.Run(f);
+   if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-repo-issue-audit")>=0){yield return AirshipIssueSmoke.Run(f);yield return ResourceIssueSmoke.Run(f);}
    var g=f.Settings.Geometry;var c=g.Coordinates(f.Position(FlightGlobals.ActiveVessel));
    DVec water=new DVec();bool found=false;
    for(int i=0;i<40000&&!found;i++)
@@ -84,6 +91,7 @@ namespace NivenRingworld
     host.RemoveModule(m);UnityEngine.Object.Destroy(transform.gameObject);
    }
    Debug.Log("[RingworldSmoke] PASS installed issue regressions (PR2 and issue4 query paths; excludes issue3)");
+   if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-repo-issue-audit")>=0)yield return AquaticCraftIssueSmoke.Run(f);
   }
  }
 }

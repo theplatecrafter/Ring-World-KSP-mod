@@ -38,6 +38,8 @@ namespace NivenRingworld
         {RingworldPointEnvironment s;return State(module,out s)?s.TemperatureKelvin:FlightGlobals.getExternalTemperature();}
         internal static double Density(double pressure,double temperature,CelestialBody body,PartModule module)
         {RingworldPointEnvironment s;return State(module,out s)?s.AirDensity:FlightGlobals.getAtmDensity(pressure,temperature,body);}
+        internal static double DensityCurrent(double pressure,double temperature,PartModule module)
+        {RingworldPointEnvironment s;return State(module,out s)?s.AirDensity:FlightGlobals.getAtmDensity(pressure,temperature);}
         private static bool State(PartModule m,out RingworldPointEnvironment s)
         {s=default(RingworldPointEnvironment);return m.vessel!=null&&RingworldSurfaceApi.TryGetEnvironmentAtPosition(m.vessel,m.vessel.GetWorldPos3D(),out s);}
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> source,ILGenerator generator,MethodBase __originalMethod)
@@ -47,6 +49,11 @@ namespace NivenRingworld
                 {AccessTools.Method(typeof(FlightGlobals),"getStaticPressure",System.Type.EmptyTypes),"Pressure"},
                 {AccessTools.Method(typeof(FlightGlobals),"getExternalTemperature",System.Type.EmptyTypes),"Temperature"},
                 {AccessTools.Method(typeof(FlightGlobals),"getAtmDensity",new[]{typeof(double),typeof(double),typeof(CelestialBody)}),"Density"}};
+            // In KSP 1.12.5 the body is optional, so source calls with two
+            // arguments still compile to the three-argument method. Register a
+            // true two-argument overload only when the loaded game defines one.
+            var currentDensity=AccessTools.Method(typeof(FlightGlobals),"getAtmDensity",new[]{typeof(double),typeof(double)});
+            if(currentDensity!=null)methods[currentDensity]="DensityCurrent";
             var gravity=AccessTools.Field(typeof(Vessel),"gravityForPos");
             var position=AccessTools.PropertyGetter(typeof(CelestialBody),"position");
             var local=generator.DeclareLocal(typeof(Vector3d));

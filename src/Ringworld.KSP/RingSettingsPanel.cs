@@ -5,7 +5,7 @@ namespace NivenRingworld
 {
     internal sealed class RingSettingsPanel
     {
-        private bool cloudsOpen,scatteringOpen,cylaOpen;
+        private bool cloudsOpen,scatteringOpen,cylaOpen,parallaxOpen;
         private bool cloudExtension;private int cloudMode;private float cloudDensity;
         private bool fullRingAtmosphere;private bool waterExtension;private bool waterScattering;private bool cylaAdvanced;private string[] cylaFields;private int cylaMode;
         private bool initialized,dynamicWeather,trajectory,particles,fullRingDetail,rainEnabled,lightningEnabled;
@@ -115,6 +115,9 @@ namespace NivenRingworld
             GUILayout.Label("Mod extension settings");
             GUILayout.Label("Installed extensions are enabled by default. Your saved enable/disable choices are retained. Quality presets still control rendering cost; Slow and below use cloud layers only.");
             bool clouds=Extensions.ExtensionProviders.Clouds!=null,scattering=Extensions.ExtensionProviders.Scattering!=null;
+            var parallax=Extensions.ExtensionProviders.Parallax;
+            if(GUILayout.Button((parallaxOpen?"v ":"> ")+"Ringworld Parallax"+(parallax==null?" (not installed)":"")))parallaxOpen=!parallaxOpen;
+            if(parallaxOpen){if(parallax!=null)parallax.DrawSettings(flight);else GUILayout.Label("Install Ringworld Parallax and its separately installed Parallax Continued dependencies to enable biome scatters.");}
             if(GUILayout.Button((cloudsOpen?"v ":"> ")+"Ringworld Clouds"+(clouds?"":" (not installed)")))cloudsOpen=!cloudsOpen;
             if(cloudsOpen){
                 GUI.enabled=clouds;

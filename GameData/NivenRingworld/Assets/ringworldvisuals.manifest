@@ -1,9 +1,9 @@
 ManifestFileVersion: 0
-CRC: 3644790712
+CRC: 583317726
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: 5ff3fed26d9172718c6306a0573c040a
+    Hash: c329428a92685c2b13eacff1bb0ecb39
   TypeTreeHash:
     serializedVersion: 2
     Hash: 0750d4576eedfd971a9815dc06e921b6
@@ -20,6 +20,7 @@ Assets:
 - Assets/Shaders/DistantSurface.shader
 - Assets/Shaders/EclipseProbe.shader
 - Assets/CloudNoise.asset
+- Assets/Shaders/ScrithHull.shader
 - Assets/Shaders/Precipitation.shader
 - Assets/Shaders/TerrainNight.shader
 - Assets/Shaders/TerrainTransition.shader

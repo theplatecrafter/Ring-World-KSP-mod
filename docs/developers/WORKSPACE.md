@@ -26,3 +26,7 @@ For Codex, add/open the parent as the project folder. Where the app supports mul
 Build the base first with `./build.ps1 -Install`, then run the same command in either extension repository. Rebuild shaders only when shader sources change using `./build-visuals.ps1`. The base smoke harness uses the sibling `template_instance`; all installations target that shared instance. Close KSP before replacing DLLs. Release ZIPs continue to extract into the KSP root with top-level GameData.
 
 The old base directory was held open by an editor during relocation. Its contents were moved; the remaining empty directory can be removed after closing old editor windows.
+
+## Parallax bridge development (7 October 2026)
+
+The owner explicitly requested the local base branch `parallax-continued-bridge` from the current commit and a new local sibling repository `Ringworld Parallax`. Those two repository operations are a task-specific exception to the ordinary no-Git workflow. No remote repository, push, release or PR is authorized by that exception. The base remains on that branch and the extension is a separate local working directory. Parallax-only preview disables native surface scatters while preserving buildings; a saved fallback toggle restores them for comparisons.

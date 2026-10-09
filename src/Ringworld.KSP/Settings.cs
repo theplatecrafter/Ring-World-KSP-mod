@@ -49,12 +49,24 @@ namespace NivenRingworld
         internal bool FullRingDetail=false;
         internal bool WaterScattering=false;
         internal bool WaterExtension=true,CloudExtension=true,FullRingAtmosphere=true;
+        internal bool ParallaxExtension=true,ParallaxColliders=true;
+        internal bool ParallaxNativeFallback=false;
+        internal bool NativeSurfaceScatters {get{return !ParallaxExtension||ParallaxNativeFallback||Extensions.ExtensionProviders.Parallax==null;}}
+        internal double ParallaxRange=600,ParallaxDensity=.35,ParallaxBudget=2;
+        internal int ParallaxMaxObjects=12000;
         internal int CloudMode=0;internal double CloudDensity=1;
         internal double WeatherPeriod=21600,WeatherVariation=1,StormChance=.25,CloudWind=8,RainDensity=.7;
         internal bool RainEnabled=true,LightningEnabled=true;
         internal WeatherSample Weather(double along,double across,double time){return RingWeather.Sample(Terrain,along,across,time,CloudAmount,DynamicWeather,WeatherPeriod,WeatherVariation,StormChance);}
         internal void Apply(ConfigNode n)
         {
+            ParallaxExtension=!string.Equals(n.GetValue("parallaxExtension"),"false",StringComparison.OrdinalIgnoreCase);
+            ParallaxColliders=!string.Equals(n.GetValue("parallaxColliders"),"false",StringComparison.OrdinalIgnoreCase);
+            ParallaxNativeFallback=string.Equals(n.GetValue("parallaxNativeFallback"),"true",StringComparison.OrdinalIgnoreCase);
+            ParallaxRange=Math.Max(50,Math.Min(20000,Read(n,"parallaxRange",600)));
+            ParallaxDensity=Math.Max(0,Math.Min(2,Read(n,"parallaxDensity",.35)));
+            ParallaxBudget=Math.Max(.25,Math.Min(8,Read(n,"parallaxBudget",2)));
+            ParallaxMaxObjects=(int)Math.Max(256,Math.Min(500000,Read(n,"parallaxMaxObjects",12000)));
             RingId=n.GetValue("ringId")??"primary";RingName=n.GetValue("ringName")??"Ringworld";
             ReferenceBody=n.GetValue("referenceBody")??"Sun";AnchorId=n.GetValue("anchorId")??("body:"+ReferenceBody);anchorTime=double.NaN;DesignatedStar=n.GetValue("designatedStar")!="False";
             CenterOffset=new DVec(Read(n,"centerX",0),Read(n,"centerY",0),Read(n,"centerZ",0));LoadAnchorFallback(n);
@@ -124,6 +136,9 @@ namespace NivenRingworld
             n.AddValue("cloudRange",CloudRange.ToString("R",CultureInfo.InvariantCulture));n.AddValue("cloudShadow",CloudShadow.ToString("R",CultureInfo.InvariantCulture));n.AddValue("atmosphereExposure",AtmosphereExposure.ToString("R",CultureInfo.InvariantCulture));n.AddValue("waveHeight",WaveHeight.ToString("R",CultureInfo.InvariantCulture));
             foreach(var pair in new[]{new[]{"radius",Geometry.P.Radius.ToString("R",CultureInfo.InvariantCulture)},new[]{"width",Geometry.P.Width.ToString("R",CultureInfo.InvariantCulture)},new[]{"gravity",Geometry.P.Gravity.ToString("R",CultureInfo.InvariantCulture)},new[]{"wallHeight",Geometry.P.WallHeight.ToString("R",CultureInfo.InvariantCulture)},new[]{"surfaceDensity",Geometry.P.SurfaceDensity.ToString("R",CultureInfo.InvariantCulture)},new[]{"predictionSeconds",PredictionSeconds.ToString("R",CultureInfo.InvariantCulture)},new[]{"surfaceWarpLimit",SurfaceWarpLimit.ToString("R",CultureInfo.InvariantCulture)},new[]{"pondAmount",PondAmount.ToString("R",CultureInfo.InvariantCulture)}})n.AddValue(pair[0],pair[1]);
             n.AddValue("showTrajectory",ShowTrajectory);n.AddValue("detailDistance",DetailDistance.ToString("R",CultureInfo.InvariantCulture));n.AddValue("ambientParticles",AmbientParticles);
+            n.AddValue("parallaxExtension",ParallaxExtension);n.AddValue("parallaxColliders",ParallaxColliders);
+            n.AddValue("parallaxNativeFallback",ParallaxNativeFallback);
+            n.AddValue("parallaxRange",ParallaxRange.ToString("R",CultureInfo.InvariantCulture));n.AddValue("parallaxDensity",ParallaxDensity.ToString("R",CultureInfo.InvariantCulture));n.AddValue("parallaxBudget",ParallaxBudget.ToString("R",CultureInfo.InvariantCulture));n.AddValue("parallaxMaxObjects",ParallaxMaxObjects);
             n.AddValue("seed",Geometry.P.Seed);n.AddValue("lodRange",LodRange.ToString("R",CultureInfo.InvariantCulture));
             n.AddValue("lodResolution",LodResolution);n.AddValue("generationBudget",GenerationBudget);
             n.AddValue("haze",Haze.ToString("R",CultureInfo.InvariantCulture));n.AddValue("cloudAmount",CloudAmount.ToString("R",CultureInfo.InvariantCulture));

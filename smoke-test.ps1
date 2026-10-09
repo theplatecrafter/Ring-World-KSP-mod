@@ -1,4 +1,4 @@
-param([switch]$SkipIssue3,[int]$TimeoutSeconds=900,[switch]$InstalledIssuesOnly,[switch]$IntegrationsOnly,[switch]$MapOnly,[switch]$TerrainOnly,[switch]$WarpOnly,[switch]$UnmatchedOnly,[switch]$PhotoOnly,[switch]$DistantOnly,[switch]$WeatherOnly,[switch]$SceneryOnly,[switch]$GlobalCloudsOnly,[switch]$ResidenceOnly,[switch]$GuidanceOnly,[switch]$StabilityOnly,[switch]$LandmarksOnly,[switch]$GearOnly,[switch]$CylaOnly,[switch]$CylaDiagnosticOnly,[switch]$CylaSaveProbe,[switch]$TrackingOnly,[switch]$ReentryOnly,[switch]$RenderOnly,[switch]$VisualOptionsOnly,[switch]$WallOnly,[switch]$ScienceOnly,[switch]$MultiRingOnly,[switch]$WithoutCyla,[switch]$AsteroidAnchor,[switch]$MapRenderingOnly,[switch]$InterstellarLandingOnly,[switch]$MatchCkanGraphics)
+param([switch]$SkipIssue3,[int]$TimeoutSeconds=900,[switch]$InstalledIssuesOnly,[switch]$IntegrationsOnly,[switch]$MapOnly,[switch]$TerrainOnly,[switch]$WarpOnly,[switch]$UnmatchedOnly,[switch]$PhotoOnly,[switch]$DistantOnly,[switch]$WeatherOnly,[switch]$SceneryOnly,[switch]$GlobalCloudsOnly,[switch]$ResidenceOnly,[switch]$GuidanceOnly,[switch]$StabilityOnly,[switch]$LandmarksOnly,[switch]$GearOnly,[switch]$CylaOnly,[switch]$CylaDiagnosticOnly,[switch]$CylaSaveProbe,[switch]$TrackingOnly,[switch]$ReentryOnly,[switch]$RenderOnly,[switch]$VisualOptionsOnly,[switch]$WallOnly,[switch]$ScienceOnly,[switch]$MultiRingOnly,[switch]$WithoutCyla,[switch]$AsteroidAnchor,[switch]$MapRenderingOnly,[switch]$InterstellarLandingOnly,[switch]$MovingLandingOnly,[switch]$GentleLanding,[switch]$MatchCkanGraphics)
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
 $gameRoot=Join-Path (Split-Path -Parent $taskRoot) 'template_instance'
@@ -51,6 +51,8 @@ try {
     if ($WithoutCyla) { $taskArguments += '-ringworld-no-cyla' }
     if ($AsteroidAnchor) { $taskArguments += '-ringworld-asteroid-anchor' }
     if ($InterstellarLandingOnly) { $taskArguments += '-ringworld-interstellar-landing-only' }
+    if ($MovingLandingOnly) { $taskArguments += '-ringworld-moving-landing-only' }
+    if ($GentleLanding) { $taskArguments += '-ringworld-gentle-landing' }
     if ($MapRenderingOnly) { $taskArguments += '-ringworld-map-rendering-only' }
     if ($MultiRingOnly) { $taskArguments += '-ringworld-multi-ring-only' }
     if ($ScienceOnly) { $taskArguments += '-ringworld-science-only' }
@@ -77,7 +79,9 @@ try {
     if ($TerrainOnly -or $WarpOnly -or $WeatherOnly) { $taskArguments += '-ringworld-terrain-only' }
     if ($WarpOnly) { $taskArguments += '-ringworld-warp-only' }
     $testProcess=Start-Process -FilePath (Join-Path $gameRoot 'KSP_x64.exe') -WorkingDirectory $gameRoot -ArgumentList $taskArguments -WindowStyle Hidden -PassThru
-    if (-not $testProcess.WaitForExit($TimeoutSeconds*1000)) {
+    $taskDeadline=(Get-Date).AddSeconds($TimeoutSeconds)
+    while(-not $testProcess.HasExited -and (Get-Date) -lt $taskDeadline){Start-Sleep -Seconds 1;$testProcess.Refresh()}
+    if (-not $testProcess.HasExited) {
         $testProcess.Kill()
         $testProcess.WaitForExit()
         throw "Game smoke test timed out. Log: $logPath"
@@ -90,6 +94,7 @@ try {
     if ($IntegrationsOnly) { $reportName='integrations-smoke.txt' }
     if ($AsteroidAnchor) { $taskArguments += '-ringworld-asteroid-anchor' }
     if ($InterstellarLandingOnly) { $reportName='interstellar-landing-smoke.txt' }
+    if ($MovingLandingOnly) { $reportName='moving-landing-smoke.txt' }
     if ($MapRenderingOnly) { $reportName='map-rendering-smoke.txt' }
     if ($MultiRingOnly) { $reportName='multi-ring-smoke.txt' }
     if ($ScienceOnly) { $reportName='science-smoke.txt' }

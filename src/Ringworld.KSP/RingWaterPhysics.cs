@@ -7,6 +7,7 @@ namespace NivenRingworld
     [HarmonyPatch(typeof(PartBuoyancy),"FixedUpdate")]
     internal static class RingWaterPhysics
     {
+        private static readonly System.Reflection.FieldInfo forceUpdate=AccessTools.Field(typeof(PartBuoyancy),"canForceUpdate");
         internal static double Fraction(double depth,double halfHeight)
         {return Math.Max(0,Math.Min(1,(depth+halfHeight)/(2*Math.Max(.05,halfHeight))));}
         internal static double Lift(double volume,double fraction,double coefficient,double gravity)
@@ -20,7 +21,16 @@ namespace NivenRingworld
             var coord=f.Settings.Geometry.Coordinates(pos);var terrain=f.Settings.Terrain.Sample(coord.Along,coord.Across);
             var up=ConvertVector.Unity(f.Settings.Geometry.Up(pos));
             var size=p.DragCubes.WeightedSize;var center=p.DragCubes.WeightedCenter;
+            // The stock buoyancy path primes zero-sized procedural drag cubes
+            // once. Our cylindrical replacement must retain that setup step.
+            if(size.sqrMagnitude<.0001f&&(bool)forceUpdate.GetValue(__instance)){
+                p.DragCubes.ForceUpdate(true,true,true);forceUpdate.SetValue(__instance,false);
+                size=p.DragCubes.WeightedSize;center=p.DragCubes.WeightedCenter;
+            }
             if(size.sqrMagnitude<.0001f){size=Vector3.one;center=Vector3.zero;}
+            double generatedVolume;Vector3 generatedSize,generatedCenter;
+            bool procedural=RingProceduralHullCompatibility.TryBounds(p,out generatedSize,out generatedCenter,out generatedVolume);
+            if(procedural){size=generatedSize;center=generatedCenter;}
             var half=size*.5f;float extent=Mathf.Abs(Vector3.Dot(p.transform.TransformVector(Vector3.right*half.x),up))+Mathf.Abs(Vector3.Dot(p.transform.TransformVector(Vector3.up*half.y),up))+Mathf.Abs(Vector3.Dot(p.transform.TransformVector(Vector3.forward*half.z),up));
             var worldCenter=p.transform.TransformPoint(center);
             // Dry terrain uses -infinity as its water sentinel. Do not expose
@@ -39,7 +49,7 @@ namespace NivenRingworld
             __instance.waterLevel=waterLevel;__instance.depth=depth;__instance.maxDepth=depth+extent;__instance.minDepth=depth-extent;
             __instance.centerOfBuoyancy=worldCenter;__instance.centerOfDisplacement=worldCenter;
             // KSP rigidbody mass and ocean density use tonnes. Fresh water is 1 t/m^3.
-            var scale=p.transform.lossyScale;double volume=Math.Abs(size.x*size.y*size.z*scale.x*scale.y*scale.z);
+            var scale=p.transform.lossyScale;double volume=Math.Abs((procedural?generatedVolume:size.x*size.y*size.z)*scale.x*scale.y*scale.z);
             __instance.displacement=volume;
             double displaced=volume*fraction*Math.Max(0,p.buoyancy)*PhysicsGlobals.BuoyancyScalar;
             __instance.buoyantGeeForce=displaced;
