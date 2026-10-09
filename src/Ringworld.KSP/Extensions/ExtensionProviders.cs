@@ -7,7 +7,8 @@ using UnityEngine;
 [assembly: InternalsVisibleTo("Ringworld.Parallax")]
 namespace NivenRingworld.Extensions
 {
- // Versioned first-party ABI. Extension 1.0 is paired with host 1.1.5.
+ // Cloud/water provider ABI originated in host 1.1.5. Scatter/photo provider
+ // interfaces require host 1.1.8 for Ringworld Parallax 1.0.0.
  // No extension DLL is referenced by the host; missing providers are valid.
  internal interface ICloudLayer { float RainBase{get;} float StormTop{get;} void Update(Settings settings,WeatherSample weather,double time); }
  internal interface ICloudProvider { AssetBundle Assets{get;} Shader AtmosphereShader{get;} ICloudLayer Create(Material material); }
@@ -17,6 +18,9 @@ namespace NivenRingworld.Extensions
   void Reposition();
   bool OwnsTrees(double along,double across,double size);
  }
+ // Optional photo handshake: older/absent scatter providers remain valid.
+ // Readiness includes population under the temporary photo quality settings.
+ internal interface IPhotoScatterLayer { bool PhotoReady {get;} }
  internal interface IScatterProvider {
   string Status {get;}
   IScatterLayer Create(Settings settings);

@@ -12,7 +12,7 @@ Shader "NivenRingworld/DistantSurface"
             #pragma target 5.0
             #include "UnityCG.cginc"
 #include "RingEclipse.cginc"
-            float _PanelsDisabled;
+            float _PanelsDisabled,_RingCameraExterior;
             float _CircumferenceKm, _WidthKm, _DayPhase, _CloudAmount, _CloudDrift;
             float _SeedLow, _SeedHigh, _Generation, _Detail;
             struct appdata { float4 vertex:POSITION; float2 uv:TEXCOORD0; };
@@ -38,6 +38,7 @@ Shader "NivenRingworld/DistantSurface"
                 // Dedicated hull path: avoid the game's platform-dependent plain
                 // colour shader for giant scaled-space wall triangles.
                 if(_Detail<-.5)return float4(.012,.015,.019,1);
+                if(_RingCameraExterior>.5)discard;
                 float2 uv=i.uv;
                 float phase=frac(20*uv.x-_DayPhase),edge=min(phase,1-phase);
                 float light=ringEclipse(i.uv);

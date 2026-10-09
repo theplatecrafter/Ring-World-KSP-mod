@@ -15,13 +15,23 @@ namespace NivenRingworld
             try{
                 var v=FlightGlobals.ActiveVessel;var camera=FlightCamera.fetch.mainCamera;
                 var p=f.Position(v);var up=f.Settings.Geometry.Up(p);var heading=f.Settings.Geometry.AlongDirection(p);
-                string folder=Path.Combine(KSPUtil.ApplicationRootPath,"../Ring World KSP/artifacts/diagnostics/surface-lighting-20261008");Directory.CreateDirectory(folder);
+                bool textureTest=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-terrain-textures")>=0;
+                string folder=Path.Combine(KSPUtil.ApplicationRootPath,textureTest?"../Ring World KSP/artifacts/diagnostics/terrain-textures-20261008":"../Ring World KSP/artifacts/diagnostics/surface-lighting-20261008");Directory.CreateDirectory(folder);
+                if(textureTest)TerrainTextureSmoke.CheckChunks();
                 camera.transform.position=v.transform.position+ConvertVector.Unity(up*18-heading*30);
                 camera.transform.rotation=Quaternion.LookRotation(v.transform.position-camera.transform.position,ConvertVector.Unity(up));
                 float originalDistance=QualitySettings.shadowDistance;float originalSplit=QualitySettings.shadowCascade2Split;
                 var resolution=QualitySettings.shadowResolution;int cascades=QualitySettings.shadowCascades;
                 Debug.Log("[RingworldSmoke] SHADOW baseline distance="+originalDistance+" resolution="+resolution+" cascades="+cascades+" split="+originalSplit);
                 RingStellarLighting.NativeShadowComparison=true;Capture(camera,Path.Combine(folder,"native-range.png"));RingStellarLighting.NativeShadowComparison=false;
+                if(textureTest){
+                    var restored=new System.Collections.Generic.Dictionary<Material,float>();
+                    foreach(var renderer in UnityEngine.Object.FindObjectsOfType<MeshRenderer>()){
+                        var m=renderer.sharedMaterial;if(m==null||!m.HasProperty("_SurfaceDetailEnabled")||restored.ContainsKey(m))continue;
+                        restored[m]=m.GetFloat("_SurfaceDetailEnabled");m.SetFloat("_SurfaceDetailEnabled",0);
+                    }
+                    try{Capture(camera,Path.Combine(folder,"base-colour-only.png"));}finally{foreach(var pair in restored)pair.Key.SetFloat("_SurfaceDetailEnabled",pair.Value);}
+                }
                 Vector3 direction=Vector3.zero;float intensity=-1;bool observed=false;string error=null;
                 Camera.CameraCallback inspect=c=>{
                     if(c!=camera)return;observed=true;
@@ -37,6 +47,7 @@ namespace NivenRingworld
                 }finally{Camera.onPreRender-=inspect;}
                 if(!observed||error!=null){fail(error??"No ring lighting scope observed");yield break;}
                 if(QualitySettings.shadowDistance!=originalDistance||QualitySettings.shadowCascade2Split!=originalSplit){fail("Shadow settings leaked outside camera render");yield break;}
+                if(textureTest)TerrainTextureSmoke.CaptureExterior(f);
                 var bridge=AccessTools.TypeByName("Ringworld.Parallax.BridgeSmoke");
                 if(bridge!=null){
                     float deadline=Time.realtimeSinceStartup+100;bool tinted=false;

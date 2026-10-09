@@ -1,5 +1,7 @@
 # Credits and attribution
 
+Procedural ground shading uses 3-D simplex corner ordering from the [Ashima Arts / Stefan Gustavson noise reference](https://github.com/ashima/webgl-noise/blob/master/src/noise3D.glsl), under its MIT license. Ringworld supplies the cylindrical embedding, split 64-bit world-coordinate hashing, biome response and distance filtering. The reference notice is retained in THIRD-PARTY-NOTICES.md. No ground texture tiles or Squad ground assets are bundled.
+
 [john-d-alexander](https://github.com/john-d-alexander) contributed the legacy Surveyor's ReStock compatibility and Science-category fix in [PR #2](https://github.com/theplatecrafter/Ring-World-KSP-mod/pull/2).
 
 **Cyla by Ghassen Lahmar (LGhassen / blackrack)** provides the optional cylindrical atmosphere shader: https://github.com/LGhassen/Cyla . Copyright (c) 2024 Ghassen Lahmar. Integration targets 1.1.0. Install Cyla separately; v1.1.3 no longer bundles its binaries, shaders or source. Its original license/compiled-shader notice applies to that separate download.

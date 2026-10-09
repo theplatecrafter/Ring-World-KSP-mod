@@ -50,6 +50,7 @@ namespace NivenRingworld
         private float photoFov;
         private const string PhotoLock="NivenRingworld.Photo";
         internal bool PhotoActive {get;private set;}
+        internal bool CapturingPhoto {get{return capturingPhoto;}}
         internal bool Rendering {get;private set;}
         internal bool PhotoFinished {get{return photoFinished;}}
         internal string LastPhoto {get;private set;}
@@ -129,7 +130,7 @@ namespace NivenRingworld
                     if(capturingPhoto){RenderPhoto(source,destination);return;}
                     if(photoStarted){material.SetVector("_FrameSize",new Vector2(photoBase.width,photoBase.height));RenderPhoto(photoBase,destination);return;}
                     Graphics.Blit(source,destination);
-                    Status="Preparing selected photo terrain: "+RingworldFlight.Instance.LodPending+" chunks remaining. Flight is frozen.";
+                    Status="Preparing photo terrain and installed scatters: "+RingworldFlight.Instance.LodPending+" terrain chunks remaining. Flight is frozen.";
                     if(!captureQueued&&RingworldFlight.Instance.PhotoTerrainReady){captureQueued=true;StartCoroutine(CaptureWorld());}
                     return;
                 }
@@ -184,6 +185,7 @@ namespace NivenRingworld
             yield return new WaitForEndOfFrame();
             if(!PhotoActive)yield break;
             var active=RenderTexture.active;
+            var scaled=ScaledCamera.Instance;var scaledReference=scaled==null?null:scaled.tgtRef;
             try
             {
                 captureTarget=new RenderTexture(outputWidth,outputHeight,24,RenderTextureFormat.ARGB32){name="Ringworld high-resolution scene",antiAliasing=Math.Max(1,QualitySettings.antiAliasing)};
@@ -191,22 +193,38 @@ namespace NivenRingworld
                 RenderTexture.active=captureTarget;GL.Clear(true,true,Color.black);
                 // Stock flight world stack only: never include UI or crew portraits.
                 var cameras=Camera.allCameras.Where(c=>c.enabled&&(c==cameraComponent||c.name=="GalaxyCamera"||c.name=="Camera ScaledSpace"||c.name=="Camera 01")).OrderBy(c=>c.depth).ToArray();
+                // ScaledCamera normally follows the parent FlightCamera rig,
+                // not a child camera's custom/photo pose. Use one actual view
+                // for every layer of this capture, including ring observers.
+                var viewPosition=cameraComponent.transform.position;var viewRotation=cameraComponent.transform.rotation;var viewProjection=cameraComponent.projectionMatrix;
+                if(scaled!=null)scaled.tgtRef=cameraComponent.transform;
                 capturingPhoto=true;
                 foreach(var camera in cameras)
                 {
                     var target=camera.targetTexture;var projection=camera.projectionMatrix;var rect=camera.rect;float aspect=camera.aspect;
-                    try{camera.targetTexture=captureTarget;camera.rect=new Rect(0,0,1,1);camera.aspect=(float)viewportWidth/viewportHeight;camera.projectionMatrix=projection;if(camera==cameraComponent)Prepare(true,RingworldFlight.Instance.Center);camera.Render();}
-                    finally{camera.targetTexture=target;camera.rect=rect;camera.aspect=aspect;camera.projectionMatrix=projection;}
+                    var position=camera.transform.position;var rotation=camera.transform.rotation;
+                    try{
+                        camera.transform.rotation=viewRotation;
+                        if(scaled!=null&&camera==scaled.cam)camera.transform.position=ScaledSpace.LocalToScaledSpace(viewPosition);
+                        else if(camera==cameraComponent||camera.name=="Camera 01")camera.transform.position=viewPosition;
+                        camera.targetTexture=captureTarget;camera.rect=new Rect(0,0,1,1);camera.aspect=(float)viewportWidth/viewportHeight;
+                        var aligned=projection;
+                        // Match angular framing; retain each layer's depth
+                        // projection/clip distances and coordinate units.
+                        for(int row=0;row<2;row++)for(int col=0;col<4;col++)aligned[row,col]=viewProjection[row,col];
+                        camera.projectionMatrix=aligned;if(camera==cameraComponent)Prepare(true,RingworldFlight.Instance.Center);camera.Render();
+                    }
+                    finally{camera.transform.SetPositionAndRotation(position,rotation);camera.targetTexture=target;camera.rect=rect;camera.aspect=aspect;camera.projectionMatrix=projection;}
                 }
                 if(!photoStarted)throw new InvalidOperationException("Final flight camera did not produce the photo.");
             }
             catch(Exception e){EndPhoto();Status="Photo capture failed: "+e.Message;Debug.LogException(e);}
-            finally{capturingPhoto=false;RenderTexture.active=active;Free(ref captureTarget);}
+            finally{if(scaled!=null)scaled.tgtRef=scaledReference;capturingPhoto=false;RenderTexture.active=active;Free(ref captureTarget);}
         }
         private void RenderPhoto(RenderTexture source,RenderTexture destination)
         {
             if(!photoStarted&&!RingworldFlight.Instance.PhotoTerrainReady)
-            {Status="Preparing selected photo terrain: "+RingworldFlight.Instance.LodPending+" chunks remaining. Flight is frozen.";Graphics.Blit(source,destination);return;}
+            {Status="Preparing photo terrain and installed scatters: "+RingworldFlight.Instance.LodPending+" terrain chunks remaining. Flight is frozen.";Graphics.Blit(source,destination);return;}
             if(!photoStarted)
             {
                 photoPosition=cameraComponent.transform.position;photoRotation=cameraComponent.transform.rotation;photoFov=cameraComponent.fieldOfView;

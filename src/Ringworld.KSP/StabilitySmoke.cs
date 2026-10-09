@@ -12,7 +12,7 @@ namespace NivenRingworld
         private static bool logged;
         private static void Prefix(Part __instance)
         {
-            if(logged)return;logged=true;
+            if(logged&&(__instance.vessel==null||__instance.vessel.vesselName!="SunkWorks ring water regression"))return;logged=true;
             Debug.Log("[RingworldSmoke] EXPLOSION TRACE temp="+__instance.temperature+" skin="+__instance.skinTemperature+" packed="+(__instance.vessel==null?false:__instance.vessel.packed)+" "+Environment.StackTrace);
         }
     }

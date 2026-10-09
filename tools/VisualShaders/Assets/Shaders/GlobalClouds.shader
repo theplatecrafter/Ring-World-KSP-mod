@@ -12,7 +12,7 @@ Shader "NivenRingworld/GlobalClouds"
 #include "RingEclipse.cginc"
  #include "CloudField.cginc"
  #include "RingHullOcclusion.cginc"
- float2 _CloudShellSize;float _RingCameraRelative;float3 _RingCameraLocal;float4x4 _RingToChart;
+ float2 _CloudShellSize;float _RingCameraRelative,_RingCameraExterior;float3 _RingCameraLocal;float4x4 _RingToChart;
  float _CircumferenceKm,_WidthKm,_SeedLow,_SeedHigh,_Generation;
  #include "RingTerrainNoise.cginc"
  float4 _Size,_Local,_CloudHandoff,_WeatherState,_FrontDrift;
@@ -24,7 +24,7 @@ Shader "NivenRingworld/GlobalClouds"
  float4 frag(v i):SV_Target
  {
   float3 cameraLocal=_RingCameraRelative>.5?_RingCameraLocal:mul(unity_WorldToObject,float4(_WorldSpaceCameraPos,1)).xyz;
-  if(ringHullOccludes(cameraLocal,i.local,_CloudShellSize.x,_CloudShellSize.y))discard;
+  if(_RingCameraExterior>.5||ringHullOccludes(cameraLocal,i.local,_CloudShellSize.x,_CloudShellSize.y))discard;
   float front=noise(i.uv+_FrontDrift.xy,800,1213);
   float regional=saturate(_WeatherState.w+(front-.5)*.7),wet=1-_WeatherState.z;
   float target=regional<=wet?.7*regional/max(.001,wet):.7+.3*(regional-wet)/max(.001,_WeatherState.z);

@@ -15,6 +15,22 @@ static class Program
         ResearchTests.Run(Check);
         TrajectoryTests.Run(Check);
         PlacementTests.Run(Check);
+        foreach(Biome biome in Enum.GetValues(typeof(Biome)))foreach(bool wet in new[]{false,true}){
+            int kind=TerrainSurface.Kind(biome,wet);Check(kind>=0&&kind<TerrainSurface.Count,"Every biome has a surface texture");
+        }
+        foreach(double radius in new[]{15300000000.0,150000000000.0,1e12}){
+            var seamStart=TerrainSurface.NoisePoint(0,100,0,radius);var seamEnd=TerrainSurface.NoisePoint(2*Math.PI*radius,100,0,radius);
+            Near((seamEnd-seamStart).Length,0,.01,"Procedural field ring seam");
+            var point=TerrainSurface.NoisePoint(1000,-2350,30,radius);
+            var originA=TerrainSurface.NoiseOrigin(999,-2350,radius);var originB=TerrainSurface.NoiseOrigin(1001,-2350,radius);
+            Near(((point-originA)+originA-(point-originB)-originB).Length,0,.001,"Procedural field chunk-independent position");
+            Check((TerrainSurface.NoisePoint(1000+65536,-2350,30,radius)-point).Length>1000,"No 64 km texture-coordinate reset");
+        }
+        foreach(double radius in new[]{15300000000.0,150000000000.0,1e12}){
+            Check(RingExterior.InHullBand(new DVec(radius+1301,0,0),radius,100000,-1300),"Metre-precision exterior classification");
+            Check(!RingExterior.InHullBand(new DVec(radius+1299,0,0),radius,100000,-1300),"Interior below sea level preserved");
+            Check(!RingExterior.InHullBand(new DVec(radius+1301,100001,0),radius,100000,-1300),"Open edge view preserved");
+        }
         foreach(double angle in new[]{0.0,-0.0,Math.PI,2*Math.PI,4*Math.PI,-4*Math.PI,-616194345473.6643,1e100,-1e100,double.MaxValue,-double.MaxValue})
         {
             double reduced=AngleReduction.RadiansInclusive(angle);

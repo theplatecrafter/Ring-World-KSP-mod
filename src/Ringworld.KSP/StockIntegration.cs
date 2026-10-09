@@ -40,10 +40,32 @@ namespace NivenRingworld
     {
         private static void Postfix(VesselPrecalculate __instance)
         {
-            var v=__instance.Vessel;if(!StockIntegration.Applies(v))return;
+            RingSurfaceCaches.Publish(__instance.Vessel);
+        }
+    }
+    // Vessel.UpdateCaches runs after precalculation and overwrites the surface
+    // fields from the host orbit. Publish at that boundary as well, preserving
+    // the actual orbital caches used by map/rails flight.
+    [HarmonyPatch(typeof(Vessel),"UpdateCaches")]
+    internal static class RingSurfaceCachePatch
+    {
+        private static void Postfix(Vessel __instance){RingSurfaceCaches.Publish(__instance);}
+    }
+    internal static class RingSurfaceCaches
+    {
+        internal static void Publish(Vessel v)
+        {
+            if(!StockIntegration.Applies(v)||!v.loaded||v.packed||v.parts==null||v.parts.Count==0)return;
             var f=RingworldFlight.Instance;var up=f.Settings.Geometry.Up(f.Position(v));
             v.upAxis=ConvertVector.Ksp(up);v.north=ConvertVector.Ksp(f.Settings.Geometry.Axis);
             v.east=ConvertVector.Ksp(DVec.Cross(f.Settings.Geometry.Axis,up));
+            // These caches describe motion relative to the current surface, not
+            // orbital motion. Publish them for all stock/third-party consumers;
+            // keep obt_velocity, orbit, host body and orbital coordinates intact.
+            var surfaceVelocity=f.Velocity(v);double vertical=DVec.Dot(surfaceVelocity,up);
+            v.srf_velocity=ConvertVector.Ksp(surfaceVelocity);v.srfSpeed=surfaceVelocity.Length;
+            v.srf_vel_direction=v.srfSpeed>1e-9?v.srf_velocity/v.srfSpeed:Vector3d.zero;
+            v.verticalSpeed=vertical;v.horizontalSrfSpeed=(surfaceVelocity-up*vertical).Length;
         }
     }
     [HarmonyPatch(typeof(FlightCamera),nameof(FlightCamera.GetCameraFoR))]

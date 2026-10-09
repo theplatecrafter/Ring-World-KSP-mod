@@ -88,7 +88,7 @@ namespace NivenRingworld
             var pos=ConvertVector.Ksp(a.Position);
             RingResidence.UpdateBookkeeping(v,f.Settings,f.Star,a.Position,new DVec(),f.FrameEpoch);
             v.orbitDriver.pos=pos;v.orbitDriver.vel=Vector3d.zero;
-            v.SetPosition(f.Center+pos,true);v.SetRotation(a.Rotation,false);
+            RingVesselPose.Set(v,f.Center+pos,a.Rotation);
         }
         internal void Release(Vessel v)
         {

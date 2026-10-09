@@ -23,6 +23,7 @@ namespace NivenRingworld
             DontDestroyOnLoad(gameObject);deadline=Time.realtimeSinceStartup+1200;running=true;
             Debug.Log("[RingworldSmoke] MAIN MENU READY");
             yield return new WaitForSeconds(3);
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-terrain-textures")>=0){try{TerrainTextureSmoke.Run();}catch(Exception e){Fail("Terrain textures/exterior: "+e);yield break;}}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-integrations-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-visual-options-only")>=0)
             {try{GlobalCloudSmoke.Run();}catch(Exception ex){Fail("Global visual integrations: "+ex);yield break;}}
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-global-clouds-only")>=0)
@@ -60,6 +61,8 @@ namespace NivenRingworld
             int probeVessel=0;
             if(cylaSaveProbe){var vessels=state.GetNodes("VESSEL");for(int i=0;i<vessels.Length;i++)foreach(var part in vessels[i].GetNodes("PART"))if(part.GetValue("name")=="cylindricalAtmo")probeVessel=i;}
             state.SetValue("activeVessel",probeVessel.ToString(),true);
+            bool startupCompatibility=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-startup-compatibility-only")>=0;
+            if(startupCompatibility){try{StartupCompatibilitySmoke.Prepare(node);}catch(Exception e){Fail("Startup conflict preparation: "+e);yield break;}}
             var game=GamePersistence.LoadGameCfg(root,folder,true,false);
             if(game==null){Fail("Unable to load test fixture");yield break;}
             game.Mode=Game.Modes.SANDBOX;game.startScene=GameScenes.FLIGHT;HighLogic.SaveFolder=folder;HighLogic.CurrentGame=game;
@@ -70,7 +73,7 @@ namespace NivenRingworld
                     if(!game.scenarios.Exists(s=>s.moduleName==type.Name))game.AddProtoScenarioModule(type,GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION);
             }
             game.Parameters.Flight.CanEVA=true;
-            if(!cylaSaveProbe)game.AddProtoScenarioModule(typeof(RingworldScenario),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION);
+            if(!cylaSaveProbe&&!startupCompatibility)game.AddProtoScenarioModule(typeof(RingworldScenario),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION);
             game.AddProtoScenarioModule(typeof(Expansions.Serenity.DeployedScience.Runtime.DeployedScience),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION,GameScenes.EDITOR);
             bool movingLanding=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-moving-landing-only")>=0;
             bool planeLanding=movingLanding||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-interstellar-landing-only")>=0;
@@ -122,16 +125,35 @@ namespace NivenRingworld
                 GameEvents.onHideUI.Fire();if(((RingToolbar)launcher).UiVisible)throw new Exception("F2 hide ignored");
                 GameEvents.onShowUI.Fire();if(!((RingToolbar)launcher).UiVisible)throw new Exception("F2 show ignored");
                 RingworldSurfaceState outside;
-                if(RingworldSurfaceApi.TryGetSurfaceState(v,out outside))throw new Exception("Surface API captured an orbital vessel");
-                Debug.Log("[RingworldSmoke] TOOLBAR stock button present; Sandbox/Career/Science and F2 gates passed; API rejects orbital vessel");
+                if(!startupCompatibility&&RingworldSurfaceApi.TryGetSurfaceState(v,out outside))throw new Exception("Surface API captured an orbital vessel");
+                Debug.Log("[RingworldSmoke] TOOLBAR stock button present; Sandbox/Career/Science and F2 gates passed"+(startupCompatibility?"; legacy resident fixture":"; API rejects orbital vessel"));
             }
             catch(Exception ex){Fail("Toolbar/API: "+ex);yield break;}
-            var smokeOptions=RingworldScenario.Instance.GetOptions().CreateCopy();smokeOptions.SetValue("seed",-739779896,true);RingQualityPresets.Apply(smokeOptions,6);
+            var smokeOptions=RingworldScenario.Instance.GetOptions().CreateCopy();if(!startupCompatibility)smokeOptions.SetValue("seed",-739779896,true);RingQualityPresets.Apply(smokeOptions,6);
             flight.ApplyOptions(smokeOptions,true);
+            if(startupCompatibility){
+                var test=StartupCompatibilitySmoke.Run(flight);
+                while(true){bool more;try{more=test.MoveNext();}catch(Exception e){Fail("Startup compatibility: "+e);yield break;}if(!more)break;yield return test.Current;}
+                running=false;Application.Quit();yield break;
+            }
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-modpack-only")>=0){
+                if(flight.Settings.Geometry.P.Radius!=150000000000d||flight.Settings.Geometry.P.Width!=1605000000d||flight.Star.bodyName!="NivenRingworldHost"||Math.Abs(flight.Star.orbit.semiMajorAxis-9460730472580800d)>1){Fail("Modpack did not initialize the full-size one-light-year configuration");yield break;}
+                bool packBridge=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-modpack-parallax-bridge")>=0;
+                if(Extensions.ExtensionProviders.Clouds==null||Extensions.ExtensionProviders.Scattering==null||(Extensions.ExtensionProviders.Parallax!=null)!=packBridge||AccessTools.TypeByName("Cyla.CylindricalAtmosphereModule")!=null){Fail("Modpack required/optional provider selection mismatch");yield break;}
+                if(packBridge&&(flight.Settings.ParallaxNativeFallback||flight.Settings.NativeSurfaceScatters||AccessTools.TypeByName("Parallax.ConfigLoader")!=null)){Fail("Modpack bridge/default policy or separate-upstream exclusion failed");yield break;}
+                Debug.Log("[RingworldSmoke] MODPACK full-size config / one-light-year host / Clouds and Scattering providers; Parallax bridge="+packBridge+"; no Cyla or upstream Parallax");
+                flight.arrivalHeight=100;flight.Visit();while(!flight.Ready)yield return null;
+                for(int i=0;i<50;i++)yield return new WaitForFixedUpdate();
+                RingworldPointEnvironment env;
+                if(!RingworldSurfaceApi.TryGetEnvironmentAtPosition(v,v.GetWorldPos3D(),out env)||env.AirDensity<=0||env.EffectiveGravityMagnitude<9||env.EffectiveGravityMagnitude>11){Fail("Modpack ring arrival/local atmosphere or gravity failed");yield break;}
+                Debug.Log("[RingworldSmoke] PASS clean modpack required-only startup, full-size config, host, providers and ring arrival; density="+env.AirDensity+" gravity="+env.EffectiveGravityMagnitude);
+                running=false;Application.Quit();yield break;
+            }
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-parallax-only")>=0){
                 var type=AccessTools.TypeByName("Ringworld.Parallax.BridgeSmoke");
                 if(type==null){Fail("Parallax smoke extension missing");yield break;}
-                var test=(IEnumerator)AccessTools.Method(type,Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-parallax-desert")>=0?"RunDesert":"Run").Invoke(null,new object[]{flight});
+                string method=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-parallax-photo")>=0?"RunPhoto":Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-parallax-desert")>=0?"RunDesert":"Run";
+                var test=(IEnumerator)AccessTools.Method(type,method).Invoke(null,new object[]{flight});
                 while(true){bool more;try{more=test.MoveNext();}catch(Exception e){Fail("Parallax bridge: "+e);yield break;}if(!more)break;yield return test.Current;}
                 running=false;Application.Quit();yield break;
             }

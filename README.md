@@ -1,4 +1,4 @@
-# Niven Ringworld Expedition 1.1.7
+# Niven Ringworld Expedition 1.1.8
 
 A Larry Niven-inspired, star-encircling habitat with a landable rotating interior, procedural terrain, atmosphere, science and persistent expeditions. The default world uses one-tenth of the published linear ring dimensions. Original geography and architecture are interpretations of the setting.
 
@@ -10,7 +10,9 @@ Spacedock page: https://spacedock.info/mod/4573/Niven's%20Ring%20World
 
 Extract the release ZIP into the KSP instance root, beside `KSP_x64.exe`. Its `GameData` folder merges with the existing one. Do not extract the entire ZIP inside `GameData`. Alternatively, open the ZIP and copy only its `GameData` contents into the existing `GameData` folder.
 
-**Install [HarmonyKSP 2.2.1.0 or compatible newer version](https://github.com/KSPModdingLibs/HarmonyKSP/releases) separately.** CKAN calls it **Harmony 2 (`Harmony2`)**. This ZIP contains only `GameData/NivenRingworld`, plus documentation; it no longer includes other mods. For the optional Cyla atmosphere, separately install [Cyla 1.1.0](https://github.com/LGhassen/Cyla/releases). Without Cyla, the built-in Original atmosphere is used. Do not remove an existing Harmony/Cyla installation when upgrading Ringworld. Restart KSP after updating DLLs. No Kopernicus or downloaded art pack is required. The supported release target is KSP 1.12.5 on Windows x64 / Direct3D 11.
+**Install [HarmonyKSP 2.2.1.0 or compatible newer version](https://github.com/KSPModdingLibs/HarmonyKSP/releases), ModuleManager >= 4.0.0, and one [Ringworld configuration pack](docs/guides/CONFIG-PACKS.md) separately.** CKAN calls Harmony **Harmony 2 (`Harmony2`)** and selects one `NivenRingworldConfig` provider. The base ZIP contains only `GameData/NivenRingworld`, plus documentation. Keep extension/config folders at their shipped GameData paths; they are independent packages, and KSP loads configuration across GameData. Kopernicus is required for the interstellar packs, along with its dependencies; Kerbol packs do not require it. For the optional Cyla atmosphere, separately install [Cyla 1.1.0](https://github.com/LGhassen/Cyla/releases). Without Cyla, the built-in Original atmosphere is used. Restart KSP after updating DLLs. The supported release target is KSP 1.12.5 on Windows x64 / Direct3D 11.
+
+Existing saved ring layouts take precedence over newly installed packs. If an upgrade leaves both the ring and its control button absent, inspect `KSP.log` for startup patch errors before changing the save. The reported `KSP EVA speed read was not found` failure has an [unpublished development correction](docs/developers/STARTUP-COMPATIBILITY-20261009.md); it is included in the prepared 1.1.8 artifact. Uploaded older archives do not contain it.
 
 Build and launch a lander with enough thrust for approximately 1 g. The stock toolbar's ring icon, or Left Alt+R, opens the Ringworld panel. Sandbox exposes site relocation, a random terrain visit and a spin-matched training approach; Science and Career show flight information without those development controls. A relocation starts above the terrain at rest relative to the ring: **you must brake and land it**.
 
@@ -21,6 +23,10 @@ When settled on dry ground, use **KSP's stock time-warp controls**. Universal ti
 ## Multiple habitats (Sandbox)
 
 Open the Ringworld panel → Settings → **Sandbox: manage ring worlds**. Select an existing star or no designated star, enter the center offset in km, dimensions and seed, then spawn a new ring. The list selects a ring for editing; **Visit selected ring** transfers the active vessel. All rings have distant outlines, while detailed terrain runs around the current habitat. Moving/deleting an occupied ring is blocked; at least one ring must remain. See [multiple-ring behavior and limits](docs/guides/MULTIPLE-RINGS.md).
+
+## v1.1.8
+
+Adds the optional Ringworld Parallax 1.0.0 bridge, natural terrain textures, photo detail preparation/alignment, map-camera fixes and landing/residence/startup compatibility corrections. Enabled Parallax suppresses native vegetation, rocks and canopy by default; buildings and landmarks remain. Explicitly enabling native fallback or disabling/uninstalling the bridge restores native scatters. Ringworld Scattering 1.0.2 requires this base version; Clouds remains 1.0.1. These local artifacts are prepared for the owner to upload.
 
 ## v1.1.7
 
@@ -131,7 +137,8 @@ See [release notes](RELEASE-NOTES.md) for version changes, dependency requiremen
 17. Animals on the ringworld (Animal Mod compatibility)
 18. Some dude said he lodged into the ground at a reletavistic speeds with a kraken drive and null-aero hack.
 19. marker for interstellar ringworld in map
-20. The outer side of the ring still has visible cloud and shadow layers, when it should be just scryth in shadow
+
+The unpublished development build adds [soft procedural ground shading and dark exterior scrith](docs/developers/TERRAIN-TEXTURES.md). Continuous 3-D gradient noise replaces repeated ground texture tiles, with subtle colour variation and fine grain that softens with camera distance. The exterior hides the habitat's cloud, atmosphere and colour/shadow overlays. These changes are not in the published v1.1.7 download.
 
 ### Active visual compatibility work
 

@@ -159,6 +159,8 @@ namespace NivenRingworld
             if(HighLogic.LoadedSceneIsFlight&&!MapView.MapIsEnabled&&ScaledCamera.Instance!=null&&camera==ScaledCamera.Instance.cam&&ScaledCamera.Instance.tgtRef!=null)
                 observer=ConvertVector.Core((Vector3d)ScaledCamera.Instance.tgtRef.position-Center)*ScaledSpace.InverseScaleFactor;
             else observer=ConvertVector.Core(ScaledSpace.ScaledToLocalSpace(camera.transform.position)-Center)*ScaledSpace.InverseScaleFactor;
+            var chartObserver=settings.Geometry.Basis.ToLocal(observer);
+            if(farMaterial!=null)farMaterial.SetFloat("_RingCameraExterior",RingExterior.InHullBand(chartObserver/ScaledSpace.InverseScaleFactor,settings.Geometry.P.Radius,settings.Geometry.P.Width/2,settings.UndersideAltitude)?1:0);
             double angle=RingGeometry.Wrap(settings.Geometry.P.Omega*renderEpoch,2*Math.PI),c=Math.Cos(angle),sn=Math.Sin(angle);
             var source=mapGeometry?preciseMap:preciseFlight;
             var axis=settings.Geometry.Axis;

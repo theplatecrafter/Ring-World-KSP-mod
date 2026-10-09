@@ -41,6 +41,7 @@ Explore the world's design or plan an add-on:
 - [Ring lighting and moving-plane landing checks](developers/LIGHTING-AND-LANDING.md)
 - [Live crash hang: stock transfer planner](developers/LIVE-HANG-20261008.md)
 - [Surface lighting, shadow precision and grass colour](developers/SURFACE-LIGHTING.md)
+- [Procedural ground textures and exterior hull visibility](developers/TERRAIN-TEXTURES.md)
 - [Cyla integration](developers/CYLA-INTEGRATION.md)
 - [Clouds and weather implementation](developers/CLOUDS-AND-WEATHER.md)
 - [CKAN publishing](publishing/CKAN-PUBLISHING.md)

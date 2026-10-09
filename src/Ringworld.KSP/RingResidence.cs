@@ -44,8 +44,7 @@ namespace NivenRingworld
             UpdateBookkeeping(v,settings,star,p,new DVec(),epoch);
             v.orbitDriver.pos=ConvertVector.Ksp(p+settings.AnchorAt(Planetarium.GetUniversalTime()).Position);v.orbitDriver.vel=Vector3d.zero;
             var renderPosition=f!=null&&f.FrameInUse&&f.Settings.RingId!=r.RingId?RingSceneFrame.Vector(p):p;
-            v.SetPosition(settings.Center+ConvertVector.Ksp(renderPosition),true);
-            v.SetRotation(settings.AxisRotation(angle)*r.Rotation,false);
+            RingVesselPose.Set(v,settings.Center+ConvertVector.Ksp(renderPosition),settings.AxisRotation(angle)*r.Rotation);
             v.Landed=true;v.situation=Vessel.Situations.LANDED;v.landedAt="Ringworld";v.displaylandedAt="Ringworld";
         }
     }
@@ -69,10 +68,64 @@ namespace NivenRingworld
     internal static class RingResidentPack
     {
         private static void Prefix(Vessel __instance)
+        {Capture(__instance);}
+        internal static void Capture(Vessel __instance)
         {
             var f=RingworldFlight.Instance;VesselRecord r;
-            if(f==null||__instance.packed||!f.Owns(__instance)||!RingResidence.Saved(__instance,out r))return;
+            if(f==null||__instance.packed||__instance.parts==null||__instance.parts.Count==0||!f.Owns(__instance)||!RingResidence.Saved(__instance,out r))return;
             r.Position=ConvertVector.Core((Vector3d)__instance.transform.position-f.Center);r.Velocity=f.Velocity(__instance);r.Rotation=__instance.transform.rotation;r.Epoch=f.FrameEpoch;r.Landed=__instance.Landed;
+#if RINGWORLD_SMOKE_TEST
+            RingResidentRestore.Trace("capture",f,__instance,r);
+#endif
+        }
+    }
+    [HarmonyPatch(typeof(Vessel),"Unload")]
+    internal static class RingResidentUnload
+    {
+        // Stock Unload destroys/clears the parts before calling GoOnRails.
+        // Capture while the physical surface pose and velocity still exist.
+        private static void Prefix(Vessel __instance){RingResidentPack.Capture(__instance);}
+        private static void Postfix(Vessel __instance){VesselRecord r;if(!__instance.loaded&&RingResidence.Saved(__instance,out r))r.Restored=false;}
+    }
+    internal static class RingResidentRestore
+    {
+#if RINGWORLD_SMOKE_TEST
+        internal static void Trace(string step,RingworldFlight f,Vessel v,VesselRecord r){
+            if(v.vesselName!="Multipart resident issue regression")return;
+            var stored=f.Settings.Geometry.Coordinates(r.Position);var actual=f.Settings.Geometry.Coordinates(ConvertVector.Core((Vector3d)v.transform.position-f.Center));
+            int bodies=0,kinematic=0;foreach(var p in v.parts)if(p!=null&&p.rb!=null){bodies++;if(p.rb.isKinematic)kinematic++;}
+            UnityEngine.Debug.Log("[RingworldSmoke] RESIDENT TRACE "+step+" frame="+UnityEngine.Time.frameCount+" UT="+Planetarium.GetUniversalTime()+" frameEpoch="+f.FrameEpoch+" recordEpoch="+r.Epoch+" stored="+stored.Along+","+stored.Across+","+stored.Altitude+" actual="+actual.Along+","+actual.Across+","+actual.Altitude+" flags="+v.loaded+","+v.packed+","+v.Landed+" record="+r.Landed+","+r.Restored+" rb="+bodies+" kinematic="+kinematic);
+        }
+#endif
+        internal static void Pose(RingworldFlight f,Vessel v,VesselRecord r)
+        {
+#if RINGWORLD_SMOKE_TEST
+            Trace("restore before",f,v,r);
+#endif
+            double angle=f.Settings.Geometry.P.Omega*(f.FrameEpoch-r.Epoch);
+            var velocity=f.Settings.Geometry.RotateAroundAxis(r.Velocity,angle);
+            RingResidence.HoldSaved(v,r);
+            r.Position=ConvertVector.Core((Vector3d)v.transform.position-f.Center);
+            r.Rotation=v.transform.rotation;r.Velocity=velocity;r.Epoch=f.FrameEpoch;r.Restored=true;
+            if(!v.packed){v.SetWorldVelocity(ConvertVector.Ksp(velocity));RingCollisionFrame.Reset(v);}
+#if RINGWORLD_SMOKE_TEST
+            Trace("restore after",f,v,r);
+#endif
+        }
+    }
+    [HarmonyPatch(typeof(Vessel),"Load")]
+    internal static class RingResidentLoad
+    {
+        // LoadObjects can initialize a recreated vessel directly as unpacked,
+        // so the GoOffRails hook is not the only native placement boundary.
+        private static void Postfix(Vessel __instance)
+        {
+            var f=RingworldFlight.Instance;VesselRecord r;
+#if RINGWORLD_SMOKE_TEST
+            if(f!=null&&RingResidence.Saved(__instance,out r))RingResidentRestore.Trace("load returned",f,__instance,r);
+#endif
+            if(f!=null&&f.FrameInUse&&__instance.loaded&&RingResidence.Saved(__instance,out r)&&r.Landed&&r.RingId==f.Settings.RingId)
+                RingResidentRestore.Pose(f,__instance,r);
         }
     }
     [HarmonyPatch(typeof(Vessel),"getCorrectedLandedAltitude")]
@@ -97,6 +150,11 @@ namespace NivenRingworld
             VesselRecord r;var f=RingworldFlight.Instance;
             if(!__instance.packed&&f!=null&&RingResidence.Saved(__instance,out r)&&r.RingId==f.Settings.RingId)
             {
+                // Stock unpacking places parts from the current inertial
+                // ephemeris, overwriting the surface pose seeded by Prefix.
+                // A resident must rejoin the existing rotating chart, not move
+                // by hundreds of kilometres of spin since the frame epoch.
+                if(r.Landed&&f.FrameInUse)RingResidentRestore.Pose(f,__instance,r);
                 if(__instance==FlightGlobals.ActiveVessel)Krakensbane.ResetVelocityFrame(true);
                 RingCollisionFrame.Reset(__instance);
                 __instance.SetWorldVelocity(ConvertVector.Ksp(f.Settings.Geometry.RotateAroundAxis(r.Velocity,f.Settings.Geometry.P.Omega*(f.FrameEpoch-r.Epoch))));
