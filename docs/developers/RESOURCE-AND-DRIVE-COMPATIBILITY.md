@@ -2,7 +2,7 @@
 
 ## Availability
 
-These interfaces and adapters are unpublished v1.1.5 development work. Public CKAN v1.1.3 does not contain them. The older Sun / LANDED scanner report comes from retaining the host star as KSP's reference body; ring science subjects and resource scanning are separate systems.
+These interfaces/adapters were introduced during v1.1.5 development and are present in later builds; public v1.1.3 lacks them. The 12 October query-boundary/KSPCF changes are local, unreleased source changes, not part of the existing 1.1.8 ZIP. The older Sun / LANDED scanner report comes from retaining the real orbital host; ring science subjects and resource scanning are separate systems.
 
 ## Resource definitions
 
@@ -12,7 +12,9 @@ Ringworld reads stock `ResourceCache` definitions after configuration loading, i
 
 Supported distribution fields are PresenceChance, MinAbundance, MaxAbundance, Variance and Dispersal. Abundance inputs are percentages; `RingworldResourceApi.TryGetAbundance` returns a 0..1 fraction. Presence/min-max selection uses deterministic hashes; variance uses continuous ring terrain noise, with dispersal controlling feature size. This is a cylindrical distribution model, not a bit-for-bit reproduction of stock spherical abundance noise. Altitude/range distribution fields and resource types 1..3 are not implemented. Unknown definitions return unavailable, never host-star abundance.
 
-Stock local scanner display and the base ModuleResourceHarvester abundance call use this shared provider. The drill retains stock activation, recipe, resource consumption, heat and impact checks. Its impact test is a layer-15 raycast; the ring's terrain colliders already use that layer. No artificial contact is granted. A scanner identity correction does not unlock a Sun biome.
+Stock local scanner display and the base ModuleResourceHarvester recipe query use this shared provider. The current source scopes the query boundary and KSPCF cache helper instead of matching direct-call IL. The drill retains stock activation, recipe, resource consumption, heat and impact checks. Its impact test is a layer-15 raycast; ring terrain colliders already use that layer. A scanner identity correction does not unlock a Sun biome.
+
+The released CRP 112.0.1 archive defines resource types but does not itself ship Water deposit distributions. Supply GLOBAL_RESOURCE / ring-targeted PLANETARY_RESOURCE / BIOME_RESOURCE nodes in a resource/config mod. The private regression uses authored Water nodes and the actual CRP definition; this is not a production change to a saved world's deposits.
 
 Limitations: orbital survey/discovery persistence, depletion, packed/background extraction and independently implemented third-party harvesters remain unsupported. Reading a definition does not automatically redirect every mod's ResourceMap calls. Providers should call the ring API with the actual vessel rather than infer ring identity from mainBody.
 

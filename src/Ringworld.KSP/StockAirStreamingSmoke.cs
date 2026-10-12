@@ -15,7 +15,8 @@ namespace NivenRingworld
    bool originalOxygen=v.mainBody.atmosphereContainsOxygen,originalAtmosphere=v.mainBody.atmosphere;
    var resource=new ConfigNode("RESOURCE");resource.AddValue("name","IntakeAir");resource.AddValue("amount",0);resource.AddValue("maxAmount",10);host.AddResource(resource);
    var info=PartLoader.getPartInfoByName("airScoop");Check(info!=null,"Stock airScoop missing");
-   ConfigNode config=null;foreach(var node in info.partConfig.GetNodes("MODULE"))if(node.GetValue("name")=="ModuleResourceIntake")config=node.CreateCopy();
+   ConfigNode config=null;foreach(var node in info.partConfig.GetNodes("MODULE"))if(node.GetValue("name")=="ModuleResourceIntake"||node.GetValue("name")=="AJEInlet")config=node.CreateCopy();
+   if(config!=null)config.SetValue("name","ModuleResourceIntake",true);
    Check(config!=null,"Stock intake module config missing");
    var inlet=new GameObject("RingStockIntakeRegression").transform;inlet.SetParent(host.transform.Find("model")??host.transform,false);
    config.SetValue("intakeTransformName",inlet.name,true);
@@ -25,6 +26,8 @@ namespace NivenRingworld
    double expectedSpeed=System.Math.Max(0,UnityEngine.Vector3.Dot((UnityEngine.Vector3)RingIntakeEnvironment.Direction(v),inlet.forward))*RingIntakeEnvironment.Speed(v)+module.intakeSpeed;
    Check(System.Math.Abs(module.airSpeedGui-expectedSpeed)<System.Math.Max(.1,expectedSpeed*.001),"Stock intake uses host-relative speed");
    Check(v.atmDensity>.1&&v.staticPressurekPa>1,"Ring atmosphere fields missing");
+   v.UpdatePosVel();
+   Check(Math.Abs(v.srfSpeed-f.Velocity(v).Length)<.001&&(v.srf_velocity-ConvertVector.Ksp(f.Velocity(v))).magnitude<.001,"Final stock UpdatePosVel writer restored stellar airspeed");
    Check(module.airFlow>0&&host.Resources["IntakeAir"].amount>0,"Stock intake did not produce IntakeAir in ring air");
    bool atmosphere=f.Settings.Atmosphere;
    try{f.Settings.Atmosphere=false;Check(!RingIntakeEnvironment.Oxygen(v.mainBody,module),"Oxygen supplied with ring atmosphere disabled");}

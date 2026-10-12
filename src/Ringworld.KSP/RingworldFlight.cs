@@ -83,7 +83,7 @@ namespace NivenRingworld
             get
             {
                 var v=FlightGlobals.ActiveVessel;VesselRecord r;
-                return Active&&!transferring&&v!=null&&!v.packed&&v.mainBody==Star&&State.Vessels.TryGetValue(v.id.ToString(),out r)&&r.RingId==Settings.RingId&&r.Restored;
+                return StockIntegration.ReadyForFlight&&Active&&!transferring&&v!=null&&!v.packed&&v.mainBody==Star&&State.Vessels.TryGetValue(v.id.ToString(),out r)&&r.RingId==Settings.RingId&&r.Restored;
             }
         }
         internal bool IsParticipant(Vessel v) { return State!=null&&v!=null&&v.mainBody==Star&&State.Vessels.ContainsKey(v.id.ToString())&&State.Vessels[v.id.ToString()].RingId==Settings.RingId; }
@@ -152,6 +152,7 @@ namespace NivenRingworld
                 groundDetails=new GroundDetails(Settings);groundWeather=new AmbientGroundWeather(Settings);
                 atmosphere=new AtmosphereRenderer(Settings);
                 StockIntegration.Install();
+                PauseUnsafeResident();
                 window.x=Mathf.Max(10,Screen.width-window.width-70);
                 toolbar=new RingToolbar(value=>visible=value);
                 trajectory=gameObject.AddComponent<RingTrajectory>();
@@ -182,6 +183,7 @@ namespace NivenRingworld
         }
         internal bool VisitRing(string id,out string reason)
         {
+            if(!StockIntegration.ReadyForFlight){reason=StockIntegration.Warning;return false;}
             reason="";if(!SandboxControls||State==null||transferring||(visuals!=null&&visuals.PhotoActive)){reason="Finish the current transition/photo first.";return false;}
             if(!LiveCraft(FlightGlobals.ActiveVessel)){reason="The controlled craft was destroyed. Select or launch a surviving craft before relocating.";return false;}
             var s=State.RingSettings(id);if(s==null||s.Body==null){reason="Reference body is not installed.";return false;}
@@ -194,6 +196,13 @@ namespace NivenRingworld
             SelectNearbyRing();
             if(State!=null&&Settings!=null&&boundOptions!=State.GetOptions())ApplyOptions(State.GetOptions(),true);
             if(Input.GetKey(KeyCode.LeftAlt)&&Input.GetKeyDown(KeyCode.R)){visible=!visible;if(toolbar!=null)toolbar.SetSelected(visible);}
+            if(!StockIntegration.ReadyForFlight)
+            {
+                // Keep the saved pose unchanged while essential physics patches
+                // are unavailable. Rendering and the diagnostic panel still work.
+                PauseUnsafeResident();
+                return;
+            }
             AdoptNearbyActiveVessel();
             if(Settings!=null&&Star!=null&&!Active) Settings.Geometry.OrientationRadians=Settings.Geometry.P.Omega*Planetarium.GetUniversalTime();
             if(!Active||Settings==null){
@@ -223,9 +232,16 @@ namespace NivenRingworld
             if(ev.from==null||ev.to==null||!Owns(ev.from.vessel))return;
             RegisterParticipant(ev.to.vessel);
         }
+        private void PauseUnsafeResident()
+        {
+            var v=FlightGlobals.ActiveVessel;
+            // The saved ring can use a different host from the initial Settings
+            // binding. Recognize its residence before any frame restoration.
+            if(!StockIntegration.ReadyForFlight&&State!=null&&v!=null&&State.Vessels.ContainsKey(v.id.ToString())&&!FlightDriver.Pause)FlightDriver.SetPause(true);
+        }
         private void RegisterParticipant(Vessel v)
         {
-            if(v==null||State==null||Settings.IsAnchor(v))return;
+            if(!StockIntegration.ReadyForFlight||v==null||State==null||Settings.IsAnchor(v))return;
             string id=v.id.ToString();if(State.Vessels.ContainsKey(id))return;
             State.Vessels[id]=new VesselRecord{Id=id,RingId=Settings.RingId,Position=RootPosition(v),Velocity=Velocity(v),Rotation=v.transform.rotation,Restored=true,Epoch=FrameEpoch};
             // Stock modules can query the debris orbit in Initialize/Start,
@@ -236,7 +252,7 @@ namespace NivenRingworld
         }
         internal bool AdoptParticipant(Vessel v)
         {
-            if(v==null||State==null||!State.Expedition||v.mainBody!=Star)return false;
+            if(!StockIntegration.ReadyForFlight||v==null||State==null||!State.Expedition||v.mainBody!=Star)return false;
             if(Owns(v))return true;
             if(State.Vessels.ContainsKey(v.id.ToString())&&State.Vessels[v.id.ToString()].RingId==Settings.RingId)return false;
             foreach(var other in FlightGlobals.VesselsLoaded)
@@ -263,6 +279,7 @@ namespace NivenRingworld
         }
         public void FixedUpdate()
         {
+            if(!StockIntegration.ReadyForFlight)return;
             if(Settings==null||Star==null)return;
             AdoptNearbyActiveVessel();
             TryArrival();
@@ -366,6 +383,7 @@ namespace NivenRingworld
         }
         internal void Capture()
         {
+            if(!StockIntegration.ReadyForFlight)return;
             if(!Active||transferring||Star==null)return;
             foreach(var v in FlightGlobals.VesselsLoaded)
             {
@@ -474,6 +492,7 @@ namespace NivenRingworld
         }
         private bool CanRelocate(Vessel v)
         {
+            if(!StockIntegration.ReadyForFlight){status=StockIntegration.Warning;return false;}
             if(LiveCraft(v))return true;
             status="The controlled craft was destroyed. Select or launch a surviving craft before relocating.";
             Debug.LogWarning("[NivenRingworld] Relocation refused: active craft is dead or has no surviving root part.");return false;
@@ -516,6 +535,7 @@ namespace NivenRingworld
         }
         internal void TryArrival()
         {
+            if(!StockIntegration.ReadyForFlight)return;
             var v=FlightGlobals.ActiveVessel;
             if(FrameInUse||Active||transferring||State==null||v==null||v.packed||Settings.IsAnchor(v)||Planetarium.GetUniversalTime()<arrivalCooldown)return;
             if(!Settings.Geometry.InArrivalRegion(Position(v),false))return;
@@ -631,6 +651,7 @@ namespace NivenRingworld
         }
         private void DrawWindow(int id)
         {
+            if(!string.IsNullOrEmpty(StockIntegration.Warning))GUILayout.Label(StockIntegration.Warning);
             int previousTab=panelTab;
             panelTab=GUILayout.Toolbar(panelTab,SandboxControls?new[]{"Expedition","Settings","Extensions","Research","Rings"}:new[]{"Expedition","Extensions","Research"});
             if(panelTab!=previousTab)panelScroll=Vector2.zero;

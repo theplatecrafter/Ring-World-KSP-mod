@@ -9,6 +9,7 @@ namespace NivenRingworld
     [HarmonyPatch]
     internal static class RingIntakeEnvironment
     {
+        private static bool Prepare(){return RingAdapterOptions.Enabled("stockModuleEnvironment");}
         private static IEnumerable<MethodBase> TargetMethods()
         {
             yield return AccessTools.Method(typeof(ModuleResourceIntake),"FixedUpdate");
@@ -38,7 +39,9 @@ namespace NivenRingworld
         {return StockIntegration.Applies(v)?RingworldFlight.Instance.Velocity(v).Length:v.srfSpeed;}
         internal static Vector3d Direction(Vessel v)
         {return StockIntegration.Applies(v)?ConvertVector.Ksp(RingworldFlight.Instance.Velocity(v)).normalized:v.srf_vel_direction;}
-        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> source,MethodBase __originalMethod)
+        internal static Vector3d Velocity(Vessel v)
+        {return StockIntegration.Applies(v)?ConvertVector.Ksp(RingworldFlight.Instance.Velocity(v)):v.srf_velocity;}
+        internal static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> source,MethodBase __originalMethod)
         {
             var oxygen=AccessTools.Field(typeof(CelestialBody),"atmosphereContainsOxygen");
             var ocean=AccessTools.Field(typeof(CelestialBody),"ocean");
@@ -46,14 +49,17 @@ namespace NivenRingworld
             var altitude=AccessTools.Method(typeof(FlightGlobals),"getAltitudeAtPos",new[]{typeof(Vector3d),typeof(CelestialBody)});
             var speed=AccessTools.Field(typeof(Vessel),"srfSpeed");
             var direction=AccessTools.Field(typeof(Vessel),"srf_vel_direction");
+            var velocity=AccessTools.Field(typeof(Vessel),"srf_velocity");
             var gravity=AccessTools.Method(typeof(FlightGlobals),"getGeeForceAtPosition",new[]{typeof(Vector3d)});
             var radius=AccessTools.Field(typeof(CelestialBody),"Radius");
             int oxygenReads=0;
-            foreach(var code in source)
+            foreach(var instruction in source)
             {
-                if(code.LoadsField(speed)||code.LoadsField(direction))
+                var code=new CodeInstruction(instruction);
+                if(code.Calls(AccessTools.Method(typeof(RingIntakeEnvironment),"Oxygen")))oxygenReads++;
+                if(code.LoadsField(speed)||code.LoadsField(direction)||code.LoadsField(velocity))
                 {
-                    var method=code.LoadsField(speed)?"Speed":"Direction";
+                    var method=code.LoadsField(speed)?"Speed":code.LoadsField(velocity)?"Velocity":"Direction";
                     code.opcode=OpCodes.Call;code.operand=AccessTools.Method(typeof(RingIntakeEnvironment),method);
                     yield return code;continue;
                 }

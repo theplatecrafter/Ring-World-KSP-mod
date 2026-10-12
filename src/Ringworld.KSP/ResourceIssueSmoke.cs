@@ -35,6 +35,7 @@ namespace NivenRingworld
             cache.PlanetaryResources.Add(blocked);
             try{
                 double abundance;if(!RingworldResourceApi.TryGetAbundance(v,"Ore",out abundance)||abundance<=0)throw new Exception("Ring Ore was removed by a host-only exclusion");
+                if(Issue6CompatibilitySmoke.Enabled)Issue6CompatibilitySmoke.ResourceQueries(drill,abundance);
                 bool impact=(bool)AccessTools.Method(typeof(ModuleResourceHarvester),"CheckForImpact").Invoke(drill,null);
                 if(!impact)throw new Exception("Stock drill impact transform cannot hit the ring collider");
                 bool unlocked=ResourceMap.Instance.IsBiomeUnlocked(v.mainBody.flightGlobalsIndex,v.SituationString);
@@ -45,6 +46,16 @@ namespace NivenRingworld
                 var scanner=(ModuleResourceScanner)host.AddModule("ModuleResourceScanner");scanner.ResourceName="Ore";scanner.ScannerType=0;scanner.Update();
                 if(Math.Abs(scanner.abundance-abundance)>.001)throw new Exception("Stock scanner disagrees with actual harvesting");host.RemoveModule(scanner);
                 Debug.Log("[RingworldSmoke] PASS actual stock drill Ore production="+(ore.amount-before)+" EC used="+(power-Energy(v))+" collider impact="+impact+" host survey unchanged="+unlocked+" ring abundance="+abundance);
+                if(Issue6CompatibilitySmoke.Enabled&&PartResourceLibrary.Instance.GetDefinition("Water")!=null){
+                    drill.StopResourceConverter();host.RemoveModule(drill);
+                    var waterConfig=config.CreateCopy();waterConfig.SetValue("ResourceName","Water",true);
+                    var waterResource=new ConfigNode("RESOURCE");waterResource.AddValue("name","Water");waterResource.AddValue("amount",0);waterResource.AddValue("maxAmount",100);host.AddResource(waterResource);
+                    drill=(ModuleResourceHarvester)host.AddModule(waterConfig);drill.OnStart(PartModule.StartState.Flying);
+                    power=Energy(v);before=host.Resources["Water"].amount;drill.StartResourceConverter();
+                    for(int tick=0;tick<100;tick++)yield return new WaitForFixedUpdate();
+                    if(host.Resources["Water"].amount<=before||Energy(v)>=power)throw new Exception("Native CRP Water drill failed: "+drill.status);
+                    Debug.Log("[RingworldSmoke] PASS actual CRP Water stock harvester production="+(host.Resources["Water"].amount-before)+" EC used="+(power-Energy(v)));
+                }
                 if(installedName!="ModuleResourceHarvester"){
                     drill.StopResourceConverter();host.RemoveModule(drill);config.SetValue("name",installedName,true);
                     drill=(ModuleResourceHarvester)host.AddModule(config);drill.OnStart(PartModule.StartState.Flying);

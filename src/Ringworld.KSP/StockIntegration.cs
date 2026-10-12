@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using Ringworld.Core;
 using UnityEngine;
@@ -7,16 +10,80 @@ namespace NivenRingworld
     internal static class StockIntegration
     {
         private static bool installed;
+        private static bool rollbackFailed;
+        private static readonly Dictionary<Type,string> failures=new Dictionary<Type,string>();
+        internal static string OwnerFor(Type type){return "NivenRingworld.surface."+type.FullName;}
+        private static bool Optional(Type type)
+        {return type==typeof(RingResourceHarvester)||type==typeof(RingHarvesterResourceQuery)||type==typeof(RingCommunityFixesResourceCache)||type==typeof(RingIntakeEnvironment)||
+            type==typeof(RingAirshipCompatibility)||type==typeof(RingAquaticCompatibility)||type==typeof(RingScanSatCompatibility)||type==typeof(RingGoldStrikeCompatibility)||type==typeof(RingGraviticHover)||type==typeof(RingSolverEngineCompatibility)||type==typeof(RingSolverFlightSystemCompatibility);}
+        internal static bool ReadyForFlight {get{return installed&&!rollbackFailed&&!failures.Keys.Any(t=>!Optional(t));}}
+        internal static string Warning
+        {
+            get{
+                var messages=new List<string>();
+                if(failures.Count>0)messages.Add(string.Join(", ",failures.Keys.Select(t=>t.Name).ToArray())+" could not be installed. See KSP.log.");
+                if(!RingAdapterOptions.Enabled("stockHarvesters"))messages.Add("Ring harvesting disabled by compatibility configuration.");
+                if(!RingAdapterOptions.Enabled("stockModuleEnvironment"))messages.Add("Ring intake/engine environment reads disabled by compatibility configuration.");
+                if(messages.Count==0)return "";
+                return "Ringworld compatibility: "+string.Join(" ",messages.ToArray())+" "+(ReadyForFlight?"Affected features are unavailable.":"Ring flight is blocked to protect saved residents.");
+            }
+        }
+        internal static void InstallClass(Type type,Action<Harmony> apply)
+        {
+            var harmony=new Harmony(OwnerFor(type));
+            try{apply(harmony);}
+            catch(Exception e)
+            {
+                // A multi-target class may have installed some patches before
+                // failing. Roll back only this class, never another mod's owner.
+                failures[type]=e.ToString();
+                try{harmony.UnpatchAll(harmony.Id);}catch(Exception rollback){rollbackFailed=true;Debug.LogError("[NivenRingworld] Patch rollback failed; ring flight disabled.\n"+rollback);}
+                Debug.LogError("[NivenRingworld] Compatibility patch failed: "+type.FullName+"; owner="+harmony.Id+". Other features continue initializing.\n"+e);
+            }
+        }
         internal static void Install()
         {
             if(installed)return;
-            new Harmony("NivenRingworld.surface").PatchAll(typeof(StockIntegration).Assembly);installed=true;
-            Debug.Log("[NivenRingworld] Scoped stock surface compatibility patches installed.");
+            // Install once per session, including failed classes: a scene change
+            // must not append duplicates to already installed transpilers.
+            installed=true;
+            foreach(var type in typeof(StockIntegration).Assembly.GetTypes().Where(t=>t.IsDefined(typeof(HarmonyPatch),false)).OrderBy(t=>t.FullName))
+                InstallClass(type,h=>h.CreateClassProcessor(type).Patch());
+            Debug.Log("[NivenRingworld] Scoped stock surface compatibility patches installed; failures="+failures.Count+"; flightReady="+ReadyForFlight);
+            // Capture the actual competing owners instead of guessing from a
+            // mod list. No save contents or filesystem paths are recorded here.
+            foreach(var method in new[]{AccessTools.Method(typeof(ModuleResourceHarvester),"PrepareRecipe"),AccessTools.Method(typeof(ModuleResourceIntake),"FixedUpdate"),AccessTools.Method(typeof(PartBuoyancy),"FixedUpdate"),AccessTools.Method(typeof(VesselPrecalculate),"CalculatePhysicsStats")})
+            {
+                var info=Harmony.GetPatchInfo(method);if(info!=null)Debug.Log("[NivenRingworld] Patch owners "+method.DeclaringType.Name+"."+method.Name+": "+string.Join(", ",info.Owners.OrderBy(o=>o).ToArray()));
+            }
+            if(!string.IsNullOrEmpty(Warning))CompatibilityNotice.Show();
         }
         internal static bool Applies(Vessel v)
         {
             var f=RingworldFlight.Instance;
-            return f!=null&&f.Owns(v);
+            return ReadyForFlight&&f!=null&&f.Owns(v);
+        }
+#if RINGWORLD_SMOKE_TEST
+        internal static void ClearTestFailure(Type type){failures.Remove(type);}
+#endif
+    }
+    internal sealed class CompatibilityNotice : MonoBehaviour
+    {
+        private static CompatibilityNotice instance;
+        private bool dismissed,uiVisible=true;
+        internal static void Show()
+        {if(instance!=null)return;var go=new GameObject("Ringworld compatibility notice");UnityEngine.Object.DontDestroyOnLoad(go);instance=go.AddComponent<CompatibilityNotice>();}
+        private void Awake(){GameEvents.onHideUI.Add(Hide);GameEvents.onShowUI.Add(ShowUi);}
+        private void Hide(){uiVisible=false;}
+        private void ShowUi(){uiVisible=true;}
+        private void OnDestroy(){GameEvents.onHideUI.Remove(Hide);GameEvents.onShowUI.Remove(ShowUi);if(instance==this)instance=null;}
+        private void OnGUI()
+        {
+            if(dismissed||!uiVisible||string.IsNullOrEmpty(StockIntegration.Warning)||!HighLogic.LoadedSceneIsGame)return;
+            GUILayout.BeginArea(new Rect(30,30,520,130),GUI.skin.box);
+            GUILayout.Label(StockIntegration.Warning);
+            if(GUILayout.Button("Dismiss notice (details remain in the Ringworld panel and KSP.log)"))dismissed=true;
+            GUILayout.EndArea();
         }
     }
     // The stock method dereferences the body's PQS on contact; the Sun has no PQS.
@@ -48,6 +115,14 @@ namespace NivenRingworld
     // the actual orbital caches used by map/rails flight.
     [HarmonyPatch(typeof(Vessel),"UpdateCaches")]
     internal static class RingSurfaceCachePatch
+    {
+        private static void Postfix(Vessel __instance){RingSurfaceCaches.Publish(__instance);}
+    }
+    // UpdatePosVel writes these fields again after UpdateCaches in stock
+    // FixedUpdate. Publish at the final writer so all ordinary consumers see
+    // local airspeed, not just modules with a dedicated read adapter.
+    [HarmonyPatch(typeof(Vessel),"UpdatePosVel")]
+    internal static class RingSurfaceVelocityPatch
     {
         private static void Postfix(Vessel __instance){RingSurfaceCaches.Publish(__instance);}
     }

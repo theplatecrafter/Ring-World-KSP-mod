@@ -12,6 +12,9 @@ namespace NivenRingworld
         {return Math.Max(0,Math.Min(1,(depth+halfHeight)/(2*Math.Max(.05,halfHeight))));}
         internal static double Lift(double volume,double fraction,double coefficient,double gravity)
         {return Math.Max(0,volume)*fraction*Math.Max(0,coefficient)*gravity;}
+        // KSPCF OnDemandPartBuoyancy returns false for the host Sun's ocean flag.
+        // Handle ring parts before that optimization; retain it for every other vessel.
+        [HarmonyPriority(Priority.First)]
         private static bool Prefix(PartBuoyancy __instance,Part ___part)
         {
             var p=___part;var f=RingworldFlight.Instance;

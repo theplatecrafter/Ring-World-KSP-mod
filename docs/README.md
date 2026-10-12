@@ -1,6 +1,6 @@
 # Niven Ringworld documentation
 
-Build an expedition, land on a rotating world, and explore its biomes and ancient structures. These guides describe **v1.1.7**, with historical development notes for **KSP 1.12.5 on Windows x64 / Direct3D 11**.
+Build an expedition, land on a rotating world, and explore its biomes and ancient structures. These guides describe **v1.1.9 (artifact prepared for publication)**, with historical development notes for **KSP 1.12.5 on Windows x64 / Direct3D 11**.
 
 ## Start here
 
@@ -13,6 +13,7 @@ Build an expedition, land on a rotating world, and explore its biomes and ancien
 - [Instance configuration packs (1.1.7+)](guides/CONFIG-PACKS.md)
 - [Limitations and troubleshooting](guides/KNOWN-LIMITATIONS.md)
 - [Release history and dependency versions](../RELEASE-NOTES.md)
+- [Player-facing v1.1.9 release notes](releases/v1.1.9.md)
 
 ## World and asset reference
 
@@ -29,6 +30,8 @@ Explore the world's design or plan an add-on:
 - [Asset authoring and model overrides](developers/ASSET-AUTHORING.md)
 - [Adding research sites and objectives](developers/MODDING-RESEARCH.md)
 - [Local environment API and stock/mod consumer audit](developers/ENVIRONMENT-COMPATIBILITY.md)
+- [Major-mod compatibility baseline and remaining certification](developers/MAJOR-MOD-COMPATIBILITY.md)
+- [Issue 6: KSP Community Fixes startup correction and runtime evidence](developers/ISSUE-6-STARTUP-AUDIT.md)
 - [Resource instruments and gravitic-drive compatibility](developers/RESOURCE-AND-DRIVE-COMPATIBILITY.md)
 - [Parallax terrain integration reply](developers/PARALLAX-REPLY.md)
 - [Parallax Continued: terrain-provider, biome and scatter LOD design](developers/PARALLAX-INTEGRATION.md)

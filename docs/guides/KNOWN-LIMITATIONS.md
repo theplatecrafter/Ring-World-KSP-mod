@@ -4,6 +4,10 @@ Niven Ringworld supports expeditions on a rotating habitat, but it does not beha
 
 ## Installation problems
 
+**Both ring and control button missing:** update the base mod to 1.1.9, replacing matching files and restarting KSP. Releases through 1.1.8 can abort startup when another Harmony patch changes a method expected by a strict Ringworld transpiler. The KSPCF harvester conflict and intake retry failure are corrected in 1.1.9; optional adapter failures show a warning and preserve rendering/controls. Keep saves and configs. The control button is available in Flight/flight Map View; rings also render in KSC and Tracking Station. See [issue-6 evidence](../developers/ISSUE-6-STARTUP-AUDIT.md).
+
+Advanced emergency switches `stockHarvesters`, `stockModuleEnvironment` and `solverEngines` live in `GameData/NivenRingworld/Compatibility.cfg`; leave them enabled normally. Turning a switch off skips that feature's adaptation and requires a restart. A warning about essential compatibility blocks ring flight to protect saved residents; consult `KSP.log` for the named failed class and competing owners instead of deleting the scenario.
+
 **Missing trees, structures, clouds or shaders:** check the extraction path first. The mod must be at `GameData/NivenRingworld`, not inside another extracted folder or a second `GameData`. Restart KSP after updating files.
 
 **Cyla is unavailable:** install the supported optional version, **Cyla 1.1.0**, separately. Original atmosphere works without it. **HarmonyKSP 2.2.1.0 or a compatible newer version is required**, even when using Original atmosphere. See [installation](GETTING-STARTED.md).

@@ -35,7 +35,7 @@ namespace NivenRingworld
             StockIntegration.Install();StockIntegration.Install();
             foreach(string name in Methods){
                 var info=Harmony.GetPatchInfo(AccessTools.Method(typeof(KerbalEVA),name));
-                Check(info.Prefixes.Count(p=>p.owner=="NivenRingworld.surface")==1&&info.Transpilers.Any(p=>p.owner==OtherOwner),"Patch composition/idempotence failed: "+name);
+                Check(info.Prefixes.Count(p=>p.owner==StockIntegration.OwnerFor(typeof(EvaTransitionSpeedPatch)))==1&&info.Transpilers.Any(p=>p.owner==OtherOwner),"Patch composition/idempotence failed: "+name);
             }
             Debug.Log("[RingworldSmoke] PASS reproduced released EVA exception; all stock patches install with competing transpilers retained");
 
@@ -52,7 +52,7 @@ namespace NivenRingworld
             // retaining its crew, vessel identity and legacy residence format.
             var parts=vessel.GetNodes("PART");for(int i=1;i<parts.Length;i++)vessel.RemoveNode(parts[i]);
             parts[0].SetValue("name","mk1-3pod",true);parts[0].SetValue("rTrf","mk1-3pod",true);parts[0].RemoveValues("attN");
-            var legacy=new ConfigNode("SCENARIO");legacy.AddValue("name",nameof(RingworldScenario));legacy.AddValue("scene","7, 5, 6");legacy.AddValue("expedition",true);legacy.AddNode(options);
+            var legacy=new ConfigNode("SCENARIO");legacy.AddValue("name",nameof(RingworldScenario));legacy.AddValue("scene","7, 5, 8");legacy.AddValue("expedition",true);legacy.AddNode(options);
             var record=legacy.AddNode("VESSEL");record.AddValue("id",residentId);record.AddValue("landed",true);
             record.AddValue("x",savedPosition.X);record.AddValue("y",savedPosition.Y);record.AddValue("z",savedPosition.Z);
             var rot=Quaternion.FromToRotation(Vector3.up,ConvertVector.Unity(defaults.Geometry.Up(savedPosition)));
@@ -97,12 +97,15 @@ namespace NivenRingworld
             while(!f.Ready&&Time.realtimeSinceStartup<end)yield return null;
             Check(f.Ready&&f.Owns(v),"Legacy resident did not restore into its ring");
             Check((f.Position(v)-savedPosition).Length<30,"Restored legacy resident moved away from its saved anchor");
+            RetainedSaveCompatibilitySmoke.Run();
+            if(Issue6CompatibilitySmoke.ScenesOnly){var scenes=Issue6CompatibilitySmoke.SceneTransitions(f,residentId);while(scenes.MoveNext())yield return scenes.Current;Debug.Log("[RingworldSmoke] PASS startup compatibility regression complete");yield break;}
             // Place safely using the ordinary arrival path, then exercise the
             // native EVA state machine with all four competing transpilers active.
             f.gentleArrival=true;f.arrivalHeight=1000;f.Visit();while(!f.Ready)yield return null;f.gentleArrival=false;
             end=Time.realtimeSinceStartup+60;
             while((!v.Landed||f.Velocity(v).Length>.25)&&Time.realtimeSinceStartup<end)yield return new WaitForFixedUpdate();
             Check(v.Landed&&f.Velocity(v).Length<.25,"EVA fixture did not settle");
+            if(Issue6CompatibilitySmoke.Enabled){var issue6=Issue6CompatibilitySmoke.Run(f);while(issue6.MoveNext())yield return issue6.Current;}
             // Unregistered vessels retain their cache. This training save has
             // only one ship, so test the same vessel outside the residence scope
             // synchronously and restore its registration before yielding.

@@ -64,3 +64,10 @@ Replacement LOD layouts build under the frame budget while the previous complete
 ## Validation
 
 The first October 2 in-game run passed real stock airScoop intake production, atmosphere-disabled oxygen rejection, unchanged host flags, staged LOD readiness with a moving observer, and installed ReStock/SunkWorks regressions. The follow-up `RingworldSmoke-20261002-025548.log` also passed ring-relative intake-speed verification, local gravity/validity helper checks and the stock engine dry-nozzle method, with the expanded bridge installed. Solar-panel attenuation and the complete gravity-instrument UI were not separately exercised. Full stock-plane flight, all engine variants, third-party autopilots and visual transition appearance are separate validation targets; do not infer blanket support from module-level tests.
+## Community-mod startup and query composition (12 October 2026)
+
+See [the major-mod baseline](MAJOR-MOD-COMPATIBILITY.md) and [issue 6 runtime audit](ISSUE-6-STARTUP-AUDIT.md). Ring harvesting now scopes PrepareRecipe and intercepts the resource query boundary, including KSPCF's cache helper, instead of matching a specific direct-call instruction. Non-ring resource queries retain their native path. Ring buoyancy has first prefix priority to coexist with KSPCF's host no-ocean optimization.
+
+Patch classes install once with isolated owners, rollback, explicit diagnostics and an essential-flight gate. The restart-required `stockHarvesters` and `stockModuleEnvironment` switches default on; switching off an adapter does not make its functionality compatible. No serialized ring/resident format or defaults changed.
+
+The final stock velocity writer is `Vessel.UpdatePosVel`, after UpdateCaches. Ringworld now republishes local surface caches after that writer. The `solverEngines` optional bridge also covers AJE/SolverEngines' own engine/inlet/distributor gates and speed reads; native aircraft ignition is tested separately from the stock intake fixture. See the baseline for pinned versions, actual thrust/fuel results and remaining scope.

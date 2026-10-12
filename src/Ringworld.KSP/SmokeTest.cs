@@ -61,8 +61,9 @@ namespace NivenRingworld
             int probeVessel=0;
             if(cylaSaveProbe){var vessels=state.GetNodes("VESSEL");for(int i=0;i<vessels.Length;i++)foreach(var part in vessels[i].GetNodes("PART"))if(part.GetValue("name")=="cylindricalAtmo")probeVessel=i;}
             state.SetValue("activeVessel",probeVessel.ToString(),true);
-            bool startupCompatibility=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-startup-compatibility-only")>=0;
-            if(startupCompatibility){try{StartupCompatibilitySmoke.Prepare(node);}catch(Exception e){Fail("Startup conflict preparation: "+e);yield break;}}
+            bool startupCompatibility=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-startup-compatibility-only")>=0||Issue6CompatibilitySmoke.Enabled;
+            if(Issue6CompatibilitySmoke.Enabled){try{Issue6CompatibilitySmoke.Prepare();}catch(Exception e){Fail("Issue6 conflict reproduction: "+e);yield break;}}
+            if(startupCompatibility&&!Issue6CompatibilitySmoke.FreshScenes){try{StartupCompatibilitySmoke.Prepare(node);}catch(Exception e){Fail("Startup conflict preparation: "+e);yield break;}}
             var game=GamePersistence.LoadGameCfg(root,folder,true,false);
             if(game==null){Fail("Unable to load test fixture");yield break;}
             game.Mode=Game.Modes.SANDBOX;game.startScene=GameScenes.FLIGHT;HighLogic.SaveFolder=folder;HighLogic.CurrentGame=game;
@@ -73,15 +74,27 @@ namespace NivenRingworld
                     if(!game.scenarios.Exists(s=>s.moduleName==type.Name))game.AddProtoScenarioModule(type,GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION);
             }
             game.Parameters.Flight.CanEVA=true;
+            if(Issue6CompatibilitySmoke.FreshScenes){
+                if(!game.scenarios.Exists(s=>s.moduleName==nameof(RingworldScenario)))game.AddProtoScenarioModule(typeof(RingworldScenario),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION);
+                game.flightState.protoVessels.Clear();game.startScene=GameScenes.SPACECENTER;
+                // KSC loads its scenarios from persistent.sfs. A real new save
+                // has that file before entering KSC; a tutorial-derived fixture
+                // must write it too, rather than testing an incomplete game.
+                GamePersistence.SaveGame(game,"persistent",folder,SaveMode.OVERWRITE);game.Start();
+                var fresh=Issue6CompatibilitySmoke.FreshSceneTransitions(folder);while(true){bool more;try{more=fresh.MoveNext();}catch(Exception e){Fail("Issue6 fresh scenes: "+e);yield break;}if(!more)break;yield return fresh.Current;}
+                running=false;Application.Quit();yield break;
+            }
             if(!cylaSaveProbe&&!startupCompatibility)game.AddProtoScenarioModule(typeof(RingworldScenario),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION);
             game.AddProtoScenarioModule(typeof(Expansions.Serenity.DeployedScience.Runtime.DeployedScience),GameScenes.FLIGHT,GameScenes.SPACECENTER,GameScenes.TRACKSTATION,GameScenes.EDITOR);
             bool movingLanding=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-moving-landing-only")>=0;
-            bool planeLanding=movingLanding||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-interstellar-landing-only")>=0;
+            bool solverPlane=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-solver-plane-only")>=0;
+            bool planeLanding=solverPlane||movingLanding||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-interstellar-landing-only")>=0;
             if(planeLanding||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-gear-only")>=0)
             {
-                var craft=planeLanding?Path.Combine(KSPUtil.ApplicationRootPath,"Ships","SPH","Aeris 4A.craft"):Path.Combine(KSPUtil.ApplicationRootPath,"saves","default","Ships","VAB","Auto-Saved Ship.craft");
+                var craft=planeLanding?Path.Combine(KSPUtil.ApplicationRootPath,"Ships","SPH",solverPlane?"Aeris 3A.craft":"Aeris 4A.craft"):Path.Combine(KSPUtil.ApplicationRootPath,"saves","default","Ships","VAB","Auto-Saved Ship.craft");
                 var craftCopy=Path.Combine(KSPUtil.ApplicationRootPath,"saves",folder,"GearRegression.craft");
                 File.Copy(craft,craftCopy);
+                if(solverPlane){try{SolverEngineSmoke.ConfigureCraftFuel(craftCopy);}catch(Exception e){Fail("Native plane fuel preparation: "+e);yield break;}}
                 game.flightState.protoVessels.Clear();game.startScene=GameScenes.SPACECENTER;game.Start();
                 while(HighLogic.LoadedScene!=GameScenes.SPACECENTER)yield return null;yield return new WaitForSecondsRealtime(8);
                 FlightDriver.StartWithNewLaunch(craftCopy,"Squad/Flags/default",planeLanding?"Runway":"LaunchPad",VesselCrewManifest.FromConfigNode(ConfigNode.Load(craftCopy)));
@@ -131,6 +144,7 @@ namespace NivenRingworld
             catch(Exception ex){Fail("Toolbar/API: "+ex);yield break;}
             var smokeOptions=RingworldScenario.Instance.GetOptions().CreateCopy();if(!startupCompatibility)smokeOptions.SetValue("seed",-739779896,true);RingQualityPresets.Apply(smokeOptions,6);
             flight.ApplyOptions(smokeOptions,true);
+            if(solverPlane){var planeTest=SolverEngineSmoke.RunPlane(flight);while(true){bool more;try{more=planeTest.MoveNext();}catch(Exception e){Fail("Native solver plane: "+e);yield break;}if(!more)break;yield return planeTest.Current;}Debug.Log("[RingworldSmoke] PASS startup compatibility regression complete");running=false;Application.Quit();yield break;}
             if(startupCompatibility){
                 var test=StartupCompatibilitySmoke.Run(flight);
                 while(true){bool more;try{more=test.MoveNext();}catch(Exception e){Fail("Startup compatibility: "+e);yield break;}if(!more)break;yield return test.Current;}

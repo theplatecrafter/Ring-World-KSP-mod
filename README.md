@@ -1,4 +1,4 @@
-# Niven Ringworld Expedition 1.1.8
+# Niven Ringworld Expedition 1.1.9
 
 A Larry Niven-inspired, star-encircling habitat with a landable rotating interior, procedural terrain, atmosphere, science and persistent expeditions. The default world uses one-tenth of the published linear ring dimensions. Original geography and architecture are interpretations of the setting.
 
@@ -12,7 +12,7 @@ Extract the release ZIP into the KSP instance root, beside `KSP_x64.exe`. Its `G
 
 **Install [HarmonyKSP 2.2.1.0 or compatible newer version](https://github.com/KSPModdingLibs/HarmonyKSP/releases), ModuleManager >= 4.0.0, and one [Ringworld configuration pack](docs/guides/CONFIG-PACKS.md) separately.** CKAN calls Harmony **Harmony 2 (`Harmony2`)** and selects one `NivenRingworldConfig` provider. The base ZIP contains only `GameData/NivenRingworld`, plus documentation. Keep extension/config folders at their shipped GameData paths; they are independent packages, and KSP loads configuration across GameData. Kopernicus is required for the interstellar packs, along with its dependencies; Kerbol packs do not require it. For the optional Cyla atmosphere, separately install [Cyla 1.1.0](https://github.com/LGhassen/Cyla/releases). Without Cyla, the built-in Original atmosphere is used. Restart KSP after updating DLLs. The supported release target is KSP 1.12.5 on Windows x64 / Direct3D 11.
 
-Existing saved ring layouts take precedence over newly installed packs. If an upgrade leaves both the ring and its control button absent, inspect `KSP.log` for startup patch errors before changing the save. The reported `KSP EVA speed read was not found` failure has an [unpublished development correction](docs/developers/STARTUP-COMPATIBILITY-20261009.md); it is included in the prepared 1.1.8 artifact. Uploaded older archives do not contain it.
+Existing saved ring layouts take precedence over newly installed packs. Version 1.1.9 fixes the KSP Community Fixes harvester startup conflict and repeated intake patch failure reported in [issue #6](https://github.com/theplatecrafter/Ring-World-KSP-mod/issues/6). Startup installs patch classes independently, logs failed features and keeps the ring/control panel available when an optional adapter fails. The older EVA startup fix remains included. Keep your save and config; deleting them does not repair a patch conflict. See [verified compatibility and upgrade evidence](docs/developers/ISSUE-6-STARTUP-AUDIT.md). This artifact is prepared locally for the owner to publish.
 
 Build and launch a lander with enough thrust for approximately 1 g. The stock toolbar's ring icon, or Left Alt+R, opens the Ringworld panel. Sandbox exposes site relocation, a random terrain visit and a spin-matched training approach; Science and Career show flight information without those development controls. A relocation starts above the terrain at rest relative to the ring: **you must brake and land it**.
 
@@ -23,6 +23,10 @@ When settled on dry ground, use **KSP's stock time-warp controls**. Universal ti
 ## Multiple habitats (Sandbox)
 
 Open the Ringworld panel → Settings → **Sandbox: manage ring worlds**. Select an existing star or no designated star, enter the center offset in km, dimensions and seed, then spawn a new ring. The list selects a ring for editing; **Visit selected ring** transfers the active vessel. All rings have distant outlines, while detailed terrain runs around the current habitat. Moving/deleting an occupied ring is blocked; at least one ring must remain. See [multiple-ring behavior and limits](docs/guides/MULTIPLE-RINGS.md).
+
+## v1.1.9
+
+Fixes community-mod startup conflicts, composes ring resource queries with KSPCF caching, and publishes local surface velocity after the stock cache writer. Optional SolverEngines/AJE integration supplies ring atmosphere and inlet conditions without changing the real host body's flags. Required dependencies and install paths are unchanged. Existing Clouds 1.0.1, Scattering 1.0.2 and Parallax bridge 1.0.0 remain optional; no extension update is required for this base fix.
 
 ## v1.1.8
 
