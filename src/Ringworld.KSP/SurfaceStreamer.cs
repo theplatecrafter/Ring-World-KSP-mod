@@ -11,12 +11,17 @@ namespace NivenRingworld
         private sealed class Tile
         {
             internal GameObject Root,Scenery,Trees,ScatterRoot;internal bool NativeScatters;
+            internal Renderer WaterRenderer;
             internal DVec Anchor;
             internal long X,Y;internal int ForestQuality=-1;internal Texture2D Texture;
             internal double Phase;
             internal readonly List<Mesh> Meshes=new List<Mesh>();
             internal readonly List<Tuple<GameObject,double,double,double>> TreeFallbacks=new List<Tuple<GameObject,double,double,double>>();
         }
+        private Tile buildingTile;
+        private IEnumerator<bool> tileWork;
+        private bool preferPlanned;
+        private long requestedX=long.MinValue,requestedY;
         private readonly Settings settings;
         private readonly Extensions.IScatterLayer parallax;
         private readonly Dictionary<string,Tile> tiles=new Dictionary<string,Tile>();
@@ -45,6 +50,7 @@ namespace NivenRingworld
         internal int ScaledLodCount {get{return lod.ScaledCount;}}
         internal int BuiltScaledLodCount {get{return lod.BuiltScaledCount;}}
         internal int TileCount { get { return tiles.Count; } }
+        internal int NearPending {get;private set;}
         internal SurfaceStreamer(Settings s)
         {
             settings=s;
@@ -94,6 +100,11 @@ namespace NivenRingworld
         }
         internal void Update(DVec observer,Vector3d star,bool immediate=false)
         {
+            long profile=RingPerformance.Begin();
+            try{UpdateSurface(observer,star,immediate);}finally{RingPerformance.End(RingPerformance.Section.Surface,profile);}
+        }
+        private void UpdateSurface(DVec observer,Vector3d star,bool immediate)
+        {
             if(parallax!=null){
                 var flight=RingworldFlight.Instance;var camera=FlightCamera.fetch?.mainCamera;
                 bool photo=flight!=null&&flight.visuals!=null&&flight.visuals.PhotoActive;
@@ -109,6 +120,8 @@ namespace NivenRingworld
             sunlight.transform.rotation=Quaternion.LookRotation(-ConvertVector.Unity(RingLighting.Direction(settings,observer,Planetarium.GetUniversalTime())),ConvertVector.Unity(settings.Geometry.Axis));
             long cx=(long)Math.Floor(p.Along/settings.TileSize),cy=(long)Math.Floor(p.Across/settings.TileSize);
             int radius=settings.TileRadius;
+            bool outrunning=requestedX!=long.MinValue&&(Math.Abs(cx-requestedX)>radius||Math.Abs(cy-requestedY)>radius);
+            requestedX=cx;requestedY=cy;
             var wanted=new HashSet<string>();
             var pending=new List<Tuple<long,long>>();
             for(int y=-radius;y<=radius;y++)for(int x=-radius;x<=radius;x++)
@@ -119,20 +132,56 @@ namespace NivenRingworld
                 if(!tiles.ContainsKey(key))pending.Add(Tuple.Create(tx,ty));
             }
             pending.Sort((a,b)=>((a.Item1-cx)*(a.Item1-cx)+(a.Item2-cy)*(a.Item2-cy)).CompareTo((b.Item1-cx)*(b.Item1-cx)+(b.Item2-cy)*(b.Item2-cy)));
-            // Keep old colliders until replacement tiles exist. Entry builds all tiles before release.
-            int budget=immediate?pending.Count:2;
-            for(int i=0;i<Math.Min(budget,pending.Count);i++)
+            // Finish the near hole required by the pending LOD generation too.
+            // At orbital speeds the current footprint may never become complete;
+            // waiting for it used to retain an unbounded trail of cooked colliders.
+            var lodPending=new List<Tuple<long,long>>();
+            if(lod.HasNearFootprint&&(lod.NearX!=cx||lod.NearY!=cy))
             {
-                var c=pending[i];var t=Build(c.Item1,c.Item2);tiles.Add(c.Item1+":"+c.Item2,t);
+                for(int y=-radius;y<=radius;y++)for(int x=-radius;x<=radius;x++)
+                {
+                    long tx=lod.NearX+x,ty=lod.NearY+y;
+                    if(ty*settings.TileSize>=settings.Geometry.P.Width/2||(ty+1)*settings.TileSize<=-settings.Geometry.P.Width/2)continue;
+                    if(!tiles.ContainsKey(tx+":"+ty))lodPending.Add(Tuple.Create(tx,ty));
+                }
             }
-            lod.Update(p.Along,p.Across,pending.Count<=budget);
+            if(buildingTile!=null&&!wanted.Contains(buildingTile.X+":"+buildingTile.Y)&&!lod.NeedsNearTile(buildingTile.X,buildingTile.Y))
+            {CancelTile();preferPlanned=true;}
+            // Contact safety takes priority over the visual sampling budget. A
+            // close craft must not reach an unfinished central collision tile.
+            if(!immediate&&!tiles.ContainsKey(cx+":"+cy)&&p.Altitude<=FloorSample(p.Along,p.Across).Height+5000)
+                CompleteImmediate(cx,cy);
+            if(immediate)
+            {
+                foreach(var c in pending)CompleteImmediate(c.Item1,c.Item2);
+                foreach(var c in lodPending)CompleteImmediate(c.Item1,c.Item2);
+            }
+            else
+            {
+                // Samples are unchanged; yield between rows instead of blocking
+                // the flight thread for two complete high-resolution tiles.
+                if(tileWork==null)
+                {
+                    var queue=(preferPlanned||outrunning)&&lodPending.Count>0?lodPending:pending.Count>0?pending:lodPending;
+                    if(queue.Count>0){var c=queue[0];BeginTile(c.Item1,c.Item2);}
+                }
+                if(tileWork!=null)
+                {
+                    long start=RingPerformance.Begin();var clock=System.Diagnostics.Stopwatch.StartNew();
+                    do{if(!tileWork.MoveNext()){PublishTile();preferPlanned=!preferPlanned;break;}}
+                    while(clock.Elapsed.TotalMilliseconds<1.5);
+                    RingPerformance.End(RingPerformance.Section.NearBuild,start);
+                }
+            }
+            long lodStart=RingPerformance.Begin();lod.Update(p.Along,p.Across,true,NearReady);RingPerformance.End(RingPerformance.Section.Lod,lodStart);
             var remove=new List<string>();
             // Only retain the current near footprint and the near hole in the
             // still-visible LOD generation. Waiting for every distant block to
             // finish retains an entire flight path of MeshColliders unnecessarily.
-            if(pending.Count<=budget)foreach(var kv in tiles)
+            foreach(var kv in tiles)
                 if(!wanted.Contains(kv.Key)&&!lod.NeedsNearTile(kv.Value.X,kv.Value.Y))remove.Add(kv.Key);
             foreach(string key in remove){Destroy(tiles[key]);tiles.Remove(key);}
+            NearPending=tileWork==null?0:1;foreach(var key in wanted)if(!tiles.ContainsKey(key))NearPending++;
             double distance;var site=settings.Terrain.Nearest(p.Along,p.Across,out distance);
             string id=site!=null&&distance<8000?site.Id:"";
             if(id!=propSite){ClearProps();propSite=id;if(id!=""){propPhase=settings.Geometry.OrientationRadians;BuildProps(site);}}
@@ -140,6 +189,40 @@ namespace NivenRingworld
             foreach(var tile in tiles.Values)foreach(var fallback in tile.TreeFallbacks)if(fallback.Item1!=null)fallback.Item1.SetActive(parallax==null||!parallax.OwnsTrees(fallback.Item2,fallback.Item3,fallback.Item4));
             landmarks.Update(observer,star,groundFriction);
         }
+        private bool NearReady(long cx,long cy)
+        {
+            int radius=settings.TileRadius;
+            for(int y=-radius;y<=radius;y++)for(int x=-radius;x<=radius;x++)
+            {
+                long tx=cx+x,ty=cy+y;
+                if(ty*settings.TileSize>=settings.Geometry.P.Width/2||(ty+1)*settings.TileSize<=-settings.Geometry.P.Width/2)continue;
+                if(!tiles.ContainsKey(tx+":"+ty))return false;
+            }
+            return true;
+        }
+#if RINGWORLD_SMOKE_TEST
+        internal bool TestNearReady(long cx,long cy){return NearReady(cx,cy);}
+        internal void TestPublishedData()
+        {
+            foreach(var t in tiles.Values)
+            {
+                int n=settings.TileResolution,count=(n+1)*(n+1);
+                var mesh=t.Root.GetComponent<MeshFilter>().sharedMesh;var vertices=mesh.vertices;var colours=mesh.colors;
+                if(!t.Root.activeSelf||vertices.Length!=count||colours.Length!=count||t.Root.GetComponent<MeshCollider>().sharedMesh.vertexCount!=2*count)
+                    throw new InvalidOperationException("A near tile was published before its complete mesh/texture/collider.");
+                var geometry=new RingGeometry(settings.Geometry.P){Basis=settings.Geometry.Basis,OrientationRadians=t.Phase};
+                for(int y=0;y<=n;y++)for(int x=0;x<=n;x++)
+                {
+                    double a=t.X*settings.TileSize+settings.TileSize*x/n,b=Across(t.Y*settings.TileSize+settings.TileSize*y/n);
+                    var sample=FloorSample(a,b);int i=y*(n+1)+x;
+                    var expected=ConvertVector.Unity(geometry.Position(a,b,sample.Height)-t.Anchor);
+                    var color=TerrainTint.WithCanopy(sample,BiomePresentation.Sample(settings.Terrain,a,b,sample,settings.TileSize/n,settings.ForestDensity*StockGraphics.Scatter));
+                    if(vertices[i]!=expected||colours[i]!=color)throw new InvalidOperationException("Yielded terrain differs from synchronous vertex/color generation.");
+                }
+                break;
+            }
+        }
+#endif
         private double Across(double across){return Math.Max(-settings.Geometry.P.Width/2,Math.Min(settings.Geometry.P.Width/2,across));}
         private TerrainSample FloorSample(double along,double across)
         {double edge=settings.Geometry.P.Width/2-.01;return settings.Terrain.Sample(along,Math.Max(-edge,Math.Min(edge,across)));}
@@ -193,27 +276,57 @@ namespace NivenRingworld
             waterMaterial.color=new Color(.07f*light,.31f*light,.42f*light);
             scrithMaterial.color=new Color(.24f*light,.29f*light,.32f*light);leavesMaterial.color=new Color(.15f*light,.29f*light,.12f*light);forestMaterial.color=new Color(light,light,light);
         }
-        private Tile Build(long tx,long ty)
+        private void BeginTile(long tx,long ty)
         {
-            double size=settings.TileSize,x0=tx*size,y0=ty*size;int n=settings.TileResolution;
-            var t=new Tile{Root=new GameObject("Ringworld terrain "+tx+","+ty),Anchor=settings.Geometry.Position(x0,y0,0),X=tx,Y=ty,Phase=settings.Geometry.OrientationRadians};
-            t.Root.layer=15;
+            buildingTile=new Tile{Root=new GameObject("Ringworld terrain "+tx+","+ty),Anchor=settings.Geometry.Position(tx*settings.TileSize,ty*settings.TileSize,0),X=tx,Y=ty,Phase=settings.Geometry.OrientationRadians};
+            buildingTile.Root.layer=15;buildingTile.Root.SetActive(false);tileWork=BuildSteps(buildingTile);
+        }
+        private void CancelTile()
+        {if(tileWork!=null)tileWork.Dispose();tileWork=null;if(buildingTile!=null)Destroy(buildingTile);buildingTile=null;}
+        private void PublishTile()
+        {
+            var t=buildingTile;tileWork.Dispose();tileWork=null;buildingTile=null;
+            Place(t.Root,t.Anchor,t.Phase,Quaternion.identity,settings.Center);t.Root.SetActive(true);
+            tiles.Add(t.X+":"+t.Y,t);
+            RingworldTerrainApi.Add(settings.RingId,t.Root,t.Root.GetComponent<MeshFilter>().sharedMesh,t.X*settings.TileSize,t.Y*settings.TileSize,settings.TileSize);
+        }
+        private void CompleteImmediate(long tx,long ty)
+        {
+            if(tiles.ContainsKey(tx+":"+ty))return;
+            if(buildingTile!=null&&buildingTile.X==tx&&buildingTile.Y==ty)
+            {while(tileWork.MoveNext()){}PublishTile();return;}
+            // Do not discard the pending LOD hole's staged tile when generating
+            // an urgent collider or preparing a relocation synchronously.
+            var savedTile=buildingTile;var savedWork=tileWork;buildingTile=null;tileWork=null;
+            try{BeginTile(tx,ty);while(tileWork.MoveNext()){}PublishTile();}
+            finally{if(buildingTile!=null)CancelTile();buildingTile=savedTile;tileWork=savedWork;}
+        }
+        private IEnumerator<bool> BuildSteps(Tile t)
+        {
+            double size=settings.TileSize,x0=t.X*size,y0=t.Y*size;int n=settings.TileResolution;
+            // Freeze the chart of this tile across yielded frames. Its transform
+            // follows current orientation only at publication/reposition time.
+            var geometry=new RingGeometry(settings.Geometry.P){Basis=settings.Geometry.Basis,OrientationRadians=t.Phase};
             int count=(n+1)*(n+1);var vertices=new Vector3[count];var uv=new Vector2[count];var heights=new double[count];
             var colors=new Color[count];
             var detailCoordinates=new List<Vector4>(count);var surfaceWeights=new List<Vector4>(count);
             var noisePoints=new List<Vector3>(count);var noiseOrigin=TerrainSurface.NoiseOrigin(x0,y0,settings.Geometry.P.Radius);
             var waterVerts=new Vector3[count];var waterUv=new Vector2[count];var wet=new bool[count];
-            for(int y=0;y<=n;y++)for(int x=0;x<=n;x++)
+            for(int y=0;y<=n;y++)
             {
+              for(int x=0;x<=n;x++)
+              {
                 int i=y*(n+1)+x;double a=x0+size*x/n,b=Across(y0+size*y/n);
                 var sample=FloorSample(a,b);heights[i]=sample.Height;
                 TerrainSurfaceDetail.Add(detailCoordinates,surfaceWeights,noisePoints,sample,a,b,noiseOrigin,settings.Geometry.P.Radius);
-                vertices[i]=ConvertVector.Unity(settings.Geometry.Position(a,b,sample.Height)-t.Anchor);
+                vertices[i]=ConvertVector.Unity(geometry.Position(a,b,sample.Height)-t.Anchor);
                 uv[i]=new Vector2((x+.5f)/(n+1),(y+.5f)/(n+1));colors[i]=TerrainTint.WithCanopy(sample,BiomePresentation.Sample(settings.Terrain,a,b,sample,size/n,settings.ForestDensity*StockGraphics.Scatter));
                 wet[i]=sample.Wet;
                 double water=double.IsNegativeInfinity(sample.WaterHeight)?sample.Height-1:sample.WaterHeight;
-                waterVerts[i]=ConvertVector.Unity(settings.Geometry.Position(a,b,water+.1)-t.Anchor);
+                waterVerts[i]=ConvertVector.Unity(geometry.Position(a,b,water+.1)-t.Anchor);
                 waterUv[i]=new Vector2((float)Math.Max(0,water-sample.Height),(float)(size/n));
+              }
+              yield return true;
             }
             var indices=new List<int>(n*n*6);var waterIndices=new List<int>();
             for(int y=0;y<n;y++)for(int x=0;x<n;x++)
@@ -231,7 +344,7 @@ namespace NivenRingworld
             var colorBlock=new MaterialPropertyBlock();colorBlock.SetTexture("_MainTex",t.Texture);TerrainSurfaceDetail.Origin(colorBlock,noiseOrigin,settings.Geometry.P.Seed);renderer.SetPropertyBlock(colorBlock);
             var shellVertices=new Vector3[count*2];Array.Copy(vertices,shellVertices,count);
             for(int y=0;y<=n;y++)for(int x=0;x<=n;x++)
-                shellVertices[count+y*(n+1)+x]=ConvertVector.Unity(settings.Geometry.Position(x0+size*x/n,Across(y0+size*y/n),settings.UndersideAltitude)-t.Anchor);
+                shellVertices[count+y*(n+1)+x]=ConvertVector.Unity(geometry.Position(x0+size*x/n,Across(y0+size*y/n),settings.UndersideAltitude)-t.Anchor);
             var shellIndices=GroundShell.Triangles(n);
             var shell=new Mesh{name="Closed ring collision shell"};shell.vertices=shellVertices;shell.triangles=Nondegenerate(shellVertices,shellIndices);shell.RecalculateBounds();t.Meshes.Add(shell);
             var floorCollider=t.Root.AddComponent<MeshCollider>();floorCollider.sharedMesh=shell;floorCollider.sharedMaterial=groundFriction;
@@ -244,18 +357,22 @@ namespace NivenRingworld
             underside.AddComponent<MeshFilter>().sharedMesh=undersideMesh;var undersideRenderer=underside.AddComponent<MeshRenderer>();undersideRenderer.sharedMaterial=undersideMaterial;
             var hullBlock=new MaterialPropertyBlock();TerrainSurfaceDetail.Origin(hullBlock,noiseOrigin,settings.Geometry.P.Seed);undersideRenderer.SetPropertyBlock(hullBlock);
             undersideRenderer.shadowCastingMode=ShadowCastingMode.Off;
-            AddRimWalls(t,x0,y0,size);
+            double oldPhase=settings.Geometry.OrientationRadians;
+            try{settings.Geometry.OrientationRadians=t.Phase;AddRimWalls(t,x0,y0,size);}
+            finally{settings.Geometry.OrientationRadians=oldPhase;}
+            yield return true;
             RebuildScenery(t);
+            yield return true;
             if(waterIndices.Count>0)
             {
                 var water=new GameObject("Water");water.layer=15;water.transform.SetParent(t.Root.transform,false);
                 var mesh=new Mesh{name="Ringworld water"};mesh.vertices=waterVerts;mesh.uv=waterUv;mesh.SetTriangles(waterIndices,0);mesh.RecalculateNormals();mesh.RecalculateBounds();var bounds=mesh.bounds;bounds.Expand(4);mesh.bounds=bounds;t.Meshes.Add(mesh);
-                water.AddComponent<MeshFilter>().sharedMesh=mesh;water.AddComponent<MeshRenderer>().sharedMaterial=waterMaterial;
+                water.AddComponent<MeshFilter>().sharedMesh=mesh;var waterRenderer=water.AddComponent<MeshRenderer>();waterRenderer.sharedMaterial=waterMaterial;t.WaterRenderer=waterRenderer;RingWaterVisibility.Add(waterRenderer);
             }
             ground.colors=colors;
-            Place(t.Root,t.Anchor,t.Phase,Quaternion.identity,settings.Center);
-            RingworldTerrainApi.Add(settings.RingId,t.Root,ground,x0,y0,size);
-            return t;
+            // The inactive root, collider, color texture, water and scenery are
+            // complete before publication and the external ChunkReady event.
+            yield break;
         }
         private void AddRimWalls(Tile t,double x0,double y0,double size)
         {
@@ -430,9 +547,10 @@ namespace NivenRingworld
             }
         }
         private void ClearProps(){foreach(var p in props)UnityEngine.Object.Destroy(p);props.Clear();propPositions.Clear();propRotations.Clear();}
-        private static void Destroy(Tile t){RingworldTerrainApi.Remove(t.Root);UnityEngine.Object.Destroy(t.Texture);UnityEngine.Object.Destroy(t.Root);foreach(var m in t.Meshes)UnityEngine.Object.Destroy(m);}
+        private static void Destroy(Tile t){RingWaterVisibility.Remove(t.WaterRenderer);RingworldTerrainApi.Remove(t.Root);UnityEngine.Object.Destroy(t.Texture);UnityEngine.Object.Destroy(t.Root);foreach(var m in t.Meshes)UnityEngine.Object.Destroy(m);}
         public void Dispose()
         {
+            CancelTile();
             if(parallax!=null)parallax.Dispose();
             Extensions.WaterScreenCopy.Enable(false);Extensions.RingUnderwater.Enable(false);
             foreach(var t in tiles.Values)Destroy(t);tiles.Clear();ClearProps();

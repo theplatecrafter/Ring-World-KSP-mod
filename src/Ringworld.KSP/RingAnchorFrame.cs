@@ -50,8 +50,15 @@ namespace NivenRingworld
         }
         private double gravityTime=double.NaN;
         private DVec referenceAcceleration;
-        private readonly List<Tuple<DVec,double,double>> gravitySources=new List<Tuple<DVec,double,double>>();
+        private struct GravitySource
+        {internal DVec Position;internal double Radius,Mu;internal GravitySource(DVec position,double radius,double mu){Position=position;Radius=radius;Mu=mu;}}
+        private readonly List<GravitySource> gravitySources=new List<GravitySource>();
         internal DVec InertialGravity(DVec ringPosition,double time)
+        {
+            long profile=RingPerformance.Begin();
+            try{return SampleGravity(ringPosition,time);}finally{RingPerformance.End(RingPerformance.Section.Gravity,profile);}
+        }
+        private DVec SampleGravity(DVec ringPosition,double time)
         {
             var anchor=AnchorAt(time);var position=ringPosition+anchor.Position;
             var acceleration=-anchor.Acceleration;
@@ -71,15 +78,15 @@ namespace NivenRingworld
                 foreach(var body in FlightGlobals.Bodies)
                 {
                     RingAnchorState bodyState;string error;
-                    if(body.gravParameter<=0||!RingAnchorEphemeris.TryRelative(RingAnchorEphemeris.Id(body),Body,time,out bodyState,out error))continue;
-                    gravitySources.Add(Tuple.Create(bodyState.Position,body.Radius,body.gravParameter));
+                    if(body==null||body.gravParameter<=0||!RingAnchorEphemeris.TryBodyRelative(body,Body,time,out bodyState,out error))continue;
+                    gravitySources.Add(new GravitySource(bodyState.Position,body.Radius,body.gravParameter));
                 }
             }
             acceleration-=referenceAcceleration;
             foreach(var source in gravitySources)
             {
-                var delta=source.Item1-position;double radius=Math.Max(1,Math.Max(delta.Length,source.Item2));
-                acceleration+=delta*(source.Item3/(radius*radius*radius));
+                var delta=source.Position-position;double radius=Math.Max(1,Math.Max(delta.Length,source.Radius));
+                acceleration+=delta*(source.Mu/(radius*radius*radius));
             }
             return acceleration;
         }

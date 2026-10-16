@@ -16,6 +16,8 @@ namespace NivenRingworld
         internal Vector3d Center {get{return Settings.Center;}}
         internal DVec Acceleration(DVec p,DVec velocity,bool ribbon=true){return Settings.Geometry.Acceleration(p,velocity,0,ribbon)+Settings.StellarAcceleration(p,Star.gravParameter,Planetarium.GetUniversalTime()-FrameEpoch);}
         private SurfaceStreamer surface;
+        private readonly HashSet<Rigidbody> positionBodies=new HashSet<Rigidbody>(),velocityBodies=new HashSet<Rigidbody>(),forceBodies=new HashSet<Rigidbody>();
+        internal int NearTileCount {get{return surface==null?0:surface.TileCount;}}
         internal double ScatterFloor(double along,double across){return surface!=null?surface.CollisionHeight(along,across):Settings.Terrain.Sample(along,across).Height;}
         internal GroundDetails groundDetails;
         private AmbientGroundWeather groundWeather;
@@ -101,11 +103,12 @@ namespace NivenRingworld
                     return Settings.Geometry.RotateAroundAxis(record.Position,Settings.Geometry.P.Omega*(FrameEpoch-record.Epoch));
                 return ConvertVector.Core(v.GetWorldPos3D()-Center);
             }
-            double mass=0;DVec offset=new DVec();var seen=new HashSet<Rigidbody>();
+            double mass=0;DVec offset=new DVec();var seen=positionBodies;seen.Clear();
+            var root=v.transform.position;
             foreach(var part in v.parts)
             {
                 var rb=part.rb;if(rb==null||rb.isKinematic||!seen.Add(rb))continue;
-                offset+=ConvertVector.Core(rb.worldCenterOfMass-v.transform.position)*rb.mass;mass+=rb.mass;
+                offset+=ConvertVector.Core(rb.worldCenterOfMass-root)*rb.mass;mass+=rb.mass;
             }
             return RootPosition(v)+(mass>0?offset/mass:new DVec());
         }
@@ -129,14 +132,14 @@ namespace NivenRingworld
                 if(RingAnchorEphemeris.TryVesselRelative(v,Star,Planetarium.GetUniversalTime(),out state))return state.Velocity-Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity;
                 return ConvertVector.Core(v.obt_velocity)-Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity;
             }
-            double mass=0;DVec velocity=new DVec();var seen=new HashSet<Rigidbody>();
+            double mass=0;DVec velocity=new DVec();var seen=velocityBodies;seen.Clear();
             foreach(var part in v.parts)
             {
                 var rb=part.rb;if(rb==null||rb.isKinematic||!seen.Add(rb))continue;
                 velocity+=ConvertVector.Core(rb.velocity)*rb.mass;mass+=rb.mass;
             }
             var result=mass>0?velocity/mass+ConvertVector.Core(Krakensbane.GetFrameVelocity()):ConvertVector.Core(v.obt_velocity);
-            if(FrameInUse)return result;
+            if(Owns(v)||FrameInUse)return result;
             RingAnchorState reference;string error;
             if(!RingAnchorEphemeris.TryRelative(RingAnchorEphemeris.Id(v.mainBody),Star,Planetarium.GetUniversalTime(),out reference,out error))return result;
             return result+reference.Velocity-Settings.AnchorAt(Planetarium.GetUniversalTime()).Velocity;
@@ -152,6 +155,7 @@ namespace NivenRingworld
                 groundDetails=new GroundDetails(Settings);groundWeather=new AmbientGroundWeather(Settings);
                 atmosphere=new AtmosphereRenderer(Settings);
                 StockIntegration.Install();
+                RingPerformance.Configure();
                 PauseUnsafeResident();
                 window.x=Mathf.Max(10,Screen.width-window.width-70);
                 toolbar=new RingToolbar(value=>visible=value);
@@ -192,6 +196,11 @@ namespace NivenRingworld
             State.SelectRing(id);ApplyOptions(State.GetOptions(),true);destination=0;nextRingSelection=Time.realtimeSinceStartup+10;Visit();return true;
         }
         public void Update()
+        {
+            long profile=RingPerformance.Begin();
+            try{UpdateFlight();}finally{RingPerformance.End(RingPerformance.Section.FlightUpdate,profile);RingPerformance.Report(this);}
+        }
+        private void UpdateFlight()
         {
             SelectNearbyRing();
             if(State!=null&&Settings!=null&&boundOptions!=State.GetOptions())ApplyOptions(State.GetOptions(),true);
@@ -279,6 +288,11 @@ namespace NivenRingworld
         }
         public void FixedUpdate()
         {
+            long profile=RingPerformance.Begin();
+            try{ApplyForces();}finally{RingPerformance.End(RingPerformance.Section.FlightForces,profile);}
+        }
+        private void ApplyForces()
+        {
             if(!StockIntegration.ReadyForFlight)return;
             if(Settings==null||Star==null)return;
             AdoptNearbyActiveVessel();
@@ -289,7 +303,7 @@ namespace NivenRingworld
                 {
                     if(vessel==null||vessel.packed||vessel.mainBody!=Star)continue;
                     var pull=Settings.Geometry.RibbonAcceleration(Position(vessel));
-                    var seen=new HashSet<Rigidbody>();
+                    var seen=forceBodies;seen.Clear();
                     foreach(var part in vessel.parts)if(part.rb!=null&&!part.rb.isKinematic&&seen.Add(part.rb))part.rb.AddForce(ConvertVector.Unity(pull),ForceMode.Acceleration);
                 }
                 return;
@@ -301,7 +315,8 @@ namespace NivenRingworld
             if(!State.Vessels.TryGetValue(active.id.ToString(),out activeRecord)||!activeRecord.Restored)return;
             if(!Settings.Geometry.InArrivalRegion(Position(active),true)){Leave();return;}
             surface.Reposition(Center);
-            var bodies=new HashSet<Rigidbody>();
+            var bodies=forceBodies;bodies.Clear();
+            var center=Center;
             foreach(var v in FlightGlobals.VesselsLoaded)
             {
                 if(v==null||v.packed||v.mainBody!=Star)continue;
@@ -314,12 +329,13 @@ namespace NivenRingworld
                 }
                 if(State.Vessels[id].RingId!=Settings.RingId||!State.Vessels[id].Restored)continue;
                 DVec vesselPos=Position(v);
+                var rootPosition=ConvertVector.Core((Vector3d)v.transform.position-center);var transformPosition=v.transform.position;
                 var ribbonPull=Settings.Geometry.RibbonAcceleration(vesselPos);
                 foreach(var part in v.parts)
                 {
                     Rigidbody rb=part.rb;
                     if(rb==null||rb.isKinematic||!bodies.Add(rb))continue;
-                    DVec pos=RootPosition(v)+ConvertVector.Core(rb.worldCenterOfMass-v.transform.position);
+                    DVec pos=rootPosition+ConvertVector.Core(rb.worldCenterOfMass-transformPosition);
                     DVec vel=ConvertVector.Core((Vector3d)rb.velocity+Krakensbane.GetFrameVelocity());
                     var coord=Settings.Geometry.Coordinates(pos);
                     // This acceleration belongs to the opted-in rotating frame, not to a spherical SOI.
@@ -336,8 +352,15 @@ namespace NivenRingworld
         }
         public void LateUpdate()
         {
+            long profile=RingPerformance.Begin();
+            try{LateFlight();}finally{RingPerformance.End(RingPerformance.Section.FlightLate,profile);}
+        }
+        private void LateFlight()
+        {
             if(Settings==null||Star==null)return;
+            long profile=RingPerformance.Begin();
             if(!transferring&&surface!=null)surface.Reposition(Center);
+            RingPerformance.End(RingPerformance.Section.SurfacePosition,profile);
             var v=FlightGlobals.ActiveVessel;
             if(Owns(v)&&FlightCamera.fetch!=null&&!MapView.MapIsEnabled)
             {
@@ -352,9 +375,9 @@ namespace NivenRingworld
             bool airView=!transferring&&v!=null&&v.mainBody==Star&&!MapView.MapIsEnabled;
             if(FlightCamera.fetch!=null&&FlightCamera.fetch.mainCamera!=null&&visuals==null)
                 visuals=FlightCamera.fetch.mainCamera.gameObject.AddComponent<RingVisualRenderer>();
-            if(visuals!=null)visuals.Prepare(airView,Center);
-            if(weatherEffects==null)weatherEffects=new RingWeatherEffects();weatherEffects.Update(airView,Settings,Center);
-            if(atmosphere!=null)atmosphere.Update(airView&&(visuals==null||!visuals.Rendering||visuals.SimplePhoto),Center,visuals!=null&&visuals.CylaActive);
+            profile=RingPerformance.Begin();if(visuals!=null)visuals.Prepare(airView,Center);RingPerformance.End(RingPerformance.Section.VisualPrepare,profile);
+            profile=RingPerformance.Begin();if(weatherEffects==null)weatherEffects=new RingWeatherEffects();weatherEffects.Update(airView,Settings,Center);RingPerformance.End(RingPerformance.Section.Weather,profile);
+            profile=RingPerformance.Begin();if(atmosphere!=null)atmosphere.Update(airView&&(visuals==null||!visuals.Rendering||visuals.SimplePhoto),Center,visuals!=null&&visuals.CylaActive);RingPerformance.End(RingPerformance.Section.Atmosphere,profile);
         }
         internal Vector3 ConstrainCamera(Vector3 desired,Vector3 target,float clearance)
         {
@@ -373,7 +396,7 @@ namespace NivenRingworld
             return desired;
         }
         internal int LodCount {get{return surface==null?0:surface.LodCount;}}
-        internal int LodPending {get{return surface==null?0:surface.LodPending+surface.CanopyPending+surface.SceneryPending;}}
+        internal int LodPending {get{return surface==null?0:surface.LodPending+surface.CanopyPending+surface.SceneryPending+surface.NearPending;}}
         internal int ScaledLodCount {get{return surface==null?0:surface.ScaledLodCount;}}
         internal int BuiltScaledLodCount {get{return surface==null?0:surface.BuiltScaledLodCount;}}
         internal double SurfaceClearance(Vessel v)

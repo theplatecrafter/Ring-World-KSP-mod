@@ -10,12 +10,14 @@ namespace NivenRingworld
         {
             internal Settings Settings;internal DVec Center;
             internal readonly DVec[] Panels=new DVec[20];internal readonly RingBasis[] Basis=new RingBasis[20];
+            internal readonly bool[] PossiblePanels=new bool[20];internal DVec Observer;
         }
         private sealed class Scene
         {
             internal double Time=double.NaN,GpuTime=double.NaN;internal CelestialBody Star;internal DVec Light;
             internal Texture2D Texture;
             internal readonly List<Tuple<DVec,double>> Bodies=new List<Tuple<DVec,double>>();
+            internal readonly List<Tuple<DVec,double>> PossibleBodies=new List<Tuple<DVec,double>>();
             internal readonly List<RingBlocker> Rings=new List<RingBlocker>();
         }
         private static readonly Dictionary<Settings,Scene> scenes=new Dictionary<Settings,Scene>();
@@ -111,23 +113,48 @@ namespace NivenRingworld
             var observer=s.Geometry.RotateAroundAxis(local,rotation)+s.AnchorAt(time).Position;
             return s.Geometry.RotateAroundAxis((scene.Light-observer).Unit,-rotation);
         }
+        internal static DVec LightPosition(Settings s,double time)
+        {
+            var scene=GetScene(s,time);if(scene.Star==null)return new DVec();
+            return s.Geometry.RotateAroundAxis(scene.Light-s.AnchorAt(time).Position,s.Geometry.OrientationRadians-s.Geometry.P.Omega*time);
+        }
         internal static double Visibility(Settings s,DVec local,double time,bool habitats=true)
+        {return VisibilityFiltered(s,local,time,habitats,true);}
+#if RINGWORLD_SMOKE_TEST
+        internal static double VisibilityReference(Settings s,DVec local,double time)
+        {return VisibilityFiltered(s,local,time,true,false);}
+#endif
+        private static double VisibilityFiltered(Settings s,DVec local,double time,bool habitats,bool filter)
         {
             var scene=GetScene(s,time);if(scene.Star==null)return 0;
             double rotation=s.Geometry.P.Omega*time-s.Geometry.OrientationRadians;
             var observer=s.Geometry.RotateAroundAxis(local,rotation)+s.AnchorAt(time).Position;
+            // Filter against a sphere enlarged by the entire luminous disk.
+            // Every sampled segment is within that radius of the central ray;
+            // rejected blockers therefore cannot eclipse any of the eight rays.
+            scene.PossibleBodies.Clear();
+            foreach(var body in scene.Bodies)if(!filter||RingOcclusion.Sphere(observer,scene.Light,body.Item1,body.Item2+scene.Star.Radius))scene.PossibleBodies.Add(body);
+            if(habitats)foreach(var ring in scene.Rings)
+            {
+                var g=ring.Settings.Geometry;ring.Observer=g.Basis.ToLocal(observer-ring.Center);
+                if(!g.P.PanelsEnabled)continue;
+                var light=g.Basis.ToLocal(scene.Light-ring.Center);
+                double bound=new DVec(500,g.P.Width*.5,g.P.Radius*2/153).Length+scene.Star.Radius;
+                for(int i=0;i<20;i++)ring.PossiblePanels[i]=!filter||RingOcclusion.Sphere(ring.Observer,light,ring.Panels[i],bound);
+            }
             return RingOcclusion.Visibility(observer,scene.Light,scene.Star.Radius,8,end=>
             {
-                foreach(var body in scene.Bodies)if(RingOcclusion.Sphere(observer,end,body.Item1,body.Item2))return true;
+                foreach(var body in scene.PossibleBodies)if(RingOcclusion.Sphere(observer,end,body.Item1,body.Item2))return true;
                 if(habitats)foreach(var ring in scene.Rings)
                 {
                     var other=ring.Settings;var g=other.Geometry;var center=ring.Center;
                     if(RingOcclusion.RingShell(observer,end,center,g.Basis,g.P.Radius-TerrainGenerator.MinimumHeight,g.P.Radius-TerrainGenerator.MinimumHeight+other.StructuralThickness,g.P.Width*.5))return true;
                     double wallRadius=g.P.Radius-g.P.WallHeight;
-                    foreach(int side in new[]{-1,1})if(RingOcclusion.RingShell(observer,end,center+g.Axis*(side*g.P.Width*.5),g.Basis,wallRadius,g.P.Radius+other.StructuralThickness,other.StructuralThickness))return true;
+                    if(RingOcclusion.RingShell(observer,end,center-g.Axis*(g.P.Width*.5),g.Basis,wallRadius,g.P.Radius+other.StructuralThickness,other.StructuralThickness)||
+                       RingOcclusion.RingShell(observer,end,center+g.Axis*(g.P.Width*.5),g.Basis,wallRadius,g.P.Radius+other.StructuralThickness,other.StructuralThickness))return true;
                     if(!g.P.PanelsEnabled)continue;
-                    var a=g.Basis.ToLocal(observer-center);var b=g.Basis.ToLocal(end-center);
-                    for(int i=0;i<20;i++)if(RingOcclusion.Box(a,b,ring.Panels[i],ring.Basis[i],new DVec(500,g.P.Width*.5,g.P.Radius*2/153)))return true;
+                    var a=ring.Observer;var b=g.Basis.ToLocal(end-center);
+                    for(int i=0;i<20;i++)if(ring.PossiblePanels[i]&&RingOcclusion.Box(a,b,ring.Panels[i],ring.Basis[i],new DVec(500,g.P.Width*.5,g.P.Radius*2/153)))return true;
                 }
                 return false;
             });

@@ -54,3 +54,11 @@ Explore the world's design or plan an add-on:
 The [validation log](history/VALIDATION.md), [earlier design notes](history/DEVELOPMENT-NOTES.md) and [graphics investigation](history/GRAPHICS-DIAGNOSIS.md) preserve technical evidence. They describe specific builds and tests, and are not current installation or gameplay instructions.
 
 - [Shared development workspace](developers/WORKSPACE.md)
+
+Approach/performance development: [issue #7 evidence and profiling instructions](developers/ISSUE-7-PERFORMANCE.md).
+
+All-extension rendering follow-up: [15 October performance work and validation](developers/FRAME-PERFORMANCE-20261015.md).
+
+Startup graphics setup: [Parallax and Kopernicus warning investigation](developers/STARTUP-WARNINGS.md).
+
+Dependency maintenance: [NetKAN compatibility audit](developers/NETKAN-COMPATIBILITY.md).

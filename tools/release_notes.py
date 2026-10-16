@@ -4,6 +4,14 @@ from pathlib import Path
 
 
 def release_body(path: Path, version: str) -> str:
+    # New releases keep a copy-ready player description separate from the
+    # technical history. Retain the legacy parser for older release files.
+    player_notes = path.parent / "docs" / "releases" / ("v" + version + ".md")
+    if player_notes.is_file():
+        body = player_notes.read_text(encoding="utf-8-sig").strip()
+        if not body:
+            raise ValueError(f"Empty player-facing release notes for {version}")
+        return body + "\n"
     text = path.read_text(encoding="utf-8-sig")
     marker = "## Release-v" + version
     matches = list(re.finditer(r"^" + re.escape(marker) + r"[ \t]*$", text, re.MULTILINE))

@@ -1,10 +1,12 @@
-# Niven Ringworld Expedition 1.1.9
+# Niven Ringworld Expedition 1.1.10
 
 A Larry Niven-inspired, star-encircling habitat with a landable rotating interior, procedural terrain, atmosphere, science and persistent expeditions. The default world uses one-tenth of the published linear ring dimensions. Original geography and architecture are interpretations of the setting.
 
 Spacedock page: https://spacedock.info/mod/4573/Niven's%20Ring%20World
 
 [Player documentation](docs/README.md) · [Release history and dependency versions](RELEASE-NOTES.md)
+
+Version 1.1.10 improves trajectory, terrain-streaming and renderer performance while retaining visual detail. See the [player-facing update notes](docs/releases/v1.1.10.md).
 
 ## Install and play
 

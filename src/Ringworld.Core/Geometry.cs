@@ -101,19 +101,25 @@ namespace Ringworld.Core
             double best=double.PositiveInfinity;
             double a=velocity.X*velocity.X+velocity.Z*velocity.Z,b=p.X*velocity.X+p.Z*velocity.Z;
             double r=Math.Sqrt(p.X*p.X+p.Z*p.Z);
-            foreach(double boundary in new[]{P.Radius+50000,P.Radius-P.WallHeight-50000})
-            {
-                double c=(r-boundary)*(r+boundary),disc=b*b-a*c;
-                if(a<1e-20||disc<0)continue;
-                double q=-b-(b>=0?1:-1)*Math.Sqrt(disc);
-                foreach(double t in new[]{q/a,Math.Abs(q)>1e-20?c/q:-b/a})
-                    if(t>=0&&t<=horizon&&InArrivalRegion(Basis.ToWorld(p+velocity*(t+1e-6)),false))best=Math.Min(best,t);
-            }
+            ArrivalBoundary(p,velocity,horizon,P.Radius+50000,a,b,r,ref best);
+            ArrivalBoundary(p,velocity,horizon,P.Radius-P.WallHeight-50000,a,b,r,ref best);
             if(Math.Abs(velocity.Y)>1e-12)
-                foreach(double y in new[]{-P.Width/2-50000,P.Width/2+50000})
-                {double t=(y-p.Y)/velocity.Y;if(t>=0&&t<=horizon&&InArrivalRegion(Basis.ToWorld(p+velocity*(t+1e-6)),false))best=Math.Min(best,t);}
+            {
+                ArrivalTime(p,velocity,horizon,(-P.Width/2-50000-p.Y)/velocity.Y,ref best);
+                ArrivalTime(p,velocity,horizon,(P.Width/2+50000-p.Y)/velocity.Y,ref best);
+            }
             return best;
         }
+        private void ArrivalBoundary(DVec p,DVec velocity,double horizon,double boundary,double a,double b,double r,ref double best)
+        {
+            double c=(r-boundary)*(r+boundary),disc=b*b-a*c;
+            if(a<1e-20||disc<0)return;
+            double q=-b-(b>=0?1:-1)*Math.Sqrt(disc);
+            ArrivalTime(p,velocity,horizon,q/a,ref best);
+            ArrivalTime(p,velocity,horizon,Math.Abs(q)>1e-20?c/q:-b/a,ref best);
+        }
+        private void ArrivalTime(DVec p,DVec velocity,double horizon,double t,ref double best)
+        {if(t>=0&&t<=horizon&&InArrivalRegion(Basis.ToWorld(p+velocity*(t+1e-6)),false))best=Math.Min(best,t);}
         public DVec Up(DVec p) { p=Basis.ToLocal(p);return Basis.ToWorld(new DVec(-p.X,0,-p.Z).Unit); }
         public DVec AlongDirection(DVec p) { return DVec.Cross(Axis,p).Unit; }
         public DVec SpinVelocity(DVec p) { return DVec.Cross(Axis*P.Omega,p); }

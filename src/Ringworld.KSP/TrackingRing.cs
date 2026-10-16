@@ -17,12 +17,14 @@ namespace NivenRingworld
         public void Start()
         {
             StockIntegration.Install();
+            RingPerformance.Configure();
             gameObject.AddComponent<RingRenderRegistry>();
             Settings=Settings.Load();Star=FlightGlobals.Bodies.Find(b=>b.name=="Sun");
             Trajectory=gameObject.AddComponent<RingTrajectory>();
         }
         public void Update()
         {
+            RingPerformance.Report();
             var scenario=RingworldScenario.Instance;
             if(scenario==null||Star==null)return;
             if(!initialized)
@@ -42,7 +44,9 @@ namespace NivenRingworld
             {VesselRecord record;if(resident.packed&&RingResidence.Saved(resident,out record)&&record.Landed)RingResidence.HoldSaved(resident,record);}
             var selected=PlanetariumCamera.fetch!=null&&PlanetariumCamera.fetch.target!=null?PlanetariumCamera.fetch.target.vessel:null;
             string nearest=RingSelection.Nearest(selected);if(nearest!=null){Settings=scenario.RingSettings(nearest);Star=Settings.Body;}
-            if(Time.realtimeSinceStartup<nextCheck)return;
+            // With warp already stopped there is nothing to guard. Do not scan
+            // every asteroid's future orbit ten times a second at normal speed.
+            if(TimeWarp.CurrentRateIndex==0||Time.realtimeSinceStartup<nextCheck)return;
             nextCheck=Time.realtimeSinceStartup+.1f;
             double now=Planetarium.GetUniversalTime();
             double horizon=Math.Max(10,Math.Min(72000,TimeWarp.CurrentRate*2));
@@ -77,18 +81,27 @@ namespace NivenRingworld
         }
         internal static double Encounter(Orbit orbit,RingGeometry geometry,double now,double horizon,DVec centerOffset=default(DVec),Func<double,DVec> centerAt=null,CelestialBody reference=null)
         {
-            var previous=RingAnchorEphemeris.OrbitRelative(orbit,reference??orbit.referenceBody,now).Position-(centerAt==null?centerOffset:centerAt(now));
-            if(geometry.InArrivalRegion(previous,false))return 0;
+            double eta;TryEncounter(orbit,geometry,now,horizon,out eta,centerOffset,centerAt,reference);return eta;
+        }
+        internal static bool TryEncounter(Orbit orbit,RingGeometry geometry,double now,double horizon,out double eta,DVec centerOffset=default(DVec),Func<double,DVec> centerAt=null,CelestialBody reference=null)
+        {
+            eta=double.PositiveInfinity;
+            if(orbit==null||geometry==null||!RingParameters.Finite(horizon)||horizon<0)return false;
+            reference=reference??orbit.referenceBody;RingAnchorState state;
+            if(!RingAnchorEphemeris.TryOrbitRelative(orbit,reference,now,out state))return false;
+            var previous=state.Position-(centerAt==null?centerOffset:centerAt(now));
+            if(geometry.InArrivalRegion(previous,false)){eta=0;return true;}
             for(double elapsed=0;elapsed<horizon;)
             {
                 double dt=Math.Min(120,horizon-elapsed);
-                var next=RingAnchorEphemeris.OrbitRelative(orbit,reference??orbit.referenceBody,now+elapsed+dt).Position-(centerAt==null?centerOffset:centerAt(now+elapsed+dt));
+                if(!RingAnchorEphemeris.TryOrbitRelative(orbit,reference,now+elapsed+dt,out state))return false;
+                var next=state.Position-(centerAt==null?centerOffset:centerAt(now+elapsed+dt));
                 // Chord intersection catches a thin ribbon crossed between samples.
                 double entry=geometry.TimeToArrival(previous,(next-previous)/dt,dt);
-                if(!double.IsInfinity(entry))return elapsed+entry;
+                if(!double.IsInfinity(entry)){eta=elapsed+entry;return true;}
                 previous=next;elapsed+=dt;
             }
-            return double.PositiveInfinity;
+            return true;
         }
         internal static bool WarpSafe(float rate)
         {

@@ -1,5 +1,53 @@
 # Niven Ringworld ? release notes
 
+## 1.1.10 — artifacts prepared 15 October 2026
+
+Local NetKAN follow-up: this component's requirements stay unchanged after checking the released host SDKs. Clouds 1.0.2 compiles with base 1.1.5 and 1.1.9; Scattering 1.0.3 compiles with base 1.1.8 and 1.1.9. The optional water-visibility hook retains older-host fallback. See the base [metadata audit](docs/developers/NETKAN-COMPATIBILITY.md) for targeted runtime evidence. The already prepared ZIPs remain unchanged; the Parallax recipe separately gains explicit texture-loader/stock-scatter requirements.
+
+
+[Player-facing release notes](docs/releases/v1.1.10.md). Local preparation only; the owner handles publication.
+
+Requires Harmony2 >=2.2.1.0, ModuleManager >=4.0.0 and one NivenRingworldConfig provider; interstellar providers additionally require Kopernicus/KSPTextureLoader/ModularFlightIntegrator through their existing dependency graph. Keep one replacement config (provides + conflicts NivenRingworldConfig). Optional companions: RingworldClouds 1.0.2 (base >=1.1.5), RingworldScattering 1.0.3 and RingworldParallax 1.0.1 (base >=1.1.8), Cyla 1.1.0; TUFX/Scatterer/Deferred/BetterTimeWarp suggestions are unchanged.
+
+No dependency/minimum-version change from the previous component release. No DLL/type rename, save-format change, terrain-generator change or reset. Existing ring identities, world parameters, resident poses, progress and explicit settings are retained. Stable assembly identities are preserved while file/product versions advance. Standalone archives contain only their own mod and documentation. No requirement or install-path change is needed in this component's NetKAN recipe.
+
+Release validation (15 October 2026): fresh `StartupCompatibility-release-1.1.10-retained.log` passed retained formats 3/4/pre-1.1.8 format 5, repeated migration/options/generator/pose/progress preservation, legacy resident restore/resave and real Flight Map -> Tracking Station -> Space Center transitions with KSPCF. Original retained files were hash-protected. Historical scenario data and a synthetic legacy resident are complementary coverage; this does not certify every old craft/mod binary combination. Current renderer source also passed `FramePerformance-overcast-followup-high.log`, `ParallaxPhoto-performance-4.log` and `Issue7Performance-rendering-final-9.log` before the version-only preparation. Core/placement suites: 143,203/18,050. No serialization or preset-budget changes. Normal DLLs omit test harnesses; archive checks verify versions, CRCs, hashes, paths and dependency exclusions.
+
+### startup graphics setup (15 October 2026)
+
+- Diagnose the development instance's Low KSP terrain detail against Parallax Continued's High requirement and Kopernicus's remembered High value. Document the correction and the distinction from Ringworld's own presets. No upstream warning is hidden and no global setting is forced by the plugin.
+- Add a smoke-only, read-only menu warning observer and local regression script. Normal builds exclude it; no player save is opened by this startup check.
+- Skip zero-weight broad cloud coverage noise for fully overcast weather and all coverage noise when cloud amount is zero, in both the base field and Clouds extension. Preserve intermediate coverage, clusters, weather, samples and quality budgets. Expanded GPU comparison covers six cloud amounts including both branch boundaries.
+
+Dependencies, save formats, ring geography and published archives are unchanged. See [startup warning evidence](docs/developers/STARTUP-WARNINGS.md) and the [performance report](docs/developers/FRAME-PERFORMANCE-20261015.md) for validation scope.
+
+### rendering performance across extensions (15 October 2026)
+
+- Compose the full-ring cloud/atmosphere placement transform once per camera instead of resolving frame rotations per vertex. Reuse unchanged uploads and derive conservative bounds analytically, preserving double-precision camera-relative coordinates and the complete mesh.
+- Track live water renderers for optional camera-frustum rejection of unnecessary water background copies. Inactive/staged/retired chunks do not request a copy. This is visual scheduling only; water levels, terrain, buoyancy and collision remain unchanged.
+- Avoid repeated activation calls for already-visible LOD roots. Keep the existing mesh detail, terrain/biome generation, object budgets, cloud types, shader steps and selected quality settings.
+- Replace repeated signed remainder operations in cloud-noise wrapping with equivalent unsigned remainder/bit masking, including negative coordinates and longitude seams. The same field optimization is used by the Clouds extension; seeds and cloud geography remain unchanged.
+- Add a local all-extension profiling workload and reference comparisons for scaled mesh positions/bounds, Parallax CPU/GPU culling, cloud density/light fields and water transparency. Extension profiling hooks are compiled only into test builds.
+
+Dependency and installation changes: none. Existing config-provider rules, extension minimums, DLL names/interfaces and save formats are retained. Standalone extension changes are recorded in their own release notes. This release is packaged locally; no NetKAN edit or publication is performed. Detailed results: [rendering performance report](docs/developers/FRAME-PERFORMANCE-20261015.md).
+
+Validation: final all-extension workload, native map/tracking/fast streaming and real Parallax photo tests passed. On the development laptop at actual 2880×1920, ground/basic measured 13.54→14.61 FPS, volume clouds 2.01→2.25, map 16.43→22.81 and ocean 3.15→3.34 against the previous development build. Short runs/populations vary; the report also retains slower microbenchmarks and failed experimental variants. Density/light and complete small cloud-render comparisons matched exactly in the final checks; water transparency/scattering and scatter LOD counts were preserved. Core/placement checks: 143,203/18,050. Normal builds/bundles are installed and original graphics settings/release ZIP hashes are restored/unchanged. Higher-preset desktop performance and the reporter's exact full modded craft remain unverified.
+
+### approach stability and CPU performance (issue #7)
+
+- Correct the trajectory exception storm caused by following an uninitialized next slot after a final stock conic. Pending SOI transitions terminate prediction safely; valid transitions retain their proper reference frame.
+- Split nearby terrain generation across frames and retire obsolete chunks during fast travel. Keep complete mesh resolution, textures, water/scenery, visible LOD-hole coverage and atomic chunk publication. Immediate arrival and nearby collision safety retain priority; photo readiness includes pending near terrain.
+- Bound trajectory CPU slices, reduce repeated ephemeris/arrival/rigidbody allocation, and skip idle Tracking Station warp scans. Preserve KSP Community Fixes' physics calculation and existing visual presets/effects.
+- Reduce the basic atmosphere renderer's severe fast-travel stalls: reuse identical cloud illumination/terrain samples and cloud buffers/topology, snapshot source-light transforms for sky integration, and reject impossible eclipse blockers conservatively. Keep cloud detail, coverage, refresh distances, sky integration quality and real eclipses.
+- Replace repeated full-layout LOD neighbour searches with a spatial index and cached boundary topology. Preserve terrain colours and blending order, including fractional tile sizes in community configs.
+- Add optional ten-second aggregate CPU diagnostics through `Diagnostics.cfg` or `-ringworld-profile` for investigating the reporter's sustained low FPS separately from the confirmed exception.
+
+Validation so far: 143,203 core checks; native issue #7 regression passed safe orbit/SOI handling, body-ephemeris equivalence, bounded fast streaming, mesh-colour equivalence, LOD-hole coverage and map/tracking rendering. The received save's world options/orbit were exercised with a stock-pod workload: fast flight improved from about 1.7 to 12.1 FPS on the development laptop. Cloud geometry/colour/coverage, eclipse visibility and sky scattering comparisons passed. This is a derived workload, not the reporter's entire modded career/craft or a GPU-wide guarantee. No preset or shader/texture asset was reduced.
+
+Final-source retained format 3/4/pre-1.1.8 format 5 data, legacy restore/resave, stock/CRP drilling, CF cache composition, intake/AJE environment, buoyancy/sinking and EVA regressions passed. Original retained files were hash-checked unchanged; all historical binary/craft combinations are not certified. Normal development DLLs are installed in `template_instance`; existing release ZIPs remain unchanged.
+
+Required dependencies, optional extension minimums, providers/conflicts and GameData layout are unchanged from 1.1.9 below. Existing save data and callable interfaces are preserved; no reset/migration is required. This version packages the corrections without overwriting older artifacts. No NetKAN changes are needed for these corrections alone. Received-log analysis, paired timing results and remaining exact-stack validation are tracked in [issue #7 development evidence](docs/developers/ISSUE-7-PERFORMANCE.md).
+
 ## 1.1.9 — artifact prepared 12 October 2026
 
 [Player-facing release description for GitHub / SpaceDock](docs/releases/v1.1.9.md). The detailed dependency and verification record follows.

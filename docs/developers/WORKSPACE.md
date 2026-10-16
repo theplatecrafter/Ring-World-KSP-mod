@@ -2,7 +2,7 @@
 
 ## Development and release ownership
 
-The [workspace workflow](../../../AGENTS.md) governs local development. The development assistant edits ordinary files, builds and tests locally, and packages ZIPs only when requested. All Git operations, GitHub/SpaceDock publication, and NetKAN pull requests are handled by the project owner. Publishing steps below are instructions for the owner, not authorization for automated publication.
+The [workspace workflow](../../../AGENTS.md) governs local development. The development assistant edits ordinary files, maintains the authoritative local `NetKAN/NetKAN` metadata, builds and tests locally, and packages ZIPs only when requested. Dependency ranges must reflect supported APIs/assets rather than automatically requiring each latest release. All Git operations, GitHub/SpaceDock publication, and NetKAN pull requests/submissions remain with the project owner. Local metadata maintenance does not authorize commits or remote operations.
 
 Each component's `RELEASE-NOTES.md` must report required dependencies and version constraints, optional/suggested integrations, configuration-provider conflicts, installation layout, and validation limits for the version being prepared. Configuration release notes must distinguish the requirements of all four packs.
 
@@ -14,7 +14,7 @@ Ring World KSP mods/
   Ringworld Clouds/     optional cloud repository
   Ringworld Scattering/ optional water/atmosphere repository
   Ringworld Configs/    instance configuration packs
-  NetKAN/               owner-managed authoritative CKAN metadata
+  NetKAN/               assistant-edited metadata; owner manages Git/submission
   template_instance/    shared KSP test installation (never distribute)
   Ring World KSP mods.code-workspace
 ```

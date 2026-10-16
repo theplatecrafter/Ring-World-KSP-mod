@@ -29,6 +29,12 @@ namespace Ringworld.Core
         // Numerical single scattering with Rayleigh and Henyey-Greenstein Mie phase
         // functions. Coefficients are per metre. This is not multiple scattering.
         public SkySample Sky(DVec origin,DVec direction,double time,bool unshadowed=false)
+        {return IntegrateSky(origin,direction,time,unshadowed,null);}
+        // A renderer can freeze the illuminating source in its current chart
+        // once per sky bake, instead of transforming it for every ray step.
+        public SkySample SkyFromLight(DVec origin,DVec direction,double time,DVec lightPosition)
+        {return IntegrateSky(origin,direction,time,true,lightPosition);}
+        private SkySample IntegrateSky(DVec origin,DVec direction,double time,bool unshadowed,DVec? lightPosition)
         {
             direction=direction.Unit;
             const double limit=4000000;
@@ -52,7 +58,7 @@ namespace Ringworld.Core
                 {
                     var point=origin+direction*(start+(i+.5)*ds);var c=geometry.Coordinates(point);
                     double rho=geometry.Density(c.Altitude)/1.225,mie=Math.Exp(-Math.Max(0,c.Altitude)/1200)*2e-5;
-                    var sunlight=geometry.LightDirection==null?(-point).Unit:geometry.LightDirection(point,time);
+                    var sunlight=lightPosition.HasValue?(lightPosition.Value-point).Unit:geometry.LightDirection==null?(-point).Unit:geometry.LightDirection(point,time);
                     double mu=DVec.Dot(direction,sunlight),hg=.76;
                     double phaseR=3*(1+mu*mu)/(16*Math.PI);
                     double phaseM=(1-hg*hg)/(4*Math.PI*Math.Pow(1+hg*hg-2*hg*mu,1.5));

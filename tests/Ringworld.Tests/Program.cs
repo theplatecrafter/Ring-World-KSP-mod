@@ -15,6 +15,7 @@ static class Program
         ResearchTests.Run(Check);
         TrajectoryTests.Run(Check);
         PlacementTests.Run(Check);
+        LodNeighbourTests.Run(Check);
         foreach(Biome biome in Enum.GetValues(typeof(Biome)))foreach(bool wet in new[]{false,true}){
             int kind=TerrainSurface.Kind(biome,wet);Check(kind>=0&&kind<TerrainSurface.Count,"Every biome has a surface texture");
         }

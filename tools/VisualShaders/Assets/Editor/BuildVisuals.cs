@@ -25,6 +25,10 @@ public static class BuildVisuals
             pixels[(z*n+y)*n+x]=new Color(Value(p),Mathf.Clamp01(1-distance*.8f),Value(p*2),1);
         }
         noise.SetPixels(pixels);noise.Apply(true,false);AssetDatabase.DeleteAsset("Assets/CloudNoise.asset");AssetDatabase.CreateAsset(noise,"Assets/CloudNoise.asset");
+        RebuildShaders();
+    }
+    public static void RebuildShaders()
+    {
         AssetDatabase.SaveAssets();AssetDatabase.Refresh();
         string output=Path.GetFullPath(Path.Combine(Application.dataPath,"../../../GameData/NivenRingworld/Assets"));Directory.CreateDirectory(output);
         var bundle=new AssetBundleBuild{assetBundleName="ringworldvisuals",assetNames=new[]{"Assets/Shaders/RingAtmosphere.shader","Assets/Shaders/Precipitation.shader","Assets/Shaders/DistantSurface.shader","Assets/Shaders/CloudDeck.shader","Assets/Shaders/GlobalClouds.shader","Assets/Shaders/CloudCoverageProbe.shader","Assets/Shaders/EclipseProbe.shader","Assets/Shaders/TerrainNight.shader","Assets/Shaders/TerrainTransition.shader","Assets/Shaders/ScrithHull.shader","Assets/CloudNoise.asset"}};

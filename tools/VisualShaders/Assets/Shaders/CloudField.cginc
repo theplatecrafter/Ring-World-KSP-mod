@@ -19,8 +19,13 @@ float cloudGradient(uint h,float2 p)
 float cloudPerlin(float2 cell,float2 fraction,int frequency,int salt)
 {
     float2 p=fraction*frequency;int2 c=(int2)round(cell)*frequency+(int2)floor(p);float2 f=frac(p);
-    int period=(int)_CoveragePeriod*frequency;c.x=(c.x%period+period)%period;int next=(c.x+1)%period;
-    int yp=1048576*frequency;c.y=(c.y%yp+yp)%yp;int yn=(c.y+1)%yp;
+    // Preserve negative/seam cells with one unsigned remainder rather than
+    // three signed remainders. Unsigned magnitude also handles INT_MIN.
+    uint period=(uint)_CoveragePeriod*(uint)frequency;
+    uint magnitude=c.x<0?0u-(uint)c.x:(uint)c.x,remainder=magnitude%period;
+    c.x=(int)(c.x<0&&remainder!=0?period-remainder:remainder);
+    int next=c.x+1;if((uint)next==period)next=0;
+    int mask=1048576*frequency-1;c.y&=mask;int yn=(c.y+1)&mask;
     float2 q=f*f*f*(f*(f*6-15)+10);
     return lerp(lerp(cloudGradient(cloudHash(c,salt),f),cloudGradient(cloudHash(int2(next,c.y),salt),f-float2(1,0)),q.x),
         lerp(cloudGradient(cloudHash(int2(c.x,yn),salt),f-float2(0,1)),cloudGradient(cloudHash(int2(next,yn),salt),f-1),q.x),q.y);
@@ -41,13 +46,23 @@ float cloudCoverageAt(float2 cell,float2 fraction,float amount,float footprint)
 }
 float cloudCoverage(float2 p)
 {
-    float2 f=_CoverageOrigin.zw+p*float2(_CoverageScaleX,1.0/4000000);
-    float broad=cloudCoverageAt(_CoverageOrigin.xy,f,_CloudAmount,0);
-    // Mesoscale clusters, independent of mesh tessellation and camera movement.
-    float2 warp=float2(cloudPerlin(_CoverageOrigin.xy,f,16,5723),cloudPerlin(_CoverageOrigin.xy,f,16,7933))*.012;
-    float detail=.5+.7*cloudPerlin(_CoverageOrigin.xy,f+warp,64,3413)+.3*cloudPerlin(_CoverageOrigin.xy,f+warp,128,6917);
-    float clusters=smoothstep(.28,.68,detail);
-    // Wet weather closes clear holes before precipitation begins (severity .60).
-    float overcast=smoothstep(.65,.81,_CloudAmount);
-    return _CloudAmount<=0?0:lerp(broad*clusters,.92+.08*clusters,overcast);
+    // Uniform weather gates: skip only terms whose blend weight is exactly zero.
+    float coverage=0;
+    [branch] if(_CloudAmount>0)
+    {
+        float2 f=_CoverageOrigin.zw+p*float2(_CoverageScaleX,1.0/4000000);
+        // Mesoscale clusters, independent of mesh tessellation and camera movement.
+        float2 warp=float2(cloudPerlin(_CoverageOrigin.xy,f,16,5723),cloudPerlin(_CoverageOrigin.xy,f,16,7933))*.012;
+        float detail=.5+.7*cloudPerlin(_CoverageOrigin.xy,f+warp,64,3413)+.3*cloudPerlin(_CoverageOrigin.xy,f+warp,128,6917);
+        float clusters=smoothstep(.28,.68,detail);
+        // Wet weather closes clear holes before precipitation begins (severity .60).
+        float overcast=smoothstep(.65,.81,_CloudAmount);
+        coverage=.92+.08*clusters;
+        [branch] if(overcast<1)
+        {
+            float broad=cloudCoverageAt(_CoverageOrigin.xy,f,_CloudAmount,0);
+            coverage=lerp(broad*clusters,coverage,overcast);
+        }
+    }
+    return coverage;
 }

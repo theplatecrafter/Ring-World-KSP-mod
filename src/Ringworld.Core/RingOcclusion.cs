@@ -36,6 +36,11 @@ namespace Ringworld.Core
         {
             if(!(innerRadius>0&&outerRadius>innerRadius&&halfWidth>0))return false;
             var a=basis.ToLocal(observer-center);var d=basis.ToLocal(light-observer);
+            var endpoint=a+d;double safeInner=innerRadius*(1-1e-12);
+            // The inner radial disk is convex. A segment whose endpoints are
+            // inside it cannot reach the shell, at any axial position. Retain
+            // the original tests within a roundoff margin of the boundary.
+            if(a.X*a.X+a.Z*a.Z<safeInner*safeInner&&endpoint.X*endpoint.X+endpoint.Z*endpoint.Z<safeInner*safeInner)return false;
             double low=1e-10,high=1-1e-10;
             if(!Slab(a.Y,d.Y,halfWidth,ref low,ref high))return false;
             var first=a+d*low;var last=a+d*high;

@@ -49,7 +49,7 @@ namespace NivenRingworld
             if(cylaSaveProbe&&File.Exists(Path.Combine(KSPUtil.ApplicationRootPath,"CylaNoNativeRenderer.flag")))
                 foreach(var vessel in state.GetNodes("VESSEL"))foreach(var part in vessel.GetNodes("PART"))foreach(var module in part.GetNodes("MODULE"))if(module.GetValue("name")=="CylindricalAtmosphereModule")part.RemoveNode(module);
             foreach(var vessel in state.GetNodes("VESSEL"))if(vessel.GetValue("type")=="SpaceObject")state.RemoveNode(vessel);
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-map-rendering-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-multi-ring-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-weather-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-residence-only")>=0)
+            if(FramePerformanceSmoke.Enabled||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-map-rendering-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-multi-ring-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-weather-only")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-residence-only")>=0)
             {
                 // A single flat-bottomed command pod isolates rendering tests from articulated crash debris.
                 foreach(var vessel in state.GetNodes("VESSEL"))
@@ -61,6 +61,7 @@ namespace NivenRingworld
             int probeVessel=0;
             if(cylaSaveProbe){var vessels=state.GetNodes("VESSEL");for(int i=0;i<vessels.Length;i++)foreach(var part in vessels[i].GetNodes("PART"))if(part.GetValue("name")=="cylindricalAtmo")probeVessel=i;}
             state.SetValue("activeVessel",probeVessel.ToString(),true);
+            if(ReporterLagSmoke.Enabled){try{ReporterLagSmoke.Prepare(node);}catch(Exception e){Fail("Reporter lag setup: "+e);yield break;}}
             bool startupCompatibility=Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-startup-compatibility-only")>=0||Issue6CompatibilitySmoke.Enabled;
             if(Issue6CompatibilitySmoke.Enabled){try{Issue6CompatibilitySmoke.Prepare();}catch(Exception e){Fail("Issue6 conflict reproduction: "+e);yield break;}}
             if(startupCompatibility&&!Issue6CompatibilitySmoke.FreshScenes){try{StartupCompatibilitySmoke.Prepare(node);}catch(Exception e){Fail("Startup conflict preparation: "+e);yield break;}}
@@ -144,6 +145,21 @@ namespace NivenRingworld
             catch(Exception ex){Fail("Toolbar/API: "+ex);yield break;}
             var smokeOptions=RingworldScenario.Instance.GetOptions().CreateCopy();if(!startupCompatibility)smokeOptions.SetValue("seed",-739779896,true);RingQualityPresets.Apply(smokeOptions,6);
             flight.ApplyOptions(smokeOptions,true);
+            if(FramePerformanceSmoke.Enabled){
+                var test=FramePerformanceSmoke.Run(flight);
+                while(true){bool more;try{more=test.MoveNext();}catch(Exception e){Fail("Frame performance: "+e);yield break;}if(!more)break;yield return test.Current;}
+                running=false;Application.Quit();yield break;
+            }
+            if(ReporterLagSmoke.Enabled){
+                var test=ReporterLagSmoke.Run(flight);
+                while(true){bool more;try{more=test.MoveNext();}catch(Exception e){Fail("Reporter lag: "+e);yield break;}if(!more)break;yield return test.Current;}
+                running=false;Application.Quit();yield break;
+            }
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-ringworld-issue7-only")>=0){
+                var test=Issue7PerformanceSmoke.Run(flight);
+                while(true){bool more;try{more=test.MoveNext();}catch(Exception e){Fail("Issue7 performance: "+e);yield break;}if(!more)break;yield return test.Current;}
+                running=false;Application.Quit();yield break;
+            }
             if(solverPlane){var planeTest=SolverEngineSmoke.RunPlane(flight);while(true){bool more;try{more=planeTest.MoveNext();}catch(Exception e){Fail("Native solver plane: "+e);yield break;}if(!more)break;yield return planeTest.Current;}Debug.Log("[RingworldSmoke] PASS startup compatibility regression complete");running=false;Application.Quit();yield break;}
             if(startupCompatibility){
                 var test=StartupCompatibilitySmoke.Run(flight);

@@ -17,7 +17,16 @@ namespace NivenRingworld
         private readonly Texture2D cloudTexture;
         private readonly Vector3[] directions;
         private readonly Color[] skyColors;
+        private const int CloudCells=48,CloudColumns=CloudCells+1,CloudCount=CloudColumns*CloudColumns*3;
+        private readonly Vector3[] cloudVertices=new Vector3[CloudCount];
+        private readonly Color[] cloudColors=new Color[CloudCount];
+        private readonly double[] cloudBillows=new double[CloudColumns*CloudColumns],cloudFloors=new double[CloudColumns*CloudColumns];
+        private readonly float[] cloudLights=new float[CloudColumns];
+        private Color32[] cloudPixels;
         private double cloudAlong=double.NaN,cloudAcross,cloudPhase;
+#if RINGWORLD_SMOKE_TEST
+        private double cloudTime;
+#endif
         private DVec cloudAnchor;
         private float nextSky;
         private AssetBundle visualBundle;
@@ -49,6 +58,13 @@ namespace NivenRingworld
             skyMesh=new Mesh{name="Integrated Rayleigh-Mie sky"};skyMesh.vertices=directions;skyMesh.SetTriangles(triangles,0);skyMesh.colors=skyColors;skyMesh.RecalculateBounds();
             sky.AddComponent<MeshFilter>().sharedMesh=skyMesh;sky.AddComponent<MeshRenderer>().sharedMaterial=skyMaterial;
             cloudMesh=new Mesh{name="Material-coordinate cloud field"};
+            cloudMesh.MarkDynamic();var cloudUv=new Vector2[CloudCount];var cloudIndices=new List<int>(CloudCells*CloudCells*18);
+            for(int layer=0;layer<3;layer++)for(int y=0;y<CloudColumns;y++)for(int x=0;x<CloudColumns;x++)
+            {
+                int i=layer*CloudColumns*CloudColumns+y*CloudColumns+x;cloudUv[i]=new Vector2(x/(float)CloudCells,y/(float)CloudCells);
+                if(x<CloudCells&&y<CloudCells)AddQuad(cloudIndices,i,CloudColumns);
+            }
+            cloudMesh.vertices=cloudVertices;cloudMesh.uv=cloudUv;cloudMesh.SetTriangles(cloudIndices,0);
             clouds.AddComponent<MeshFilter>().sharedMesh=cloudMesh;clouds.AddComponent<MeshRenderer>().sharedMaterial=cloudMaterial;
             sky.SetActive(false);clouds.SetActive(false);
             Camera.onPreCull+=PrepareCamera;
@@ -77,16 +93,18 @@ namespace NivenRingworld
             sky.transform.localScale=Vector3.one*1000;
             double time=Planetarium.GetUniversalTime();
             float sunlight=(float)settings.Geometry.Daylight(c.Along,time,c.Across,c.Altitude);skyMaterial.color=new Color(sunlight,sunlight,sunlight,1);
-            if(Time.realtimeSinceStartup>=nextSky)
+            if(sky.activeSelf&&Time.realtimeSinceStartup>=nextSky)
             {
+                long profile=RingPerformance.Begin();
                 nextSky=Time.realtimeSinceStartup+.2f;
                 var localClimate=Ecology.Sample(settings.Terrain,c.Along,c.Across);
                 var biomeTint=settings.GenerationVersion>=4?localClimate.SkyTint:new DVec(1,1,1);
                 double tintFade=Math.Max(0,1-c.Altitude/settings.Geometry.P.AtmosphereHeight);
                 biomeTint=new DVec(1,1,1)*(1-tintFade)+biomeTint*tintFade;
+                var lightPosition=RingLighting.LightPosition(settings,time);
                 for(int i=0;i<directions.Length;i++)
                 {
-                    var s=model.Sky(observer,ConvertVector.Core(directions[i]),time,true);
+                    var s=model.SkyFromLight(observer,ConvertVector.Core(directions[i]),time,lightPosition);
                     // Store straight alpha; the stock sprite shader premultiplies it.
                     double opacity=1-Math.Pow(1-s.Opacity,settings.Haze);
                     if(opacity<=.000001){skyColors[i]=Color.clear;continue;}
@@ -95,10 +113,14 @@ namespace NivenRingworld
                 }
                 for(int i=0;i<skyColors.Length;i++){var color=skyColors[i];color.r*=(float)biomeTint.X;color.g*=(float)biomeTint.Y;color.b*=(float)biomeTint.Z;skyColors[i]=color;}
                 skyMesh.colors=skyColors;
+                RingPerformance.End(RingPerformance.Section.SkyBake,profile);
             }
-            if(settings.CloudAmount>0&&(double.IsNaN(cloudAlong)||Math.Abs(settings.Geometry.AlongDistance(c.Along,cloudAlong))>12000||Math.Abs(c.Across-cloudAcross)>12000))
+            if(!clouds.activeSelf)return;
+            if(double.IsNaN(cloudAlong)||Math.Abs(settings.Geometry.AlongDistance(c.Along,cloudAlong))>12000||Math.Abs(c.Across-cloudAcross)>12000)
             {
+                long profile=RingPerformance.Begin();
                 BuildClouds(c,time);
+                RingPerformance.End(RingPerformance.Section.CloudBake,profile);
             }
             var localWeather=RingCloudField.Apply(cloudMaterial,settings,cloudAlong,cloudAcross,0,time);
             // Keep mesh-coordinate drift anchored, but share the observer's weather with the global handoff.
@@ -111,11 +133,14 @@ namespace NivenRingworld
         }
         private void BuildClouds(RingPoint observer,double time)
         {
+#if RINGWORLD_SMOKE_TEST
+            cloudTime=time;
+#endif
             CloudBuilds++;cloudAlong=observer.Along;cloudAcross=observer.Across;cloudPhase=settings.Geometry.OrientationRadians;
             cloudAnchor=settings.Geometry.Position(cloudAlong,cloudAcross,0);
-            const int n=48;const double extent=180000;
-            var vertices=new Vector3[(n+1)*(n+1)*3];var colors=new Color[vertices.Length];var uv=new Vector2[vertices.Length];var triangles=new List<int>();
-            if(!gpuClouds){var pixels=new Color32[384*384];
+            const int n=CloudCells;const double extent=180000;
+            var vertices=cloudVertices;var colors=cloudColors;
+            if(!gpuClouds){if(cloudPixels==null)cloudPixels=new Color32[384*384];var pixels=cloudPixels;
             for(int y=0;y<384;y++)for(int x=0;x<384;x++)
             {
                 double a=cloudAlong+(x/383.0*2-1)*extent,b=cloudAcross+(y/383.0*2-1)*extent;
@@ -123,28 +148,60 @@ namespace NivenRingworld
                 pixels[y*384+x]=new Color32(255,255,255,(byte)(255*coverage*coverage));
             }
             cloudTexture.SetPixels32(pixels);cloudTexture.Apply(true);}
+            // The decks share the same column: sample terrain/noise/illumination
+            // once, rather than repeating expensive eclipse rays for each layer.
+            var billows=cloudBillows;var floors=cloudFloors;var lights=cloudLights;
+            // This fallback's deck illumination uses Daylight(along,time), so
+            // every across row has exactly the same input for a given column.
+            for(int x=0;x<=n;x++)lights[x]=(float)(.12+.88*settings.Geometry.Daylight(cloudAlong+(x/(double)n*2-1)*extent,time));
+            for(int y=0;y<=n;y++)for(int x=0;x<=n;x++)
+            {
+                int i=y*(n+1)+x;double along=cloudAlong+(x/(double)n*2-1)*extent,across=cloudAcross+(y/(double)n*2-1)*extent;
+                billows[i]=settings.Terrain.Noise(along,across,14000,233);floors[i]=Math.Abs(across)>settings.Geometry.P.Width/2?0:settings.Terrain.Sample(along,across).Height;
+            }
             // Three translucent decks provide depth while flying through the cloud band.
             for(int layer=0;layer<3;layer++)for(int y=0;y<=n;y++)for(int x=0;x<=n;x++)
             {
                 int i=layer*(n+1)*(n+1)+y*(n+1)+x;
                 double da=(x/(double)n*2-1)*extent,db=(y/(double)n*2-1)*extent;
                 double along=cloudAlong+da,across=cloudAcross+db;
-                double billow=settings.Terrain.Noise(along,across,14000,233);
+                double billow=billows[y*(n+1)+x];
                 double height=4300+layer*850+billow*950;
                 vertices[i]=ConvertVector.Unity(settings.Geometry.Position(along,across,height)-cloudAnchor);
-                double cover=1;uv[i]=new Vector2(x/(float)n,y/(float)n);
+                double cover=1;
                 // Mountains pierce the cloud deck; fade the finite patch boundary.
-                if(Math.Abs(across)>settings.Geometry.P.Width/2||settings.Terrain.Sample(along,across).Height>height)cover=0;
+                if(Math.Abs(across)>settings.Geometry.P.Width/2||floors[y*(n+1)+x]>height)cover=0;
                 double fade=Math.Max(0,Math.Min(1,(extent-Math.Sqrt(da*da+db*db))/65000));
-                float light=(float)(.12+.88*settings.Geometry.Daylight(along,time));
+                float light=lights[x];
                 float shade=(float)(.68+.13*layer+.06*billow);
                 colors[i]=new Color(light*shade*.94f,light*shade*.97f,light*shade,(float)(cover*fade*(layer==1?.4:.3)));
-                if(x<n&&y<n)AddQuad(triangles,i,n+1);
             }
-            cloudMesh.Clear();cloudMesh.vertices=vertices;cloudMesh.colors=colors;cloudMesh.uv=uv;cloudMesh.SetTriangles(triangles,0);cloudMesh.RecalculateBounds();
+            // UV/topology never change with relocation; upload only live data.
+            cloudMesh.vertices=vertices;cloudMesh.colors=colors;cloudMesh.RecalculateBounds();
         }
+#if RINGWORLD_SMOKE_TEST
+        internal void TestCloudData()
+        {
+            if(CloudBuilds==0)throw new InvalidOperationException("Fallback cloud fixture has not built a deck.");
+            const int n=48;const double extent=180000;
+            var vertices=cloudMesh.vertices;var colors=cloudMesh.colors;var uv=cloudMesh.uv;
+            var g=new RingGeometry(settings.Geometry.P){Basis=settings.Geometry.Basis,OrientationRadians=cloudPhase};
+            for(int layer=0;layer<3;layer++)for(int y=0;y<=n;y++)for(int x=0;x<=n;x++)
+            {
+                int i=layer*(n+1)*(n+1)+y*(n+1)+x;
+                double da=(x/(double)n*2-1)*extent,db=(y/(double)n*2-1)*extent;
+                double a=cloudAlong+da,b=cloudAcross+db,billow=settings.Terrain.Noise(a,b,14000,233),height=4300+layer*850+billow*950;
+                var expected=ConvertVector.Unity(g.Position(a,b,height)-cloudAnchor);
+                double cover=Math.Abs(b)>g.P.Width/2||settings.Terrain.Sample(a,b).Height>height?0:1;
+                double fade=Math.Max(0,Math.Min(1,(extent-Math.Sqrt(da*da+db*db))/65000));
+                float light=(float)(.12+.88*settings.Geometry.Daylight(a,cloudTime)),shade=(float)(.68+.13*layer+.06*billow);
+                var colour=new Color(light*shade*.94f,light*shade*.97f,light*shade,(float)(cover*fade*(layer==1?.4:.3)));
+                if(vertices[i]!=expected||colors[i]!=colour||uv[i]!=new Vector2(x/(float)n,y/(float)n))throw new InvalidOperationException("Optimized cloud deck changed geometry, colour or coverage.");
+            }
+        }
+#endif
         private static void AddQuad(List<int> list,int a,int stride)
-        {int b=a+1,c=a+stride,d=c+1;list.AddRange(new[]{a,b,c,b,d,c});}
+        {int b=a+1,c=a+stride,d=c+1;list.Add(a);list.Add(b);list.Add(c);list.Add(b);list.Add(d);list.Add(c);}
         public void Dispose()
         {
             Camera.onPreCull-=PrepareCamera;

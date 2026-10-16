@@ -10,7 +10,7 @@ namespace NivenRingworld
 {
     internal sealed class RingTrajectory : MonoBehaviour
     {
-        private VectorLine line,markers;private bool computing;
+        private VectorLine line,markers;private bool computing,checking;
         private readonly List<Vector2> screenPoints=new List<Vector2>(),markerPoints=new List<Vector2>();
         private readonly List<Color32> segmentColors=new List<Color32>();
         private readonly List<TrajectorySample> samples=new List<TrajectorySample>();
@@ -24,7 +24,7 @@ namespace NivenRingworld
         private readonly List<bool> pathInside=new List<bool>(),encounterEntries=new List<bool>();
         internal int EncounterCount {get{return encounters.Count;}}
         internal Orbit PredictedOrbit;
-        internal void ResetPrediction(){StopAllCoroutines();computing=false;packedEpoch=double.NaN;nextPrediction=0;PredictedOrbit=null;encounters.Clear();encounterTimes.Clear();encounterEntries.Clear();pathInside.Clear();samples.Clear();HideLines();}
+        internal void ResetPrediction(){StopAllCoroutines();computing=false;checking=false;relevant=false;checkedVessel=null;nextRelevance=0;packedEpoch=double.NaN;nextPrediction=0;PredictedOrbit=null;encounters.Clear();encounterTimes.Clear();encounterEntries.Clear();pathInside.Clear();samples.Clear();HideLines();}
         private void Start(){Camera.onPreCull+=PrepareCamera;}
         private void HideLines(){if(line!=null)line.active=false;if(markers!=null)markers.active=false;RenderedPointCount=0;}
         internal static bool LandedOnRing(Vessel v)
@@ -35,7 +35,7 @@ namespace NivenRingworld
             return (f!=null&&f.Owns(v)&&(v.Landed||v.Splashed))||
                 (RingResidence.Saved(v,out record)&&record.Landed);
         }
-        internal bool Replaces(Vessel v){return v!=null&&v==displayedVessel&&displayedSettings==CurrentSettings&&displayedSettings!=null&&displayedSettings.ShowTrajectory&&samples.Count>=2;}
+        internal bool Replaces(Vessel v){return relevant&&v!=null&&v==displayedVessel&&displayedSettings==CurrentSettings&&displayedSettings!=null&&displayedSettings.ShowTrajectory&&samples.Count>=2;}
         internal int PredictionCommits;
         internal static Orbit SolarPatch(Vessel v,CelestialBody star)
         {
@@ -47,7 +47,7 @@ namespace NivenRingworld
             return null;
         }
         private static bool Tracking {get{return HighLogic.LoadedScene==GameScenes.TRACKSTATION;}}
-        private static Vessel Selected {get{return Tracking?(PlanetariumCamera.fetch!=null&&PlanetariumCamera.fetch.target!=null?PlanetariumCamera.fetch.target.vessel:null):FlightGlobals.ActiveVessel;}}
+        internal static Vessel Selected {get{return Tracking?(PlanetariumCamera.fetch!=null&&PlanetariumCamera.fetch.target!=null?PlanetariumCamera.fetch.target.vessel:null):FlightGlobals.ActiveVessel;}}
         private static Settings CurrentSettings {get{return Tracking?TrackingRing.Settings:RingworldFlight.Instance==null?null:RingworldFlight.Instance.Settings;}}
         private static CelestialBody CurrentStar {get{return Tracking?TrackingRing.Star:RingworldFlight.Instance==null?null:RingworldFlight.Instance.Star;}}
         internal string Status="Vacuum coast prediction";
@@ -55,6 +55,11 @@ namespace NivenRingworld
         internal static DVec InertialAcceleration(DVec p,Settings s,double mu,double time=double.NaN)
         {return s.InertialGravity(p,double.IsNaN(time)?Planetarium.GetUniversalTime():time)+s.Geometry.RibbonAcceleration(p);}
         internal void PackedUpdate(RingworldFlight f)
+        {
+            long profile=RingPerformance.Begin();
+            try{IntegratePacked(f);}finally{RingPerformance.End(RingPerformance.Section.PackedCoast,profile);}
+        }
+        private void IntegratePacked(RingworldFlight f)
         {
             var v=FlightGlobals.ActiveVessel;double now=Planetarium.GetUniversalTime();
             RingAnchorState orbital;
@@ -86,18 +91,47 @@ namespace NivenRingworld
         {
             var v=Selected;var settings=CurrentSettings;var star=CurrentStar;
             bool show=settings!=null&&settings.ShowTrajectory&&v!=null&&!LandedOnRing(v)&&SolarPatch(v,star)!=null&&(Tracking||MapView.MapIsEnabled);
-            if(show&&(v!=checkedVessel||settings!=checkedSettings||Time.realtimeSinceStartup>=nextRelevance))
-            {
-                nextRelevance=Time.realtimeSinceStartup+.25f;checkedVessel=v;checkedSettings=settings;var f=RingworldFlight.Instance;
-                relevant=(f!=null&&f.Owns(v))||
-                    !double.IsInfinity(TrackingRing.Encounter(v.orbit,settings.Geometry,Planetarium.GetUniversalTime(),settings.PredictionSeconds,default(DVec),t=>settings.AnchorAt(t).Position,star));
-            }
-            show&=relevant;
-            if(!show){if(samples.Count>0||computing)ResetPrediction();else HideLines();return;}
+            if(!show){if(samples.Count>0||computing||checking)ResetPrediction();else HideLines();return;}
             if(v!=displayedVessel||settings!=displayedSettings||star!=displayedStar)
             {ResetPrediction();displayedVessel=v;displayedSettings=settings;displayedStar=star;}
+            if(!checking&&(v!=checkedVessel||settings!=checkedSettings||Time.realtimeSinceStartup>=nextRelevance))
+            {
+                checkedVessel=v;checkedSettings=settings;StartCoroutine(CheckRelevance(v,settings,star));
+            }
+            if(!relevant){HideLines();return;}
             if(!computing&&Time.realtimeSinceStartup>=nextPrediction)
             {nextPrediction=Time.realtimeSinceStartup+1f/30;StartCoroutine(Predict(RingworldFlight.Instance,v));}
+        }
+        private IEnumerator CheckRelevance(Vessel v,Settings settings,CelestialBody star)
+        {
+            checking=true;bool found=false;double start=Planetarium.GetUniversalTime();
+            try
+            {
+                var f=RingworldFlight.Instance;
+                if(f!=null&&f.Owns(v)){found=true;yield break;}
+                RingAnchorState state;
+                if(!RingAnchorEphemeris.TryOrbitRelative(v.orbit,star,start,out state))yield break;
+                var previous=state.Position-settings.AnchorAt(start).Position;
+                if(settings.Geometry.InArrivalRegion(previous,false)){found=true;yield break;}
+                long slice=RingPerformance.Begin();var clock=System.Diagnostics.Stopwatch.StartNew();
+                for(double elapsed=0;elapsed<settings.PredictionSeconds;)
+                {
+                    if(v==null||v!=Selected||settings!=CurrentSettings)yield break;
+                    double dt=Math.Min(120,settings.PredictionSeconds-elapsed);
+                    if(!RingAnchorEphemeris.TryOrbitRelative(v.orbit,star,start+elapsed+dt,out state))break;
+                    var next=state.Position-settings.AnchorAt(start+elapsed+dt).Position;
+                    if(!double.IsInfinity(settings.Geometry.TimeToArrival(previous,(next-previous)/dt,dt))){found=true;break;}
+                    previous=next;elapsed+=dt;
+                    if(clock.Elapsed.TotalMilliseconds>=1.5)
+                    {RingPerformance.End(RingPerformance.Section.Relevance,slice);yield return null;slice=RingPerformance.Begin();clock.Restart();}
+                }
+                RingPerformance.End(RingPerformance.Section.Relevance,slice);
+            }
+            finally
+            {
+                checking=false;nextRelevance=Time.realtimeSinceStartup+.25f;
+                if(v==Selected&&settings==CurrentSettings)relevant=found;
+            }
         }
         // Prediction is independent of the camera. Vectrosity is KSP's own orbit-line
         // backend; only projection runs at camera time, after scaled-space rebasing.
@@ -107,6 +141,11 @@ namespace NivenRingworld
             Draw(camera);
         }
         internal void Draw(Camera camera)
+        {
+            long profile=RingPerformance.Begin();
+            try{DrawLine(camera);}finally{RingPerformance.End(RingPerformance.Section.MapDraw,profile);}
+        }
+        private void DrawLine(Camera camera)
         {
             var v=Selected;double now=Planetarium.GetUniversalTime();
             if(camera==null||(!Tracking&&!MapView.MapIsEnabled)||v==null||v!=displayedVessel||
@@ -121,7 +160,7 @@ namespace NivenRingworld
             var head=TrajectorySample.Interpolate(samples[first],samples[first+1],Math.Max(now,samples[first].Time));
             Vector3d actual;
             if(RingMapFrame.TryPosition(v,out actual))head=ConvertVector.Core(actual-displayedStar.position);
-            else if(now>=samples[0].Time)head=RingAnchorEphemeris.OrbitRelative(v.orbit,displayedStar,now).Position;
+            else if(now>=samples[0].Time){RingAnchorState orbital;if(!RingAnchorEphemeris.TryOrbitRelative(v.orbit,displayedStar,now,out orbital)){HideLines();return;}head=orbital.Position;}
             var a=Project(camera,head,observer,rotation,projection);RenderedHead=new Vector2(a.x,a.y);
             for(int i=first;i<samples.Count-1&&screenPoints.Count<12000;i++)
             {
@@ -209,19 +248,21 @@ namespace NivenRingworld
             {
                 var settings=CurrentSettings;var star=CurrentStar;var g=settings.Geometry;bool rotating=f!=null&&f.Owns(v);double start=Planetarium.GetUniversalTime();var patch=SolarPatch(v,star);if(patch==null)yield break;
                 double elapsed=rotating?start-f.FrameEpoch:0;
-                DVec position=f!=null?f.Position(v):RingAnchorEphemeris.OrbitRelative(patch,star,start).Position-settings.AnchorAt(start).Position,velocity=f!=null?f.Velocity(v):RingAnchorEphemeris.OrbitRelative(patch,star,start).Velocity-settings.AnchorAt(start).Velocity;
-                if(v.mainBody!=star){start=Math.Max(start,patch.StartUT);position=RingAnchorEphemeris.OrbitRelative(patch,star,start).Position-settings.AnchorAt(start).Position;velocity=RingAnchorEphemeris.OrbitRelative(patch,star,start).Velocity-settings.AnchorAt(start).Velocity;}
+                RingAnchorState initial;
+                if(!RingAnchorEphemeris.TryOrbitRelative(patch,star,start,out initial)){Status="Waiting for orbital reference transition";yield break;}
+                var initialAnchor=settings.AnchorAt(start);
+                DVec position=rotating?f.Position(v):initial.Position-initialAnchor.Position,velocity=rotating?f.Velocity(v):initial.Velocity-initialAnchor.Velocity;
                 if(rotating){velocity=g.ToInertialVelocity(position,velocity,elapsed);position=g.ToInertialPosition(position,elapsed);}
                                 bool analytical=!rotating&&g.P.SurfaceDensity==0;
                 var state=new CoastState(position,velocity);var points=new List<TrajectorySample>();double time=0;
                 var crossings=new List<int>();var times=new List<double>();var insidePoints=new List<bool>();var entries=new List<bool>();
                 bool wasInside=g.InArrivalRegion(position,rotating);bool entryFound=false;
                 string result=analytical?"Stock orbit coast, clipped at ring encounters":"Numerical vacuum coast: celestial gravity + uniform ribbon; no thrust or manoeuvres";
-                // At low rendering FPS a fixed 1.5 ms slice stretches short predictions
-                // over many wall-clock frames. Spend at most 10% of the last frame,
-                // capped at 8 ms, without changing numerical steps or encounter tests.
-                double sliceBudget=Math.Max(1.5,Math.Min(8,Time.unscaledDeltaTime*100));
+                // Keep a fixed CPU slice, even when FPS is poor. Projection still
+                // follows each camera render; numerical steps/resolution are unchanged.
+                double sliceBudget=1.5;
                 var slice=System.Diagnostics.Stopwatch.StartNew();
+                long profile=RingPerformance.Begin();
                 for(int i=0;i<4096&&time<=settings.PredictionSeconds;i++)
                 {
                     if(v==null||v!=Selected||settings!=CurrentSettings||rotating!=(f!=null&&f.Owns(v)))yield break;
@@ -255,14 +296,16 @@ namespace NivenRingworld
                     {
                         // Rails still use patched conics outside the ring frame. Sample
                         // their exact stock ephemeris rather than substitute an N-body coast.
-                        var orbitState=RingAnchorEphemeris.OrbitRelative(patch,star,start+time+dt);
+                        RingAnchorState orbitState;
+                        if(!RingAnchorEphemeris.TryOrbitRelative(patch,star,start+time+dt,out orbitState)){result="Coast ends at pending orbital reference transition";break;}
                         var futureAnchor=settings.AnchorAt(start+time+dt);
                         state=new CoastState(orbitState.Position-futureAnchor.Position,orbitState.Velocity-futureAnchor.Velocity);
                     }
                     else state=NumericalFlight.Step(state,dt,(p,u)=>InertialAcceleration(p,settings,star.gravParameter,start+time+dt*.5));
                     time+=dt;
-                    if(slice.Elapsed.TotalMilliseconds>=sliceBudget){yield return null;slice.Restart();}
+                    if(slice.Elapsed.TotalMilliseconds>=sliceBudget){RingPerformance.End(RingPerformance.Section.Prediction,profile);yield return null;profile=RingPerformance.Begin();slice.Restart();}
                 }
+                RingPerformance.End(RingPerformance.Section.Prediction,profile);
                 if(time<settings.PredictionSeconds&&points.Count>=4096)result="Coast truncated at numerical step budget";
                 PredictionCommits++;
                 Status=(entryFound?"Ringworld frame encounter marked. ":"")+result;PredictedOrbit=patch;encounters.Clear();encounters.AddRange(crossings);encounterTimes.Clear();encounterTimes.AddRange(times);encounterEntries.Clear();encounterEntries.AddRange(entries);pathInside.Clear();pathInside.AddRange(insidePoints);samples.Clear();samples.AddRange(points);
@@ -299,13 +342,16 @@ namespace NivenRingworld
         internal static bool ShouldHide(Orbit orbit)
         {
             if(orbit==null)return false;
-            foreach(var resident in FlightGlobals.Vessels)
+            // Body/asteroid orbit renderers do not need a full vessel scan when
+            // the save contains no ring residents at all.
+            var scenario=RingworldScenario.Instance;
+            if(scenario!=null&&scenario.Vessels.Count>0)foreach(var resident in FlightGlobals.Vessels)
             {if(ReferenceEquals(resident.orbit,orbit)&&RingTrajectory.LandedOnRing(resident))return true;}
             var f=RingworldFlight.Instance;var v=FlightGlobals.ActiveVessel;
             if(HighLogic.LoadedScene==GameScenes.TRACKSTATION&&TrackingRing.Trajectory!=null&&TrackingRing.Settings!=null&&TrackingRing.Settings.ShowTrajectory)
-                return TrackingRing.Trajectory.PointCount>=2&&ReferenceEquals(orbit,TrackingRing.Trajectory.PredictedOrbit);
+                return TrackingRing.Trajectory.Replaces(RingTrajectory.Selected)&&ReferenceEquals(orbit,TrackingRing.Trajectory.PredictedOrbit);
             return f!=null&&v!=null&&((f.Owns(v)&&ReferenceEquals(orbit,v.orbit))||
-                (f.Settings!=null&&f.Settings.ShowTrajectory&&f.trajectory!=null&&f.trajectory.PointCount>=2&&ReferenceEquals(orbit,f.trajectory.PredictedOrbit)));
+                (f.Settings!=null&&f.Settings.ShowTrajectory&&f.trajectory!=null&&f.trajectory.Replaces(v)&&ReferenceEquals(orbit,f.trajectory.PredictedOrbit)));
         }
     }
     [HarmonyPatch(typeof(OrbitRendererBase),"DrawOrbit")]

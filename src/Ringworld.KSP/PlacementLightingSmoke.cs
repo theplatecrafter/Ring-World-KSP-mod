@@ -15,7 +15,7 @@ namespace NivenRingworld
             if(reload.AnchorId!=anchor.AnchorId||(reload.AnchorAt(time+600).Position-future.Position).Length>.01){fail("Anchor identity or future state lost on reload" );return false;}
             var host=FlightGlobals.GetBodyByName("Sun");var kerbin=FlightGlobals.GetBodyByName("Kerbin");
             var first=new Orbit(0,0,1e6,0,0,0,time,kerbin);var next=new Orbit(0,0,1.8e10,0,0,0,time,host);
-            first.StartUT=time;first.EndUT=time+10;first.nextPatch=next;next.StartUT=time+10;
+            first.StartUT=time;first.EndUT=time+10;first.patchEndTransition=Orbit.PatchTransitionType.ESCAPE;first.nextPatch=next;next.StartUT=time+10;next.patchEndTransition=Orbit.PatchTransitionType.FINAL;
             var before=RingAnchorEphemeris.OrbitRelative(first,host,time+5);
             RingAnchorState parent;string error;
             RingAnchorEphemeris.TryRelative("body:Kerbin",host,time+5,out parent,out error);

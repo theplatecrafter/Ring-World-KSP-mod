@@ -12,7 +12,7 @@ namespace NivenRingworld
     {
         private sealed class Patch
         {
-            internal string BoundaryKey;internal bool Retired;internal IEnumerator<Mesh> CanopyWork;internal GameObject Root;internal Mesh Mesh,WaterMesh,CanopyMesh;internal DVec Anchor;internal double Phase;internal bool Scaled;internal Texture2D Texture;
+            internal string BoundaryKey;internal bool Retired;internal IEnumerator<Mesh> CanopyWork;internal GameObject Root;internal Mesh Mesh,WaterMesh,CanopyMesh;internal Renderer WaterRenderer;internal DVec Anchor;internal double Phase;internal bool Scaled;internal Texture2D Texture;
         }
         private AssetBundle visualBundle;private bool nightShader;
         private readonly Settings settings;private readonly Material material,farMaterial,waterMaterial,forestMaterial;
@@ -24,8 +24,10 @@ namespace NivenRingworld
         private HashSet<string> wanted=new HashSet<string>();
         private List<LodBlock> pending=new List<LodBlock>();
         private readonly List<LodBlock> layout=new List<LodBlock>();
+        private sealed class Boundary {internal string Key;internal List<LodBlock> Neighbours;}
+        private readonly Dictionary<string,Boundary> boundaries=new Dictionary<string,Boundary>();
         private readonly Dictionary<Tuple<double,double,double>,Color> edgeColours=new Dictionary<Tuple<double,double,double>,Color>();
-        private long lastX=long.MinValue,lastY;private double plannedAlong;
+        private long lastX=long.MinValue,lastY,visibleX=long.MinValue,visibleY;private double plannedAlong;
         internal int Count {get{return patches.Count;}}
         internal int Pending {get{return pending.Count+(building?1:0);}}
         internal int BuiltScaledCount {get{int count=0;foreach(var p in patches.Values)if(p.Scaled)count++;return count;}}
@@ -35,8 +37,17 @@ namespace NivenRingworld
             if(shader!=null&&shader.isSupported){farMaterial.shader=shader;farMaterial.SetFloat("_SurfaceMetresPerUnit",(float)(1.0/ScaledSpace.InverseScaleFactor));farMaterial.renderQueue=2010;nightShader=true;}
             Camera.onPreCull+=PrepareCamera;
         }
-        internal bool NeedsNearTile(long x,long y){return Math.Abs(x-lastX)<=settings.TileRadius&&Math.Abs(y-lastY)<=settings.TileRadius;}
-        internal void Update(double along,double across,bool nearReady=true)
+        internal bool NeedsNearTile(long x,long y)
+        {return (lastX!=long.MinValue&&Math.Abs(x-lastX)<=settings.TileRadius&&Math.Abs(y-lastY)<=settings.TileRadius)||
+            (visibleX!=long.MinValue&&Math.Abs(x-visibleX)<=settings.TileRadius&&Math.Abs(y-visibleY)<=settings.TileRadius);}
+        internal bool HasNearFootprint {get{return lastX!=long.MinValue;}}
+        internal long NearX {get{return lastX;}}
+        internal long NearY {get{return lastY;}}
+#if RINGWORLD_SMOKE_TEST
+        internal int GenerationCommits;
+        internal bool VisibleFootprintReady(Func<long,long,bool> ready){return visibleX==long.MinValue||ready(visibleX,visibleY);}
+#endif
+        internal void Update(double along,double across,bool nearReady=true,Func<long,long,bool> footprintReady=null)
         {
             long x=(long)Math.Floor(along/settings.TileSize),y=(long)Math.Floor(across/settings.TileSize);
             if(!building&&(x!=lastX||y!=lastY))
@@ -46,6 +57,13 @@ namespace NivenRingworld
                 {
                     if(b.Y>=settings.Geometry.P.Width/2||b.Y+b.Size<=-settings.Geometry.P.Width/2)continue;
                     layout.Add(b);wanted.Add(b.Key);if(!patches.ContainsKey(b.Key))pending.Add(b);
+                }
+                boundaries.Clear();var index=new LodNeighbourIndex(layout);
+                foreach(var b in layout)
+                {
+                    var neighbours=index.CoarserNeighbours(b);var key=new System.Text.StringBuilder();
+                    foreach(var other in neighbours)key.Append(other.Key).Append(';');
+                    boundaries.Add(b.Key,new Boundary{Key=key.ToString(),Neighbours=neighbours});
                 }
                 // A retained block may now border a different coarse grid. Rebuild
                 // its feathered texture with that topology instead of keeping a seam.
@@ -63,13 +81,16 @@ namespace NivenRingworld
             }
             // Publish a complete generation atomically. Retain the visible layout
             // while its replacements build; never expose the coarse hull through holes.
-            if(building&&pending.Count==0&&nearReady)
+            if(building&&pending.Count==0&&nearReady&&(footprintReady==null||footprintReady(lastX,lastY)))
             {
                 var remove=new List<string>();
                 foreach(var kv in patches)if(!wanted.Contains(kv.Key)||staged.ContainsKey(kv.Key))remove.Add(kv.Key);
                 foreach(var key in remove){patches[key].Root.SetActive(false);Destroy(patches[key]);patches.Remove(key);}
                 foreach(var kv in staged){patches.Add(kv.Key,kv.Value);kv.Value.Root.SetActive(true);}
-                staged.Clear();building=false;
+                staged.Clear();building=false;visibleX=lastX;visibleY=lastY;
+#if RINGWORLD_SMOKE_TEST
+                GenerationCommits++;
+#endif
             }
             // Yield between canopy rows; never spend a whole dense forest block
             // sampling terrain in one frame. Mesh publication stays on Unity's thread.
@@ -95,8 +116,7 @@ namespace NivenRingworld
         // terrain or screen-wide blur is needed. Only a boundary strip is sampled.
         private string BoundaryKey(LodBlock b)
         {
-            string key="";foreach(var o in layout)if(o.Size>b.Size&&o.X<=b.X+b.Size&&o.X+o.Size>=b.X&&o.Y<=b.Y+b.Size&&o.Y+o.Size>=b.Y)key+=o.Key+";";
-            return key;
+            return boundaries[b.Key].Key;
         }
         private Color GridColour(double a,double b,double footprint)
         {
@@ -128,8 +148,7 @@ namespace NivenRingworld
             // an area-filtered biome colour/height without individual tree draws.
             edgeColours.Clear();
             int n=settings.LodResolution;int count=(n+1)*(n+1);
-            var neighbours=new List<LodBlock>();
-            foreach(var other in layout)if(other.Size>b.Size&&other.X<=b.X+b.Size&&other.X+other.Size>=b.X&&other.Y<=b.Y+b.Size&&other.Y+other.Size>=b.Y)neighbours.Add(other);
+            var neighbours=boundaries[b.Key].Neighbours;
             var p=new Patch{BoundaryKey=BoundaryKey(b),Root=new GameObject("Ring terrain LOD "+b.Key),Anchor=settings.Geometry.Position(b.X,b.Y,0),Phase=settings.Geometry.OrientationRadians};
             p.Scaled=b.Size>=65536&&b.DistanceSquared(lastX*settings.TileSize,lastY*settings.TileSize)>250000.0*250000;
             p.Root.layer=p.Scaled?10:15;
@@ -165,7 +184,7 @@ namespace NivenRingworld
                 {
                     p.WaterMesh=new Mesh{name="Ringworld LOD water"};p.WaterMesh.SetVertices(vertices);p.WaterMesh.uv=waterUv;p.WaterMesh.SetTriangles(waterIndices,0);p.WaterMesh.RecalculateNormals();p.WaterMesh.RecalculateBounds();var bounds=p.WaterMesh.bounds;bounds.Expand(4);p.WaterMesh.bounds=bounds;
                     var water=new GameObject("Ringworld LOD waves");water.layer=15;water.transform.SetParent(p.Root.transform,false);water.AddComponent<MeshFilter>().sharedMesh=p.WaterMesh;
-                    var wr=water.AddComponent<MeshRenderer>();wr.sharedMaterial=waterMaterial;wr.shadowCastingMode=ShadowCastingMode.Off;
+                    var wr=water.AddComponent<MeshRenderer>();wr.sharedMaterial=waterMaterial;wr.shadowCastingMode=ShadowCastingMode.Off;p.WaterRenderer=wr;RingWaterVisibility.Add(wr);
                     // Retain sampled bathymetry beneath the separate water surface. Old
                     // mean-water ground/skirt tops caused lines between water patches.
                     for(int i=0;i<count;i++)if(wet[i])vertices[i]=seabed[i];
@@ -210,14 +229,14 @@ namespace NivenRingworld
             }
             foreach(var p in patches.Values)
             {
-                p.Root.SetActive(interior);
+                if(p.Root.activeSelf!=interior)p.Root.SetActive(interior);
                 double delta=(p.Scaled&&RingMapFrame.Active?settings.Geometry.P.Omega*Planetarium.GetUniversalTime():settings.Geometry.OrientationRadians)-p.Phase;
                 var world=(p.Scaled&&RingMapFrame.Active?settings.InertialCenter:star)+ConvertVector.Ksp(settings.Geometry.RotateAroundAxis(p.Anchor,delta));
                 p.Root.transform.position=p.Scaled?(Vector3)ScaledSpace.LocalToScaledSpace(world):(Vector3)world;
                 p.Root.transform.rotation=settings.AxisRotation(delta);
             }
         }
-        private static void Destroy(Patch p){p.Retired=true;if(p.CanopyWork!=null){p.CanopyWork.Dispose();p.CanopyWork=null;}UnityEngine.Object.Destroy(p.Root);UnityEngine.Object.Destroy(p.Mesh);if(p.CanopyMesh!=null)UnityEngine.Object.Destroy(p.CanopyMesh);if(p.WaterMesh!=null)UnityEngine.Object.Destroy(p.WaterMesh);UnityEngine.Object.Destroy(p.Texture);}
+        private static void Destroy(Patch p){RingWaterVisibility.Remove(p.WaterRenderer);p.Retired=true;if(p.CanopyWork!=null){p.CanopyWork.Dispose();p.CanopyWork=null;}UnityEngine.Object.Destroy(p.Root);UnityEngine.Object.Destroy(p.Mesh);if(p.CanopyMesh!=null)UnityEngine.Object.Destroy(p.CanopyMesh);if(p.WaterMesh!=null)UnityEngine.Object.Destroy(p.WaterMesh);UnityEngine.Object.Destroy(p.Texture);}
         private void PrepareCamera(Camera camera)
         {
             bool scaled=camera==PlanetariumCamera.Camera||(ScaledCamera.Instance!=null&&camera==ScaledCamera.Instance.cam)||(camera.cullingMask&(1<<15))==0;

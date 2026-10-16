@@ -68,7 +68,7 @@ namespace NivenRingworld
             ParallaxBudget=Math.Max(.25,Math.Min(8,Read(n,"parallaxBudget",2)));
             ParallaxMaxObjects=(int)Math.Max(256,Math.Min(500000,Read(n,"parallaxMaxObjects",12000)));
             RingId=n.GetValue("ringId")??"primary";RingName=n.GetValue("ringName")??"Ringworld";
-            ReferenceBody=n.GetValue("referenceBody")??"Sun";AnchorId=n.GetValue("anchorId")??("body:"+ReferenceBody);anchorTime=double.NaN;DesignatedStar=n.GetValue("designatedStar")!="False";
+            ReferenceBody=n.GetValue("referenceBody")??"Sun";AnchorId=n.GetValue("anchorId")??("body:"+ReferenceBody);anchorTime=double.NaN;gravityTime=double.NaN;DesignatedStar=n.GetValue("designatedStar")!="False";
             CenterOffset=new DVec(Read(n,"centerX",0),Read(n,"centerY",0),Read(n,"centerZ",0));LoadAnchorFallback(n);
             OrientationDegrees=new DVec(Read(n,"tiltX",0),Read(n,"tiltY",0),Read(n,"tiltZ",0));
             Geometry.Basis=new RingBasis(OrientationDegrees.X,OrientationDegrees.Y,OrientationDegrees.Z);

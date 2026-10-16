@@ -7,6 +7,22 @@ using System.Reflection.Metadata.Ecma335;
 
 using var file=File.OpenRead(args[0]);using var pe=new PEReader(file);var metadata=pe.GetMetadataReader();
 if(args.Length>1&&args[1]=="--environment-reads"){EnvironmentAudit.Run(pe,metadata);return;}
+if(args.Length>2&&args[2]=="--string-users")
+{
+    foreach(var typeHandle in metadata.TypeDefinitions)
+    foreach(var methodHandle in metadata.GetTypeDefinition(typeHandle).GetMethods())
+    {
+        var method=metadata.GetMethodDefinition(methodHandle);if(method.RelativeVirtualAddress==0)continue;
+        var il=pe.GetMethodBody(method.RelativeVirtualAddress).GetILBytes();
+        for(int i=0;i+4<il.Length;i++)if(il[i]==0x72&&(il[i+4]&0xff)==0x70)
+        {
+            string value;try{value=metadata.GetUserString(MetadataTokens.UserStringHandle(BitConverter.ToInt32(il,i+1)&0x00ffffff));}catch(BadImageFormatException){continue;}
+            if(value.Contains(args[1],StringComparison.OrdinalIgnoreCase))
+            {Console.WriteLine(metadata.GetString(metadata.GetTypeDefinition(typeHandle).Name)+"."+metadata.GetString(method.Name)+": "+value);break;}
+        }
+    }
+    return;
+}
 if(args.Length>2&&args[2]=="--field-users")
 {
     foreach(var fieldHandle in metadata.FieldDefinitions)

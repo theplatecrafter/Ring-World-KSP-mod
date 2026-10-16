@@ -16,7 +16,7 @@ namespace NivenRingworld
         private static bool Optional(Type type)
         {return type==typeof(RingResourceHarvester)||type==typeof(RingHarvesterResourceQuery)||type==typeof(RingCommunityFixesResourceCache)||type==typeof(RingIntakeEnvironment)||
             type==typeof(RingAirshipCompatibility)||type==typeof(RingAquaticCompatibility)||type==typeof(RingScanSatCompatibility)||type==typeof(RingGoldStrikeCompatibility)||type==typeof(RingGraviticHover)||type==typeof(RingSolverEngineCompatibility)||type==typeof(RingSolverFlightSystemCompatibility);}
-        internal static bool ReadyForFlight {get{return installed&&!rollbackFailed&&!failures.Keys.Any(t=>!Optional(t));}}
+        internal static bool ReadyForFlight {get{return installed&&!rollbackFailed&&(failures.Count==0||!failures.Keys.Any(t=>!Optional(t)));}}
         internal static string Warning
         {
             get{
@@ -129,6 +129,11 @@ namespace NivenRingworld
     internal static class RingSurfaceCaches
     {
         internal static void Publish(Vessel v)
+        {
+            long profile=RingPerformance.Begin();
+            try{PublishState(v);}finally{RingPerformance.End(RingPerformance.Section.SurfaceCaches,profile);}
+        }
+        private static void PublishState(Vessel v)
         {
             if(!StockIntegration.Applies(v)||!v.loaded||v.packed||v.parts==null||v.parts.Count==0)return;
             var f=RingworldFlight.Instance;var up=f.Settings.Geometry.Up(f.Position(v));
